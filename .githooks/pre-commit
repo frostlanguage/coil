@@ -1,0 +1,357 @@
+#!/usr/bin/env lua
+
+-- SPDX-FileCopyrightText: © 2026 Rafael V. Volkmer <rafael.v.volkmer@gmail.com>
+-- SPDX-License-Identifier: GPL-3.0-only
+
+--- Coil pre-commit hook.
+-- Validate the current Gitflow branch name, local OpenPGP signing
+-- configuration, and staged changes with Gitleaks when available.
+-- Missing Gitleaks emits a warning and bypasses only the local secret scan;
+-- the GitHub security workflow remains the mandatory enforcement boundary.
+
+local function shell_quote(value)
+   return "'"..value:gsub("'", "'\\''").."'"
+end
+
+--- Run a command and report whether it completed successfully.
+-- @param command string: shell command to execute.
+-- @return boolean: true when the command exits with status zero.
+local function command_succeeded(command)
+   local first, _, code = os.execute(command)
+
+   if type(first) == "number" then
+      return first == 0
+   end
+
+   if first == true then
+      return true
+   end
+
+   return code == 0
+end
+
+--- Capture stdout from a command.
+-- @param command string: shell command to execute.
+-- @return string|nil: stdout, or nil when the command could not start.
+local function command_output(command)
+   local handle = io.popen(command, "r")
+
+   if not handle then
+      return nil
+   end
+
+   local output = handle:read("*a")
+   handle:close()
+
+   return output
+end
+
+--- Read one Git configuration value.
+-- @param key string: Git configuration key.
+-- @return string|nil: configured value, or nil when absent.
+local function git_config(key)
+   local command = "git config --get "..shell_quote(key).." 2>/dev/null"
+   local output = command_output(command)
+
+   if not output then
+      return nil
+   end
+
+   output = output:gsub("%s+$", "")
+
+   if output == "" then
+      return nil
+   end
+
+   return output
+end
+
+local fail
+local warn
+
+--- Check one kebab-case feature name.
+-- @param value string: feature branch suffix.
+-- @return boolean: true for lowercase alphanumeric kebab-case.
+local function valid_feature_name(value)
+   if value == "" then
+      return false
+   end
+
+   if not value:match("^[a-z0-9%-]+$") then
+      return false
+   end
+
+   if value:sub(1, 1) == "-" or value:sub(-1) == "-" then
+      return false
+   end
+
+   if value:find("%-%-") then
+      return false
+   end
+
+   return true
+end
+
+--- Check a stable Semantic Versioning core used by Gitflow support branches.
+-- Release, hotfix, and support branches identify the target stable version,
+-- so branch names use MAJOR.MINOR.PATCH without pre-release/build suffixes.
+-- @param version string: branch version suffix.
+-- @return boolean: true for a valid SemVer core.
+local function valid_gitflow_version(version)
+   local major, minor, patch = version:match("^(%d+)%.(%d+)%.(%d+)$")
+
+   if not major then
+      return false
+   end
+
+   local function valid_number(value)
+      return value == "0"
+         or (value:match("^[1-9]%d*$") ~= nil)
+   end
+
+   return valid_number(major)
+      and valid_number(minor)
+      and valid_number(patch)
+end
+
+--- Validate a Coil Gitflow branch name.
+-- Long-lived branches are main and develop. Supporting branches use the
+-- classic Gitflow prefixes documented by Atlassian.
+-- @param branch string: short branch name.
+-- @return boolean, string|nil: validity and diagnostic.
+local function validate_branch_name(branch)
+   if branch == "main" or branch == "develop" then
+      return true, nil
+   end
+
+   local prefix, suffix = branch:match("^([^/]+)/([^/]+)$")
+
+   if not prefix then
+      return false,
+         "branch must be 'main', 'develop', 'feature/<kebab-name>', "
+            .."'release/<MAJOR.MINOR.PATCH>', "
+            .."'hotfix/<MAJOR.MINOR.PATCH>', or "
+            .."'support/<MAJOR.MINOR.PATCH>'."
+   end
+
+   if prefix == "feature" then
+      if not valid_feature_name(suffix) then
+         return false,
+            "feature branch suffix must be lowercase alphanumeric "
+               .."kebab-case."
+      end
+
+      return true, nil
+   end
+
+   if prefix == "release"
+      or prefix == "hotfix"
+      or prefix == "support" then
+      if not valid_gitflow_version(suffix) then
+         return false,
+            prefix.." branch suffix must be a stable Semantic Versioning "
+               .."core in MAJOR.MINOR.PATCH form without leading zeroes."
+      end
+
+      return true, nil
+   end
+
+   return false,
+      "unsupported Gitflow branch prefix '"..prefix
+         .."'; use feature/, release/, hotfix/, or support/."
+end
+
+--- Read the current branch name.
+-- @return string|nil: short branch name, or nil for detached HEAD.
+local function current_branch()
+   local output = command_output(
+      "git symbolic-ref --quiet --short HEAD 2>/dev/null"
+   )
+
+   if not output then
+      return nil
+   end
+
+   output = output:gsub("%s+$", "")
+
+   if output == "" then
+      return nil
+   end
+
+   return output
+end
+
+--- Validate the current Gitflow branch when HEAD is attached.
+-- Detached HEAD is allowed locally because rebases and similar Git
+-- operations may create commits without an attached branch. pre-push
+-- validates the destination branch again before data leaves the clone.
+local function validate_current_branch()
+   local branch = current_branch()
+
+   if not branch then
+      warn("detached HEAD; branch-name validation deferred to pre-push.")
+      return
+   end
+
+   local valid, diagnostic = validate_branch_name(branch)
+
+   if not valid then
+      fail("invalid branch '"..branch.."': "..diagnostic)
+   end
+end
+
+--- Return the absolute repository root.
+-- @return string|nil: repository root, or nil outside a work tree.
+local function repository_root()
+   local output = command_output(
+      "git rev-parse --show-toplevel 2>/dev/null"
+   )
+
+   if not output then
+      return nil
+   end
+
+   output = output:gsub("%s+$", "")
+
+   if output == "" then
+      return nil
+   end
+
+   return output
+end
+
+--- Check whether a file exists.
+-- @param path string: file path.
+-- @return boolean: true when the file can be opened.
+local function file_exists(path)
+   local handle = io.open(path, "rb")
+
+   if not handle then
+      return false
+   end
+
+   handle:close()
+
+   return true
+end
+
+--- Print a fatal hook diagnostic and terminate.
+-- @param message string: diagnostic text.
+fail = function(message)
+   io.stderr:write("coil pre-commit: error: "..message.."\n")
+   os.exit(1)
+end
+
+--- Print a non-fatal hook diagnostic.
+-- @param message string: diagnostic text.
+warn = function(message)
+   io.stderr:write("coil pre-commit: warning: "..message.."\n")
+end
+
+--- Check whether an executable is available through PATH.
+-- @param name string: executable name.
+-- @return boolean: true when the executable can be resolved.
+local function command_exists(name)
+   local command = "command -v "..shell_quote(name).." >/dev/null 2>&1"
+   return command_succeeded(command)
+end
+
+--- Validate the local OpenPGP signing configuration.
+local function validate_openpgp_configuration()
+   local gpg_sign = git_config("commit.gpgSign")
+
+   if not gpg_sign then
+      fail("commit.gpgSign must be enabled.")
+   end
+
+   gpg_sign = gpg_sign:lower()
+
+   if gpg_sign ~= "true"
+      and gpg_sign ~= "yes"
+      and gpg_sign ~= "on"
+      and gpg_sign ~= "1" then
+      fail("commit.gpgSign must be enabled.")
+   end
+
+   local gpg_format = git_config("gpg.format") or "openpgp"
+
+   if gpg_format:lower() ~= "openpgp" then
+      fail("gpg.format must be 'openpgp'.")
+   end
+
+   local signing_key = git_config("user.signingkey")
+
+   if not signing_key then
+      fail("user.signingkey must identify an OpenPGP signing key.")
+   end
+
+   local gpg_program = git_config("gpg.program") or "gpg"
+
+   if not command_exists(gpg_program) then
+      fail("OpenPGP program '"..gpg_program.."' is not available in PATH.")
+   end
+
+   local command = table.concat({
+      shell_quote(gpg_program),
+      "--batch",
+      "--list-secret-keys",
+      shell_quote(signing_key),
+      ">/dev/null 2>&1",
+   }, " ")
+
+   if not command_succeeded(command) then
+      fail("no secret OpenPGP key is available for '"..signing_key.."'.")
+   end
+end
+
+--- Scan staged changes with Gitleaks when available.
+-- Missing Gitleaks is intentionally non-fatal for local development.
+local function scan_staged_secrets()
+   if not command_exists("gitleaks") then
+      warn("optional tool 'gitleaks' is not installed; bypassing local secret scan.")
+      return
+   end
+
+   local root = repository_root()
+
+   if not root then
+      fail("not inside a Git work tree.")
+   end
+
+   local relative_config = "tools/security/git/gitleaks.toml"
+   local config = root.."/"..relative_config
+
+   if not file_exists(config) then
+      fail("Gitleaks is installed but its configuration is missing: "..relative_config)
+   end
+
+   local command = table.concat({
+      "cd", shell_quote(root), "&&",
+      "gitleaks", "git",
+      "--config", shell_quote(relative_config),
+      "--pre-commit",
+      "--redact",
+      "--staged",
+      "--verbose",
+   }, " ")
+
+   if not command_succeeded(command) then
+      fail("Gitleaks detected a secret or failed to scan staged changes.")
+   end
+end
+
+--- Execute the pre-commit policy.
+-- @return integer: zero on success.
+local function main()
+   if not command_exists("git") then
+      fail("git is not available in PATH.")
+   end
+
+   validate_current_branch()
+   validate_openpgp_configuration()
+   scan_staged_secrets()
+
+   return 0
+end
+
+os.exit(main())

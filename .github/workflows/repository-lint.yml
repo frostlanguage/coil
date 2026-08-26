@@ -43,8 +43,29 @@ env:
   YAMLLINT_VERSION: "1.38.0"
   TAPLO_VERSION: "0.10.0"
   MARKDOWNLINT_VERSION: "0.23.2"
-  ZIZMOR_VERSION: "1.29.0"
-  ZIZMOR_SHA256: "dd96df044a6e8538d5f423790f453bdd03d49e5b2bcc38214acc41a2f1297839"
+  LUA_VERSION: "5.5.1"
+  LUA_SHA256: "1c4b4068d67061f2a2231ad2b5422e77acea1487ea9890f6320af614f4373dce"
+  SELENE_VERSION: "0.31.0"
+  SELENE_SHA256: "dac452422747999ec4919bbb8bb52992b66aae533b60022bf005669de8616671"
+  STYLUA_VERSION: "2.5.2"
+  STYLUA_SHA256: "bcb0d855e91f102f28a370e850f8566b3b44b79e6274d806ea5246837c0fd5ab"
+  LUALS_VERSION: "3.19.1"
+  LUALS_SHA256: "e9235d2d72ef55bc41cf8c99cda2ed64777682024b4bb81f5dea425060c5cbb8"
+  RUFF_VERSION: "0.16.4"
+  RUFF_SHA256: "9cb1234804ddb0f7f57cef3f81623ce5acb990e40af7cce08dc7778c9d7ee96c"
+  PYRIGHT_VERSION: "1.1.411"
+  BANDIT_VERSION: "1.9.4"
+  SHELLCHECK_VERSION: "0.11.0"
+  SHELLCHECK_SHA256: "8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198"
+  SHFMT_VERSION: "3.13.1"
+  SHFMT_SHA256: "fb096c5d1ac6beabbdbaa2874d025badb03ee07929f0c9ff67563ce8c75398b1"
+  POWERSHELL_VERSION: "7.6.5"
+  POWERSHELL_SHA256: "b34ab3b19acac1d3d4d0d3cfdb02acf62f457b0b6a962ff008132033f7566844"
+  PSSCRIPTANALYZER_VERSION: "1.25.0"
+  PSSCRIPTANALYZER_SHA256: "14e634c828eb98efb9f40b2918ba90f139ed5eccdf663a2a747736d996995d60"
+  NUSHELL_VERSION: "0.115.1"
+  NUSHELL_SHA256: "d11d825241f6504a3617c535fa725a9dd6d009c86d7b19fb3168b47635b9d8b0"
+  NUFMT_REVISION: "7cfd3b7eacf5a9feb22777230e3076038f2e9e8d"
 
 jobs:
   actionlint:
@@ -95,62 +116,6 @@ jobs:
           "${RUNNER_TEMP}/actionlint" \
             -color \
             -config-file tools/lint/code/actions/actionlint.yaml
-
-  zizmor:
-    name: GitHub Actions security
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Install zizmor
-        run: |
-          set -euo pipefail
-
-          archive="zizmor-x86_64-unknown-linux-gnu.tar.gz"
-          destination="${RUNNER_TEMP}/${archive}"
-          base_url="https://github.com/zizmorcore/zizmor/releases/download"
-          url="${base_url}/v${ZIZMOR_VERSION}/${archive}"
-
-          curl \
-            --fail \
-            --silent \
-            --show-error \
-            --location \
-            --proto '=https' \
-            --tlsv1.2 \
-            "${url}" \
-            --output "${destination}"
-
-          printf '%s  %s\n' \
-            "${ZIZMOR_SHA256}" \
-            "${destination}" \
-            | sha256sum --check --strict
-
-          tar \
-            --extract \
-            --gzip \
-            --file="${destination}" \
-            --directory="${RUNNER_TEMP}" \
-            zizmor
-
-      - name: Audit GitHub Actions
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-
-          "${RUNNER_TEMP}/zizmor" \
-            --config tools/lint/code/actions/zizmor.yml \
-            --format github \
-            --pedantic \
-            --strict-collection \
-            .github/workflows
 
   editorconfig:
     name: EditorConfig
@@ -430,5 +395,688 @@ jobs:
             "markdownlint-cli2@${MARKDOWNLINT_VERSION}" \
             --config tools/lint/code/md/markdownlint-cli2.jsonc \
             "${args[@]}"
+
+
+  lua:
+    name: Lua
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Detect Lua sources
+        id: detect
+        run: |
+          set -euo pipefail
+
+          found=false
+
+          while IFS= read -r -d '' file; do
+            case "${file}" in
+              *.lua)
+                found=true
+                break
+                ;;
+            esac
+
+            first_line="$(head -n 1 -- "${file}" 2>/dev/null || true)"
+
+            if [[ "${first_line}" =~ ^#!.*(^|[[:space:]/])lua([[:space:]]|$) ]]; then
+              found=true
+              break
+            fi
+          done < <(git ls-files -z)
+
+          echo "found=${found}" >> "${GITHUB_OUTPUT}"
+
+          if [[ "${found}" == false ]]; then
+            echo "No tracked Lua sources found; skipping Lua lint."
+          fi
+
+      - name: Install pinned Lua toolchain
+        if: steps.detect.outputs.found == 'true'
+        run: |
+          set -euo pipefail
+
+          lua_archive="${RUNNER_TEMP}/lua-${LUA_VERSION}.tar.gz"
+
+          curl --fail --silent --show-error --location \
+            --proto '=https' --tlsv1.2 \
+            "https://www.lua.org/ftp/lua-${LUA_VERSION}.tar.gz" \
+            --output "${lua_archive}"
+
+          printf '%s  %s\n' "${LUA_SHA256}" "${lua_archive}" \
+            | sha256sum --check --strict
+
+          tar -xzf "${lua_archive}" -C "${RUNNER_TEMP}"
+          make --directory="${RUNNER_TEMP}/lua-${LUA_VERSION}" \
+            --jobs="$(nproc)" all
+
+          selene_archive="${RUNNER_TEMP}/selene.zip"
+
+          curl --fail --silent --show-error --location \
+            --proto '=https' --tlsv1.2 \
+            "https://github.com/Kampfkarren/selene/releases/download/${SELENE_VERSION}/selene-${SELENE_VERSION}-linux.zip" \
+            --output "${selene_archive}"
+
+          printf '%s  %s\n' "${SELENE_SHA256}" "${selene_archive}" \
+            | sha256sum --check --strict
+
+          mkdir -p "${RUNNER_TEMP}/selene"
+          unzip -q "${selene_archive}" -d "${RUNNER_TEMP}/selene"
+
+          stylua_archive="${RUNNER_TEMP}/stylua.zip"
+
+          curl --fail --silent --show-error --location \
+            --proto '=https' --tlsv1.2 \
+            "https://github.com/JohnnyMorganz/StyLua/releases/download/v${STYLUA_VERSION}/stylua-linux-x86_64.zip" \
+            --output "${stylua_archive}"
+
+          printf '%s  %s\n' "${STYLUA_SHA256}" "${stylua_archive}" \
+            | sha256sum --check --strict
+
+          mkdir -p "${RUNNER_TEMP}/stylua"
+          unzip -q "${stylua_archive}" -d "${RUNNER_TEMP}/stylua"
+
+          luals_archive="${RUNNER_TEMP}/luals.tar.gz"
+
+          curl --fail --silent --show-error --location \
+            --proto '=https' --tlsv1.2 \
+            "https://github.com/LuaLS/lua-language-server/releases/download/${LUALS_VERSION}/lua-language-server-${LUALS_VERSION}-linux-x64.tar.gz" \
+            --output "${luals_archive}"
+
+          printf '%s  %s\n' "${LUALS_SHA256}" "${luals_archive}" \
+            | sha256sum --check --strict
+
+          mkdir -p "${RUNNER_TEMP}/luals"
+          tar -xzf "${luals_archive}" -C "${RUNNER_TEMP}/luals"
+
+      - name: Run Lua checks
+        if: steps.detect.outputs.found == 'true'
+        run: |
+          set -euo pipefail
+
+          collect_lua_files() {
+            while IFS= read -r -d '' file; do
+              case "${file}" in
+                *.lua)
+                  printf '%s\0' "${file}"
+                  continue
+                  ;;
+              esac
+
+              first_line="$(head -n 1 -- "${file}" 2>/dev/null || true)"
+
+              if [[ "${first_line}" =~ ^#!.*(^|[[:space:]/])lua([[:space:]]|$) ]]; then
+                printf '%s\0' "${file}"
+              fi
+            done < <(git ls-files -z)
+          }
+
+          mapfile -d '' files < <(collect_lua_files)
+
+          printf 'Checking %d Lua source file(s).\n' "${#files[@]}"
+
+          for file in "${files[@]}"; do
+            "${RUNNER_TEMP}/lua-${LUA_VERSION}/src/luac" -p "${file}"
+          done
+
+          "${RUNNER_TEMP}/selene/selene" \
+            --config tools/lint/code/lua/selene.toml \
+            "${files[@]}"
+
+          "${RUNNER_TEMP}/stylua/stylua" \
+            --check \
+            --config-path tools/lint/code/lua/stylua.toml \
+            "${files[@]}"
+
+          "${RUNNER_TEMP}/luals/bin/lua-language-server" \
+            --configpath=tools/lint/code/lua/luals.json \
+            --check="${GITHUB_WORKSPACE}" \
+            --checklevel=Warning
+
+  python:
+    name: Python
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Detect Python sources
+        id: detect
+        run: |
+          set -euo pipefail
+
+          found=false
+
+          while IFS= read -r -d '' file; do
+            case "${file}" in
+              *.py|*.pyi)
+                found=true
+                break
+                ;;
+            esac
+
+            first_line="$(head -n 1 -- "${file}" 2>/dev/null || true)"
+
+            if [[ "${first_line}" =~ ^#!.*python([0-9.]*)?([[:space:]]|$) ]]; then
+              found=true
+              break
+            fi
+          done < <(git ls-files -z)
+
+          echo "found=${found}" >> "${GITHUB_OUTPUT}"
+
+          if [[ "${found}" == false ]]; then
+            echo "No tracked Python sources found; skipping Python lint."
+          fi
+
+      - name: Setup Node.js for Pyright
+        if: steps.detect.outputs.found == 'true'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Install Python lint tools
+        if: steps.detect.outputs.found == 'true'
+        run: |
+          set -euo pipefail
+
+          ruff_archive="${RUNNER_TEMP}/ruff.tar.gz"
+
+          curl --fail --silent --show-error --location \
+            --proto '=https' --tlsv1.2 \
+            "https://github.com/astral-sh/ruff/releases/download/${RUFF_VERSION}/ruff-x86_64-unknown-linux-gnu.tar.gz" \
+            --output "${ruff_archive}"
+
+          printf '%s  %s\n' "${RUFF_SHA256}" "${ruff_archive}" \
+            | sha256sum --check --strict
+
+          mkdir -p "${RUNNER_TEMP}/ruff"
+          tar -xzf "${ruff_archive}" -C "${RUNNER_TEMP}/ruff" \
+            --strip-components=1
+
+          npm install \
+            --global \
+            --ignore-scripts \
+            "pyright@${PYRIGHT_VERSION}"
+
+          python3 -m venv "${RUNNER_TEMP}/bandit"
+
+          "${RUNNER_TEMP}/bandit/bin/python" \
+            -m pip install \
+            --disable-pip-version-check \
+            --no-input \
+            "bandit==${BANDIT_VERSION}"
+
+      - name: Run Python checks
+        if: steps.detect.outputs.found == 'true'
+        run: |
+          set -euo pipefail
+
+          collect_python_files() {
+            while IFS= read -r -d '' file; do
+              case "${file}" in
+                *.py|*.pyi)
+                  printf '%s\0' "${file}"
+                  continue
+                  ;;
+              esac
+
+              first_line="$(head -n 1 -- "${file}" 2>/dev/null || true)"
+
+              if [[ "${first_line}" =~ ^#!.*python([0-9.]*)?([[:space:]]|$) ]]; then
+                printf '%s\0' "${file}"
+              fi
+            done < <(git ls-files -z)
+          }
+
+          mapfile -d '' files < <(collect_python_files)
+          mapfile -d '' py_files < <(
+            printf '%s\0' "${files[@]}" \
+              | while IFS= read -r -d '' file; do
+                  [[ "${file}" == *.py ]] && printf '%s\0' "${file}"
+                done
+          )
+
+          printf 'Checking %d Python source file(s).\n' "${#files[@]}"
+
+          if (( ${#py_files[@]} > 0 )); then
+            python3 -m compileall -q "${py_files[@]}"
+          fi
+
+          "${RUNNER_TEMP}/ruff/ruff" \
+            check \
+            --config tools/lint/code/python/ruff.toml \
+            "${files[@]}"
+
+          "${RUNNER_TEMP}/ruff/ruff" \
+            format \
+            --check \
+            --config tools/lint/code/python/ruff.toml \
+            "${files[@]}"
+
+          pyright \
+            --project tools/lint/code/python/pyrightconfig.json \
+            "${files[@]}"
+
+          if (( ${#py_files[@]} > 0 )); then
+            "${RUNNER_TEMP}/bandit/bin/bandit" \
+              --configfile tools/lint/code/python/bandit.yaml \
+              "${py_files[@]}"
+          fi
+
+  shell:
+    name: POSIX sh and Bash
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Detect shell sources
+        id: detect
+        run: |
+          set -euo pipefail
+
+          found=false
+
+          while IFS= read -r -d '' file; do
+            first_line="$(head -n 1 -- "${file}" 2>/dev/null || true)"
+
+            case "${file}" in
+              *.sh|*.bash)
+                found=true
+                break
+                ;;
+            esac
+
+            if [[ "${first_line}" =~ ^#!.*(bash|/sh|env[[:space:]]+sh)([[:space:]]|$) ]]; then
+              found=true
+              break
+            fi
+          done < <(git ls-files -z)
+
+          echo "found=${found}" >> "${GITHUB_OUTPUT}"
+
+          if [[ "${found}" == false ]]; then
+            echo "No tracked POSIX sh or Bash sources found; skipping shell lint."
+          fi
+
+      - name: Install ShellCheck and shfmt
+        if: steps.detect.outputs.found == 'true'
+        run: |
+          set -euo pipefail
+
+          shellcheck_archive="${RUNNER_TEMP}/shellcheck.tar.xz"
+
+          curl --fail --silent --show-error --location \
+            --proto '=https' --tlsv1.2 \
+            "https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz" \
+            --output "${shellcheck_archive}"
+
+          printf '%s  %s\n' "${SHELLCHECK_SHA256}" "${shellcheck_archive}" \
+            | sha256sum --check --strict
+
+          tar -xJf "${shellcheck_archive}" -C "${RUNNER_TEMP}"
+
+          install --mode=0755 \
+            "${RUNNER_TEMP}/shellcheck-v${SHELLCHECK_VERSION}/shellcheck" \
+            "${RUNNER_TEMP}/shellcheck"
+
+          shfmt_binary="${RUNNER_TEMP}/shfmt"
+
+          curl --fail --silent --show-error --location \
+            --proto '=https' --tlsv1.2 \
+            "https://github.com/mvdan/sh/releases/download/v${SHFMT_VERSION}/shfmt_v${SHFMT_VERSION}_linux_amd64" \
+            --output "${shfmt_binary}"
+
+          printf '%s  %s\n' "${SHFMT_SHA256}" "${shfmt_binary}" \
+            | sha256sum --check --strict
+
+          chmod 0755 "${shfmt_binary}"
+
+      - name: Run POSIX sh and Bash checks
+        if: steps.detect.outputs.found == 'true'
+        run: |
+          set -euo pipefail
+
+          collect_shell_files() {
+            while IFS= read -r -d '' file; do
+              first_line="$(head -n 1 -- "${file}" 2>/dev/null || true)"
+
+              if [[ "${file}" == *.bash || "${first_line}" =~ bash ]]; then
+                printf 'bash\t%s\0' "${file}"
+              elif [[ "${file}" == *.sh || "${first_line}" =~ ^#!.*(/sh|env[[:space:]]+sh)([[:space:]]|$) ]]; then
+                printf 'posix\t%s\0' "${file}"
+              fi
+            done < <(git ls-files -z)
+          }
+
+          posix_files=()
+          bash_files=()
+
+          while IFS= read -r -d '' record; do
+            dialect="${record%%$'\t'*}"
+            file="${record#*$'\t'}"
+
+            if [[ "${dialect}" == bash ]]; then
+              bash_files+=("${file}")
+            else
+              posix_files+=("${file}")
+            fi
+          done < <(collect_shell_files)
+
+          if (( ${#posix_files[@]} > 0 )); then
+            printf 'Checking %d POSIX sh file(s).\n' "${#posix_files[@]}"
+
+            "${RUNNER_TEMP}/shellcheck" \
+              --shell=sh \
+              --rcfile=tools/lint/code/shell/posix/shellcheckrc \
+              "${posix_files[@]}"
+
+            "${RUNNER_TEMP}/shfmt" \
+              -d \
+              -ln posix \
+              "${posix_files[@]}"
+          fi
+
+          if (( ${#bash_files[@]} > 0 )); then
+            printf 'Checking %d Bash file(s).\n' "${#bash_files[@]}"
+
+            "${RUNNER_TEMP}/shellcheck" \
+              --shell=bash \
+              --rcfile=tools/lint/code/shell/bash/shellcheckrc \
+              "${bash_files[@]}"
+
+            "${RUNNER_TEMP}/shfmt" \
+              -d \
+              -ln bash \
+              "${bash_files[@]}"
+
+            if command -v bash >/dev/null 2>&1; then
+              for file in "${bash_files[@]}"; do
+                bash -n "${file}"
+              done
+            else
+              echo "Bash is unavailable; bash -n parser check skipped."
+            fi
+          fi
+
+  powershell:
+    name: PowerShell 7
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Detect PowerShell sources
+        id: detect
+        run: |
+          set -euo pipefail
+
+          found=false
+
+          while IFS= read -r -d '' file; do
+            case "${file}" in
+              tools/lint/code/shell/powershell/*)
+                continue
+                ;;
+              *.ps1|*.psm1|*.psd1)
+                found=true
+                break
+                ;;
+            esac
+
+            first_line="$(head -n 1 -- "${file}" 2>/dev/null || true)"
+
+            if [[ "${first_line}" =~ ^#!.*pwsh([[:space:]]|$) ]]; then
+              found=true
+              break
+            fi
+          done < <(git ls-files -z)
+
+          echo "found=${found}" >> "${GITHUB_OUTPUT}"
+
+          if [[ "${found}" == false ]]; then
+            echo "No tracked PowerShell sources found; skipping PowerShell lint."
+          fi
+
+      - name: Install pinned PowerShell and PSScriptAnalyzer
+        if: steps.detect.outputs.found == 'true'
+        run: |
+          set -euo pipefail
+
+          pwsh_archive="${RUNNER_TEMP}/powershell.tar.gz"
+
+          curl --fail --silent --show-error --location \
+            --proto '=https' --tlsv1.2 \
+            "https://github.com/PowerShell/PowerShell/releases/download/v${POWERSHELL_VERSION}/powershell-${POWERSHELL_VERSION}-linux-x64.tar.gz" \
+            --output "${pwsh_archive}"
+
+          printf '%s  %s\n' "${POWERSHELL_SHA256}" "${pwsh_archive}" \
+            | sha256sum --check --strict
+
+          mkdir -p "${RUNNER_TEMP}/powershell"
+          tar -xzf "${pwsh_archive}" -C "${RUNNER_TEMP}/powershell"
+          chmod 0755 "${RUNNER_TEMP}/powershell/pwsh"
+
+          analyzer_package="${RUNNER_TEMP}/PSScriptAnalyzer.nupkg"
+
+          curl --fail --silent --show-error --location \
+            --proto '=https' --tlsv1.2 \
+            "https://github.com/PowerShell/PSScriptAnalyzer/releases/download/${PSSCRIPTANALYZER_VERSION}/PSScriptAnalyzer.${PSSCRIPTANALYZER_VERSION}.nupkg" \
+            --output "${analyzer_package}"
+
+          printf '%s  %s\n' \
+            "${PSSCRIPTANALYZER_SHA256}" \
+            "${analyzer_package}" \
+            | sha256sum --check --strict
+
+          module_dir="${RUNNER_TEMP}/modules/PSScriptAnalyzer/${PSSCRIPTANALYZER_VERSION}"
+          mkdir -p "${module_dir}"
+          unzip -q "${analyzer_package}" -d "${module_dir}"
+
+      - name: Run PowerShell parser and PSScriptAnalyzer
+        if: steps.detect.outputs.found == 'true'
+        run: |
+          set -euo pipefail
+
+          collect_powershell_files() {
+            while IFS= read -r -d '' file; do
+              case "${file}" in
+                tools/lint/code/shell/powershell/*)
+                  continue
+                  ;;
+                *.ps1|*.psm1|*.psd1)
+                  printf '%s\0' "${file}"
+                  continue
+                  ;;
+              esac
+
+              first_line="$(head -n 1 -- "${file}" 2>/dev/null || true)"
+
+              if [[ "${first_line}" =~ ^#!.*pwsh([[:space:]]|$) ]]; then
+                printf '%s\0' "${file}"
+              fi
+            done < <(git ls-files -z)
+          }
+
+          mapfile -d '' files < <(collect_powershell_files)
+          pwsh="${RUNNER_TEMP}/powershell/pwsh"
+          module="${RUNNER_TEMP}/modules/PSScriptAnalyzer/${PSSCRIPTANALYZER_VERSION}/PSScriptAnalyzer.psd1"
+          settings="${GITHUB_WORKSPACE}/tools/lint/code/shell/powershell/PSScriptAnalyzerSettings.psd1"
+
+          printf 'Checking %d PowerShell source file(s).\n' "${#files[@]}"
+
+          for file in "${files[@]}"; do
+            "${pwsh}" -NoLogo -NoProfile -NonInteractive -Command '
+              param([string] $Path)
+              $tokens = $null
+              $errors = $null
+              [System.Management.Automation.Language.Parser]::ParseFile(
+                  (Resolve-Path -LiteralPath $Path),
+                  [ref] $tokens,
+                  [ref] $errors
+              ) | Out-Null
+              if ($errors.Count -ne 0) {
+                  $errors | ForEach-Object {
+                      Write-Error $_.Message
+                  }
+                  exit 1
+              }
+            ' "${file}"
+          done
+
+          "${pwsh}" -NoLogo -NoProfile -NonInteractive -Command '
+            param(
+                [string] $Module,
+                [string] $Settings,
+                [Parameter(ValueFromRemainingArguments = $true)]
+                [string[]] $Paths
+            )
+            Import-Module -Name $Module -Force
+            $results = foreach ($path in $Paths) {
+                Invoke-ScriptAnalyzer -Path $path -Settings $Settings
+            }
+            if ($results) {
+                $results | Format-Table -AutoSize | Out-String | Write-Host
+                exit 1
+            }
+          ' "${module}" "${settings}" "${files[@]}"
+
+  nushell:
+    name: Nushell
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Detect Nushell sources
+        id: detect
+        run: |
+          set -euo pipefail
+
+          found=false
+
+          while IFS= read -r -d '' file; do
+            case "${file}" in
+              tools/lint/code/shell/nushell/*)
+                continue
+                ;;
+              *.nu)
+                found=true
+                break
+                ;;
+            esac
+
+            first_line="$(head -n 1 -- "${file}" 2>/dev/null || true)"
+
+            if [[ "${first_line}" =~ ^#!.*(^|[[:space:]/])nu([[:space:]]|$) ]]; then
+              found=true
+              break
+            fi
+          done < <(git ls-files -z)
+
+          echo "found=${found}" >> "${GITHUB_OUTPUT}"
+
+          if [[ "${found}" == false ]]; then
+            echo "No tracked Nushell sources found; skipping Nushell lint."
+          fi
+
+      - name: Install pinned Nushell and nufmt
+        if: steps.detect.outputs.found == 'true'
+        run: |
+          set -euo pipefail
+
+          nu_archive="${RUNNER_TEMP}/nushell.tar.gz"
+
+          curl --fail --silent --show-error --location \
+            --proto '=https' --tlsv1.2 \
+            "https://github.com/nushell/nushell/releases/download/${NUSHELL_VERSION}/nu-${NUSHELL_VERSION}-x86_64-unknown-linux-gnu.tar.gz" \
+            --output "${nu_archive}"
+
+          printf '%s  %s\n' "${NUSHELL_SHA256}" "${nu_archive}" \
+            | sha256sum --check --strict
+
+          mkdir -p "${RUNNER_TEMP}/nushell"
+          tar -xzf "${nu_archive}" \
+            -C "${RUNNER_TEMP}/nushell" \
+            --strip-components=1
+
+          cargo install \
+            --git https://github.com/nushell/nufmt \
+            --rev "${NUFMT_REVISION}" \
+            --locked \
+            --root "${RUNNER_TEMP}/nufmt"
+
+      - name: Run Nushell checks
+        if: steps.detect.outputs.found == 'true'
+        run: |
+          set -euo pipefail
+
+          collect_nushell_files() {
+            while IFS= read -r -d '' file; do
+              case "${file}" in
+                tools/lint/code/shell/nushell/*)
+                  continue
+                  ;;
+                *.nu)
+                  printf '%s\0' "${file}"
+                  continue
+                  ;;
+              esac
+
+              first_line="$(head -n 1 -- "${file}" 2>/dev/null || true)"
+
+              if [[ "${first_line}" =~ ^#!.*(^|[[:space:]/])nu([[:space:]]|$) ]]; then
+                printf '%s\0' "${file}"
+              fi
+            done < <(git ls-files -z)
+          }
+
+          mapfile -d '' files < <(collect_nushell_files)
+
+          printf 'Checking %d Nushell source file(s).\n' "${#files[@]}"
+
+          for file in "${files[@]}"; do
+            "${RUNNER_TEMP}/nushell/nu" --check "${file}"
+          done
+
+          "${RUNNER_TEMP}/nufmt/bin/nufmt" \
+            --dry-run \
+            --config tools/lint/code/shell/nushell/nufmt.nuon \
+            "${files[@]}"
+
+          if command -v nu-lint >/dev/null 2>&1; then
+            nu-lint "${files[@]}"
+          else
+            echo "Optional nu-lint executable not installed; skipping."
+          fi
 
 # EOF

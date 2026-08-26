@@ -1,0 +1,42 @@
+type(scope): lowercase subject
+
+# Allowed types:
+# build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test.
+# Use feat for a new feature and fix for a bug fix.
+# Append ! before : for a breaking change.
+
+Motivation: lowercase explanation of why this change is needed.
+
+Details: lowercase description of what changed.
+
+Impact: lowercase description of compatibility or behavior impact.
+
+# Optional footer block: exactly one blank line after the Impact body, then
+# contiguous trailers with no blank lines between them. Signed-off-by: is not
+# part of this block. Exactly one blank line must separate the last preceding
+# content or footer from the single final Signed-off-by:. Examples:
+# Theory-reference: Reference name.
+# URL: https://example.org/reference
+# Theory-reference: Published work.
+# DOI: 10.1234/example.doi
+# BREAKING CHANGE: lowercase description of the incompatible change.
+# Reviewed-by: Reviewer Name <reviewer@example.org>
+# Assisted-by: tool or assistant provenance
+# Co-authored-by: Contributor Name <contributor@example.org>
+# Tested-by: Tester Name <tester@example.org>
+# Acked-by: Maintainer Name <maintainer@example.org>
+# Reported-by: Reporter Name <reporter@example.org>
+# Suggested-by: Contributor Name <contributor@example.org>
+# Refs: issue #123
+# Refs: pull #45
+# Refs: commit 0123456789abcdef
+# Refs: branch main
+# Refs: tag v1.0.0
+# Refs: ref refs/heads/main
+# Follows-up: issue #123
+# Related-to: pull #45
+# Fixes: issue #123
+# Closes: #123
+# Repository references are verified against the configured remote.
+
+Signed-off-by: Your Name <you@example.org>

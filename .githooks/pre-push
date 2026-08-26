@@ -1,0 +1,606 @@
+#!/usr/bin/env lua
+
+-- SPDX-FileCopyrightText: © 2026 Rafael V. Volkmer <rafael.v.volkmer@gmail.com>
+-- SPDX-License-Identifier: GPL-3.0-only
+
+--- Coil pre-push hook.
+-- Enforce Gitflow branch naming, Semantic Versioning tag names, immutable
+-- release tags, OpenPGP commit signatures, and stored commit-message policy.
+--
+-- Branches:
+--   main
+--   develop
+--   feature/<kebab-name>
+--   release/<MAJOR.MINOR.PATCH>
+--   hotfix/<MAJOR.MINOR.PATCH>
+--   support/<MAJOR.MINOR.PATCH>
+--
+-- Tags:
+--   strict Semantic Versioning 2.0.0 without a "v" prefix.
+
+local function shell_quote(value)
+   return "'"..value:gsub("'", "'\\''").."'"
+end
+
+--- Run a command and report whether it completed successfully.
+-- @param command string: shell command.
+-- @return boolean: true for exit status zero.
+local function command_succeeded(command)
+   local first, _, code = os.execute(command)
+
+   if type(first) == "number" then
+      return first == 0
+   end
+
+   if first == true then
+      return true
+   end
+
+   return code == 0
+end
+
+--- Capture stdout from a command.
+-- @param command string: shell command.
+-- @return string|nil: stdout.
+local function command_output(command)
+   local handle = io.popen(command, "r")
+
+   if not handle then
+      return nil
+   end
+
+   local output = handle:read("*a")
+   handle:close()
+
+   return output
+end
+
+--- Print a fatal pre-push diagnostic.
+-- @param message string: diagnostic text.
+local function fail(message)
+   io.stderr:write("coil pre-push: error: "..message.."\n")
+end
+
+--- Check whether an object identifier is all zeroes.
+-- This supports SHA-1 and repositories using a different object-id length.
+-- @param object_id string: object identifier.
+-- @return boolean: true when every character is zero.
+local function is_zero_object(object_id)
+   return object_id ~= "" and object_id:match("^0+$") ~= nil
+end
+
+--- Check one kebab-case feature name.
+-- @param value string: feature branch suffix.
+-- @return boolean: true for lowercase alphanumeric kebab-case.
+local function valid_feature_name(value)
+   if value == "" then
+      return false
+   end
+
+   if not value:match("^[a-z0-9%-]+$") then
+      return false
+   end
+
+   if value:sub(1, 1) == "-" or value:sub(-1) == "-" then
+      return false
+   end
+
+   if value:find("%-%-") then
+      return false
+   end
+
+   return true
+end
+
+--- Check a stable Semantic Versioning core used by Gitflow branches.
+-- Release, hotfix, and support branches identify a stable target version.
+-- @param version string: branch version suffix.
+-- @return boolean: true for MAJOR.MINOR.PATCH without leading zeroes.
+local function valid_gitflow_version(version)
+   local major, minor, patch = version:match("^(%d+)%.(%d+)%.(%d+)$")
+
+   if not major then
+      return false
+   end
+
+   local function valid_number(value)
+      return value == "0"
+         or (value:match("^[1-9]%d*$") ~= nil)
+   end
+
+   return valid_number(major)
+      and valid_number(minor)
+      and valid_number(patch)
+end
+
+--- Validate a Coil Gitflow branch name.
+-- Long-lived branches are main and develop. Supporting branches use the
+-- classic Gitflow prefixes documented by Atlassian.
+-- @param branch string: short branch name.
+-- @return boolean, string|nil: validity and diagnostic.
+local function validate_branch_name(branch)
+   if branch == "main" or branch == "develop" then
+      return true, nil
+   end
+
+   local prefix, suffix = branch:match("^([^/]+)/([^/]+)$")
+
+   if not prefix then
+      return false,
+         "branch must be 'main', 'develop', 'feature/<kebab-name>', "
+            .."'release/<MAJOR.MINOR.PATCH>', "
+            .."'hotfix/<MAJOR.MINOR.PATCH>', or "
+            .."'support/<MAJOR.MINOR.PATCH>'."
+   end
+
+   if prefix == "feature" then
+      if not valid_feature_name(suffix) then
+         return false,
+            "feature branch suffix must be lowercase alphanumeric "
+               .."kebab-case."
+      end
+
+      return true, nil
+   end
+
+   if prefix == "release"
+      or prefix == "hotfix"
+      or prefix == "support" then
+      if not valid_gitflow_version(suffix) then
+         return false,
+            prefix.." branch suffix must be a stable Semantic Versioning "
+               .."core in MAJOR.MINOR.PATCH form without leading zeroes."
+      end
+
+      return true, nil
+   end
+
+   return false,
+      "unsupported Gitflow branch prefix '"..prefix
+         .."'; use feature/, release/, hotfix/, or support/."
+end
+
+--- Split a dotted SemVer identifier list.
+-- @param value string: dotted identifier list.
+-- @return table|nil: identifiers or nil for an empty identifier.
+local function split_identifiers(value)
+   local result = {}
+   local start = 1
+
+   while true do
+      local dot = value:find(".", start, true)
+      local item
+
+      if dot then
+         item = value:sub(start, dot - 1)
+      else
+         item = value:sub(start)
+      end
+
+      if item == "" then
+         return nil
+      end
+
+      table.insert(result, item)
+
+      if not dot then
+         break
+      end
+
+      start = dot + 1
+   end
+
+   return result
+end
+
+--- Validate a SemVer identifier.
+-- @param value string: identifier.
+-- @return boolean: true when [0-9A-Za-z-]+.
+local function valid_semver_identifier(value)
+   return value ~= "" and value:match("^[0-9A-Za-z%-]+$") ~= nil
+end
+
+--- Check whether a string is numeric.
+-- @param value string: candidate.
+-- @return boolean: true when all characters are digits.
+local function is_numeric(value)
+   return value:match("^%d+$") ~= nil
+end
+
+--- Validate one normal SemVer numeric component.
+-- @param value string: MAJOR, MINOR, or PATCH.
+-- @return boolean: true when valid with no leading zeroes.
+local function valid_core_number(value)
+   if not is_numeric(value) then
+      return false
+   end
+
+   if #value > 1 and value:sub(1, 1) == "0" then
+      return false
+   end
+
+   return true
+end
+
+--- Validate a strict Semantic Versioning 2.0.0 tag.
+-- The tag is the literal version string and therefore has no "v" prefix.
+-- @param version string: tag name.
+-- @return boolean, string|nil: validity and diagnostic.
+local function validate_semver(version)
+   if version:sub(1, 1) == "v" then
+      return false,
+         "SemVer tags must use the literal version without a 'v' prefix."
+   end
+
+   local core_and_pre = version
+   local build
+
+   local plus = version:find("+", 1, true)
+
+   if plus then
+      core_and_pre = version:sub(1, plus - 1)
+      build = version:sub(plus + 1)
+
+      if build == "" or build:find("+", 1, true) then
+         return false, "invalid SemVer build metadata."
+      end
+   end
+
+   local core = core_and_pre
+   local prerelease
+
+   local dash = core_and_pre:find("-", 1, true)
+
+   if dash then
+      core = core_and_pre:sub(1, dash - 1)
+      prerelease = core_and_pre:sub(dash + 1)
+
+      if prerelease == "" then
+         return false, "SemVer pre-release identifiers cannot be empty."
+      end
+   end
+
+   local major, minor, patch = core:match("^(%d+)%.(%d+)%.(%d+)$")
+
+   if not major then
+      return false, "SemVer tags must begin with MAJOR.MINOR.PATCH."
+   end
+
+   if not valid_core_number(major)
+      or not valid_core_number(minor)
+      or not valid_core_number(patch) then
+      return false,
+         "MAJOR, MINOR, and PATCH must be non-negative integers "
+            .."without leading zeroes."
+   end
+
+   if prerelease then
+      local identifiers = split_identifiers(prerelease)
+
+      if not identifiers then
+         return false, "SemVer pre-release identifiers cannot be empty."
+      end
+
+      for _, identifier in ipairs(identifiers) do
+         if not valid_semver_identifier(identifier) then
+            return false,
+               "pre-release identifiers may contain only [0-9A-Za-z-]."
+         end
+
+         if is_numeric(identifier)
+            and #identifier > 1
+            and identifier:sub(1, 1) == "0" then
+            return false,
+               "numeric pre-release identifiers must not contain "
+                  .."leading zeroes."
+         end
+      end
+   end
+
+   if build then
+      local identifiers = split_identifiers(build)
+
+      if not identifiers then
+         return false, "SemVer build identifiers cannot be empty."
+      end
+
+      for _, identifier in ipairs(identifiers) do
+         if not valid_semver_identifier(identifier) then
+            return false,
+               "build identifiers may contain only [0-9A-Za-z-]."
+         end
+      end
+   end
+
+   return true, nil
+end
+
+--- Resolve an object to a commit.
+-- @param object_id string: Git object identifier.
+-- @return string|nil: commit identifier, or nil for non-commit objects.
+local function peel_commit(object_id)
+   local command = table.concat({
+      "git rev-parse",
+      shell_quote(object_id.."^{commit}"),
+      "2>/dev/null",
+   }, " ")
+
+   local output = command_output(command)
+
+   if not output then
+      return nil
+   end
+
+   output = output:gsub("%s+$", "")
+
+   if output == "" then
+      return nil
+   end
+
+   return output
+end
+
+--- Enumerate outgoing commits for one pushed reference.
+-- @param local_commit string: local commit object.
+-- @param remote_object string: remote object identifier.
+-- @return table|nil: commit identifiers.
+local function outgoing_commits(local_commit, remote_object)
+   local command
+
+   if is_zero_object(remote_object) then
+      command = table.concat({
+         "git rev-list",
+         shell_quote(local_commit),
+         "--not --remotes",
+         "2>/dev/null",
+      }, " ")
+   else
+      local remote_commit = peel_commit(remote_object)
+
+      if remote_commit then
+         command = table.concat({
+            "git rev-list",
+            shell_quote(remote_commit..".."..local_commit),
+            "2>/dev/null",
+         }, " ")
+      else
+         command = table.concat({
+            "git rev-list",
+            shell_quote(local_commit),
+            "--not --remotes",
+            "2>/dev/null",
+         }, " ")
+      end
+   end
+
+   local output = command_output(command)
+
+   if not output then
+      return nil
+   end
+
+   local commits = {}
+
+   for commit in output:gmatch("[^\r\n]+") do
+      table.insert(commits, commit)
+   end
+
+   return commits
+end
+
+--- Check whether a commit object contains an OpenPGP signature header.
+-- @param commit string: commit identifier.
+-- @return boolean: true for an OpenPGP-signed commit.
+local function has_openpgp_signature(commit)
+   local command = table.concat({
+      "git cat-file commit",
+      shell_quote(commit),
+      "2>/dev/null",
+   }, " ")
+
+   local output = command_output(command)
+
+   if not output then
+      return false
+   end
+
+   return output:find(
+      "gpgsig %-%-%-%-%-BEGIN PGP SIGNATURE%-%-%-%-%-",
+      1
+   ) ~= nil
+end
+
+--- Verify a commit signature with Git.
+-- @param commit string: commit identifier.
+-- @return boolean: true when git verify-commit succeeds.
+local function verify_signature(commit)
+   return command_succeeded(
+      "git verify-commit "..shell_quote(commit).." >/dev/null 2>&1"
+   )
+end
+
+--- Locate the sibling commit-msg hook.
+-- @return string|nil: hook path.
+local function commit_msg_hook()
+   local source = arg[0] or ""
+   local directory = source:match("^(.*)/[^/]+$")
+
+   if not directory or directory == "" then
+      directory = ".githooks"
+   end
+
+   local path = directory.."/commit-msg"
+   local handle = io.open(path, "rb")
+
+   if not handle then
+      return nil
+   end
+
+   handle:close()
+
+   return path
+end
+
+--- Validate one stored commit message through commit-msg.
+-- @param hook string: sibling commit-msg hook.
+-- @param commit string: commit identifier.
+-- @return boolean: true when policy succeeds.
+local function validate_message(hook, commit)
+   return command_succeeded(
+      shell_quote(hook).." --commit "..shell_quote(commit)
+   )
+end
+
+--- Parse one Git pre-push protocol line.
+-- @param line string: stdin protocol record.
+-- @return table|nil: parsed fields.
+local function parse_push_line(line)
+   local fields = {}
+
+   for field in line:gmatch("%S+") do
+      table.insert(fields, field)
+   end
+
+   if #fields ~= 4 then
+      return nil
+   end
+
+   return {
+      local_ref = fields[1],
+      local_object = fields[2],
+      remote_ref = fields[3],
+      remote_object = fields[4],
+   }
+end
+
+--- Validate a pushed branch or tag reference.
+-- Branch deletions are allowed so legacy invalid branches can be cleaned up.
+-- SemVer release tags are immutable after publication and cannot be deleted.
+-- @param record table: parsed pre-push record.
+-- @return boolean: true on success.
+local function validate_ref_policy(record)
+   local branch = record.remote_ref:match("^refs/heads/(.+)$")
+
+   if branch then
+      if is_zero_object(record.local_object) then
+         return true
+      end
+
+      local valid, diagnostic = validate_branch_name(branch)
+
+      if not valid then
+         fail("invalid branch '"..branch.."': "..diagnostic)
+         return false
+      end
+
+      return true
+   end
+
+   local tag = record.remote_ref:match("^refs/tags/(.+)$")
+
+   if tag then
+      local valid, diagnostic = validate_semver(tag)
+
+      if is_zero_object(record.local_object) then
+         if valid then
+            fail(
+               "release tag '"..tag
+                  .."' is immutable and cannot be deleted after publication."
+            )
+            return false
+         end
+
+         return true
+      end
+
+      if not valid then
+         fail("invalid SemVer tag '"..tag.."': "..diagnostic)
+         return false
+      end
+
+      if not is_zero_object(record.remote_object)
+         and record.local_object ~= record.remote_object then
+         fail(
+            "release tag '"..tag
+               .."' already exists remotely and cannot be modified."
+         )
+         return false
+      end
+   end
+
+   return true
+end
+
+--- Execute the pre-push policy.
+-- @return integer: zero on success.
+local function main()
+   local hook = commit_msg_hook()
+
+   if not hook then
+      fail("required sibling hook '.githooks/commit-msg' is missing.")
+      return 1
+   end
+
+   local commits = {}
+   local seen = {}
+
+   for line in io.lines() do
+      local record = parse_push_line(line)
+
+      if not record then
+         fail("unexpected pre-push input: "..line)
+         return 1
+      end
+
+      if not validate_ref_policy(record) then
+         return 1
+      end
+
+      if not is_zero_object(record.local_object) then
+         local local_commit = peel_commit(record.local_object)
+
+         if local_commit then
+            local candidates = outgoing_commits(
+               local_commit,
+               record.remote_object
+            )
+
+            if not candidates then
+               fail("could not enumerate outgoing commits.")
+               return 1
+            end
+
+            for _, commit in ipairs(candidates) do
+               if not seen[commit] then
+                  seen[commit] = true
+                  table.insert(commits, commit)
+               end
+            end
+         end
+      end
+   end
+
+   for _, commit in ipairs(commits) do
+      local short = commit:sub(1, 12)
+      io.stderr:write("coil pre-push: validating "..short.."\n")
+
+      if not has_openpgp_signature(commit) then
+         fail(short.." is not signed with OpenPGP.")
+         return 1
+      end
+
+      if not verify_signature(commit) then
+         fail("OpenPGP verification failed for "..short..".")
+         return 1
+      end
+
+      if not validate_message(hook, commit) then
+         fail("commit-message policy failed for "..short..".")
+         return 1
+      end
+   end
+
+   return 0
+end
+
+os.exit(main())

@@ -64,6 +64,94 @@ tab_width = 2
 max_line_length = 120
 
 # ==============================================================================
+# Lua
+# ==============================================================================
+
+[*.lua]
+indent_style = space
+indent_size = 3
+tab_width = 3
+max_line_length = 80
+
+# Repository Git hooks are extensionless Lua programs.
+[.githooks/*]
+indent_style = space
+indent_size = 3
+tab_width = 3
+max_line_length = 80
+
+# ==============================================================================
+# Python
+# ==============================================================================
+
+[*.{py,pyi}]
+indent_style = space
+indent_size = 4
+tab_width = 4
+max_line_length = 88
+
+# ==============================================================================
+# POSIX sh and Bash
+# ==============================================================================
+#
+# The current CI invokes shfmt with -ln posix / -ln bash. Passing a parser
+# flag makes shfmt ignore EditorConfig formatting options. Because CI does not
+# pass -i N, shfmt uses its default tab indentation. Keep this section aligned
+# with that behavior.
+#
+# ShellCheck validates dialect and diagnostics; bash -n validates Bash syntax
+# when Bash is available.
+
+[*.sh]
+indent_style = tab
+indent_size = 8
+tab_width = 8
+max_line_length = 100
+
+[*.bash]
+indent_style = tab
+indent_size = 8
+tab_width = 8
+max_line_length = 100
+
+# ==============================================================================
+# PowerShell 7
+# ==============================================================================
+#
+# Matches:
+#   tools/lint/code/shell/powershell/PSScriptAnalyzerSettings.psd1
+#     Kind = 'space'
+#     IndentationSize = 4
+#
+# PowerShell files keep the repository-wide LF policy. The pwsh parser and
+# PSScriptAnalyzer run on Linux in CI and do not require CRLF.
+
+[*.{ps1,psm1,psd1}]
+indent_style = space
+indent_size = 4
+tab_width = 4
+max_line_length = 120
+
+# ==============================================================================
+# Nushell
+# ==============================================================================
+#
+# Matches:
+#   tools/lint/code/shell/nushell/nufmt.nuon
+#     indent = 4
+#     indent_char = "space"
+#     line_length = 80
+#
+# .nu files are checked with nu --check and nufmt. .nuon files use the same
+# formatting policy for Nushell object notation/configuration.
+
+[*.{nu,nuon}]
+indent_style = space
+indent_size = 4
+tab_width = 4
+max_line_length = 80
+
+# ==============================================================================
 # YAML
 # ==============================================================================
 
@@ -146,17 +234,7 @@ indent_size = 8
 tab_width = 8
 
 # ==============================================================================
-# Shell Scripts
-# ==============================================================================
-
-[*.{sh,bash,zsh,ksh}]
-indent_style = space
-indent_size = 2
-tab_width = 2
-max_line_length = 100
-
-# ==============================================================================
-# Windows Scripts
+# Windows Batch Scripts
 # ==============================================================================
 
 [*.{bat,cmd}]
@@ -165,23 +243,6 @@ indent_style = space
 indent_size = 2
 tab_width = 2
 max_line_length = 120
-
-[*.{ps1,psm1,psd1}]
-end_of_line = crlf
-indent_style = space
-indent_size = 4
-tab_width = 4
-max_line_length = 120
-
-# ==============================================================================
-# Python
-# ==============================================================================
-
-[*.py]
-indent_style = space
-indent_size = 4
-tab_width = 4
-max_line_length = 88
 
 # ==============================================================================
 # Web and Scripting Languages

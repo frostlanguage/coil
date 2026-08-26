@@ -1,0 +1,1439 @@
+#!/usr/bin/env lua
+
+-- SPDX-FileCopyrightText: © 2026 Rafael V. Volkmer <rafael.v.volkmer@gmail.com>
+-- SPDX-License-Identifier: GPL-3.0-only
+
+--- Coil commit-msg hook.
+-- Enforce the repository commit-message structure and DCO policy.
+--
+-- Optional spelling, prose, and link tools are executed only when the
+-- corresponding executable exists in PATH. Missing optional tools emit
+-- a warning and are bypassed without weakening structure or DCO checks.
+--
+-- Git mode:
+--    .githooks/commit-msg .git/COMMIT_EDITMSG
+--
+-- Stored-commit mode, used by pre-push and CI:
+--    .githooks/commit-msg --commit <commit>
+
+local MAX_COLUMNS = 71
+
+local CONVENTIONAL_TYPES = {
+   build = true,
+   chore = true,
+   ci = true,
+   docs = true,
+   feat = true,
+   fix = true,
+   perf = true,
+   refactor = true,
+   revert = true,
+   style = true,
+   test = true,
+}
+
+local CONVENTIONAL_TYPE_LIST =
+   "build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test"
+
+local IDENTITY_FOOTERS = {
+   ["Reviewed-by"] = true,
+   ["Co-authored-by"] = true,
+   ["Tested-by"] = true,
+   ["Acked-by"] = true,
+   ["Reported-by"] = true,
+   ["Suggested-by"] = true,
+}
+
+local REMOTE_REFERENCE_FOOTERS = {
+   ["Refs"] = true,
+   ["Follows-up"] = true,
+   ["Related-to"] = true,
+   ["Fixes"] = true,
+   ["Closes"] = true,
+}
+
+local REMOTE_REFERENCE_FOOTER_LIST =
+   "Refs, Follows-up, Related-to, Fixes, Closes"
+
+local optional_tools = {
+   {
+      name = "cspell",
+      config = "tools/lint/spell/cspell/cspell.jsonc",
+      build = function(executable, config, message_path)
+         -- Read the message through stdin with a virtual Markdown filename.
+         -- The temporary file lives under .git/, which repository CSpell
+         -- ignore rules may exclude even when the file is passed explicitly.
+         return table.concat({
+            executable,
+            "--config",
+            config,
+            "--no-progress",
+            "stdin://coil-commit-message.md",
+            "<",
+            message_path,
+         }, " ")
+      end,
+   },
+   {
+      name = "codespell",
+      config = "tools/lint/spell/codespell/.codespellrc",
+      build = function(executable, config, message_path)
+         return table.concat({
+            executable,
+            "--config",
+            config,
+            message_path,
+         }, " ")
+      end,
+   },
+   {
+      name = "typos",
+      config = "tools/lint/spell/typos/typos.toml",
+      build = function(executable, config, message_path)
+         return table.concat({
+            executable,
+            "--config",
+            config,
+            message_path,
+         }, " ")
+      end,
+   },
+   {
+      name = "vale",
+      config = "tools/lint/spell/vale/.vale.ini",
+      build = function(executable, config, message_path)
+         return table.concat({
+            executable,
+            "--no-global",
+            "--config",
+            config,
+            message_path,
+         }, " ")
+      end,
+   },
+   {
+      name = "lychee",
+      config = "tools/lint/spell/lychee/lychee.toml",
+      urls_only = true,
+      build = function(executable, config, message_path)
+         return table.concat({
+            executable,
+            "--config",
+            config,
+            message_path,
+         }, " ")
+      end,
+   },
+}
+
+local function shell_quote(value)
+   return "'"..value:gsub("'", "'\\''").."'"
+end
+
+--- Run a command and report whether it completed successfully.
+-- @param command string: shell command to execute.
+-- @return boolean: true when the command exits with status zero.
+local function command_succeeded(command)
+   local first, _, code = os.execute(command)
+
+   if type(first) == "number" then
+      return first == 0
+   end
+
+   if first == true then
+      return true
+   end
+
+   return code == 0
+end
+
+--- Capture stdout from a command.
+-- @param command string: shell command to execute.
+-- @return string|nil: stdout, or nil when the command could not start.
+local function command_output(command)
+   local handle = io.popen(command, "r")
+
+   if not handle then
+      return nil
+   end
+
+   local output = handle:read("*a")
+   handle:close()
+
+   return output
+end
+
+--- Print a fatal commit-message diagnostic.
+-- @param message string: diagnostic text.
+local function fail(message)
+   io.stderr:write("coil commit-msg: error: "..message.."\n")
+end
+
+--- Print a non-fatal commit-message diagnostic.
+-- @param message string: diagnostic text.
+local function warn(message)
+   io.stderr:write("coil commit-msg: warning: "..message.."\n")
+end
+
+--- Print informational hook output.
+-- @param message string: informational text.
+local function info(message)
+   io.stderr:write("coil commit-msg: info: "..message.."\n")
+end
+
+--- Check whether a file exists.
+-- @param path string: path to inspect.
+-- @return boolean: true when the path names a readable file.
+local function file_exists(path)
+   local handle = io.open(path, "rb")
+
+   if not handle then
+      return false
+   end
+
+   handle:close()
+
+   return true
+end
+
+--- Read an entire UTF-8 text file as bytes.
+-- @param path string: file path.
+-- @return string|nil: file contents, or nil when the file cannot be read.
+local function read_file(path)
+   local handle = io.open(path, "rb")
+
+   if not handle then
+      return nil
+   end
+
+   local text = handle:read("*a")
+   handle:close()
+
+   return text
+end
+
+--- Write an entire text file.
+-- @param path string: output path.
+-- @param text string: contents to write.
+-- @return boolean: true on success.
+local function write_file(path, text)
+   local handle = io.open(path, "wb")
+
+   if not handle then
+      return false
+   end
+
+   handle:write(text)
+   handle:close()
+
+   return true
+end
+
+--- Check whether an executable is available through PATH.
+-- @param name string: executable name.
+-- @return boolean: true when the executable can be resolved.
+local function command_exists(name)
+   local command = "command -v "..shell_quote(name).." >/dev/null 2>&1"
+   return command_succeeded(command)
+end
+
+--- Return the repository root.
+-- @return string|nil: absolute repository root.
+local function repository_root()
+   local output = command_output(
+      "git rev-parse --show-toplevel 2>/dev/null"
+   )
+
+   if not output then
+      return nil
+   end
+
+   output = output:gsub("%s+$", "")
+
+   if output == "" then
+      return nil
+   end
+
+   return output
+end
+
+--- Read one Git configuration value.
+-- @param key string: Git configuration key.
+-- @return string|nil: configured value, or nil when absent.
+local function git_config(key)
+   local command = "git config --get "..shell_quote(key).." 2>/dev/null"
+   local output = command_output(command)
+
+   if not output then
+      return nil
+   end
+
+   output = output:gsub("%s+$", "")
+
+   if output == "" then
+      return nil
+   end
+
+   return output
+end
+
+--- Split text into lines while preserving empty paragraphs.
+-- @param text string: source text.
+-- @return table: array of lines.
+local function split_lines(text)
+   local lines = {}
+   text = text:gsub("\r\n", "\n")
+   text = text:gsub("\r", "\n")
+
+   if text:sub(-1) ~= "\n" then
+      text = text.."\n"
+   end
+
+   for line in text:gmatch("(.-)\n") do
+      table.insert(lines, line)
+   end
+
+   return lines
+end
+
+--- Remove Git comment lines and trailing empty lines.
+-- @param text string: raw commit message.
+-- @return string: normalized commit message.
+local function normalize_message(text)
+   local normalized = {}
+
+   for _, line in ipairs(split_lines(text)) do
+      if not line:match("^%s*#") then
+         line = line:gsub("%s+$", "")
+         table.insert(normalized, line)
+      end
+   end
+
+   while #normalized > 0 and normalized[#normalized] == "" do
+      table.remove(normalized)
+   end
+
+   return table.concat(normalized, "\n").."\n"
+end
+
+--- Check whether a Unicode code point is a supported lowercase letter.
+-- ASCII and Latin-1 letters cover the repository's English and PT-BR text.
+-- @param codepoint number: Unicode code point.
+-- @return boolean: true for a supported lowercase letter.
+local function is_lowercase_letter(codepoint)
+   return (codepoint >= 0x61 and codepoint <= 0x7A)
+      or (codepoint >= 0xDF and codepoint <= 0xF6)
+      or (codepoint >= 0xF8 and codepoint <= 0xFF)
+end
+
+--- Check whether a Unicode code point is a supported uppercase letter.
+-- @param codepoint number: Unicode code point.
+-- @return boolean: true for a supported uppercase letter.
+local function is_uppercase_letter(codepoint)
+   return (codepoint >= 0x41 and codepoint <= 0x5A)
+      or (codepoint >= 0xC0 and codepoint <= 0xD6)
+      or (codepoint >= 0xD8 and codepoint <= 0xDE)
+end
+
+--- Count Unicode characters in a UTF-8 string.
+-- @param text string: UTF-8 text.
+-- @return number|nil, number|nil: character count, or invalid byte position.
+local function utf8_character_count(text)
+   local count, invalid_position = utf8.len(text)
+
+   if not count then
+      return nil, invalid_position
+   end
+
+   return count, nil
+end
+
+--- Check whether the first supported alphabetic character is lowercase.
+-- Digits, whitespace, and punctuation before the first letter are ignored.
+-- Invalid UTF-8 and text without a supported alphabetic character fail.
+-- @param text string: text to inspect.
+-- @return boolean: true when the first supported letter is lowercase.
+local function starts_lowercase(text)
+   if not utf8.len(text) then
+      return false
+   end
+
+   for _, codepoint in utf8.codes(text) do
+      if is_lowercase_letter(codepoint) then
+         return true
+      end
+
+      if is_uppercase_letter(codepoint) then
+         return false
+      end
+   end
+
+   return false
+end
+
+--- Parse the Conventional Commit subject.
+-- @param subject string: first commit-message line.
+-- @return table|nil: parsed subject fields.
+local function parse_subject(subject)
+   local commit_type, scope, bang, description =
+      subject:match("^([a-z][a-z0-9%-]*)%(([a-z0-9][a-z0-9%._/%-]*)%)(!?): (.+)$")
+
+   if not commit_type then
+      return nil
+   end
+
+   return {
+      commit_type = commit_type,
+      scope = scope,
+      breaking = bang == "!",
+      description = description,
+   }
+end
+
+--- Parse a DCO sign-off trailer.
+-- @param line string: trailer line.
+-- @return string|nil, string|nil: name and email.
+local function parse_signoff(line)
+   return line:match("^Signed%-off%-by: (.+) <([^<>@%s]+@[^<>%s]+)>$")
+end
+
+--- Check whether a line is an HTTPS URL trailer.
+-- @param line string: line to inspect.
+-- @return boolean: true for a valid URL trailer.
+local function is_url_line(line)
+   return line:match("^URL: https://%S+$") ~= nil
+end
+
+--- Check whether a line is a DOI trailer.
+-- Accept the canonical bare DOI form, for example 10.1145/1234.5678.
+-- @param line string: line to inspect.
+-- @return boolean: true for a syntactically valid DOI trailer.
+local function is_doi_line(line)
+   return line:match("^DOI: 10%.[0-9][0-9][0-9][0-9]+/%S+$") ~= nil
+end
+
+--- Return the author identity for the pending commit.
+-- @return string, string: author name and email.
+local function current_author()
+   return git_config("user.name") or "", git_config("user.email") or ""
+end
+
+--- Return the author identity stored in a commit.
+-- @param commit string: commit object name.
+-- @return string|nil, string|nil: author name and email.
+local function commit_author(commit)
+   local command = table.concat({
+      "git show -s --format=%an%x00%ae",
+      shell_quote(commit),
+      "2>/dev/null",
+   }, " ")
+
+   local output = command_output(command)
+
+   if not output then
+      return nil, nil
+   end
+
+   output = output:gsub("\n+$", "")
+
+   local name, email = output:match("^(.-)%z(.*)$")
+
+   return name, email
+end
+
+--- Return the full stored commit message.
+-- @param commit string: commit object name.
+-- @return string|nil: stored commit message.
+local function stored_message(commit)
+   local command = table.concat({
+      "git show -s --format=%B",
+      shell_quote(commit),
+      "2>/dev/null",
+   }, " ")
+
+   return command_output(command)
+end
+
+--- Add one validation error.
+-- @param errors table: error array.
+-- @param message string: diagnostic text.
+local function add_error(errors, message)
+   table.insert(errors, message)
+end
+
+--- Check whether a line contains a remote repository reference footer.
+-- Repository object identifiers should not be wrapped.
+-- @param line string: line to inspect.
+-- @return boolean: true for a remote-reference footer line.
+local function is_remote_reference_footer_line(line)
+   local token = line:match("^([A-Za-z][A-Za-z%-]*): .+$")
+   return token ~= nil and REMOTE_REFERENCE_FOOTERS[token] == true
+end
+
+--- Validate the 71-character policy using UTF-8 code points.
+-- URL, DOI, and remote-reference trailers are exempt because identifiers
+-- should not be wrapped.
+-- @param lines table: normalized message lines.
+-- @param errors table: error array.
+local function validate_line_lengths(lines, errors)
+   for i, line in ipairs(lines) do
+      if not is_url_line(line)
+         and not is_doi_line(line)
+         and not is_remote_reference_footer_line(line) then
+         local length, invalid_position = utf8_character_count(line)
+
+         if not length then
+            add_error(
+               errors,
+               "line "..i.." contains invalid UTF-8 at byte "
+                  ..tostring(invalid_position).."."
+            )
+         elseif length > MAX_COLUMNS then
+            add_error(
+               errors,
+               "line "..i.." is "..length.." characters; maximum is "
+                  ..MAX_COLUMNS.."."
+            )
+         end
+      end
+   end
+end
+
+--- Locate the three mandatory body sections.
+-- @param lines table: normalized message lines.
+-- @param errors table: error array.
+-- @return table|nil: section positions.
+local function locate_sections(lines, errors)
+   local section_names = {
+      "Motivation",
+      "Details",
+      "Impact",
+   }
+   local positions = {}
+   local seen = {}
+
+   for i, line in ipairs(lines) do
+      local name, body = line:match("^([%a]+): ?(.*)$")
+      local is_required_section = name == "Motivation"
+         or name == "Details"
+         or name == "Impact"
+
+      if is_required_section then
+         table.insert(seen, name)
+
+         if positions[name] then
+            add_error(errors, name..": must appear exactly once.")
+         else
+            positions[name] = i
+         end
+
+         if body == "" then
+            add_error(
+               errors,
+               name..": must start its first paragraph on the same line."
+            )
+         elseif not starts_lowercase(body) then
+            add_error(
+               errors,
+               "text immediately after "..name..": must begin with lowercase."
+            )
+         end
+      end
+   end
+
+   if #seen ~= 3
+      or seen[1] ~= section_names[1]
+      or seen[2] ~= section_names[2]
+      or seen[3] ~= section_names[3] then
+      add_error(
+         errors,
+         "body must contain exactly Motivation:, Details:, and Impact: "
+            .."once each, in that order."
+      )
+
+      return nil
+   end
+
+   return positions
+end
+
+--- Parse an attribution identity trailer.
+-- @param line string: trailer line.
+-- @param token string: canonical footer token.
+-- @return string|nil, string|nil: name and email.
+local function parse_identity_footer(line, token)
+   local prefix = "^"..token:gsub("%-", "%%-")
+      ..": (.+) <([^<>@%s]+@[^<>%s]+)>$"
+   return line:match(prefix)
+end
+
+--- Parse a remote repository reference target.
+-- Supported forms are #N, issue #N, pull #N, commit HEX, branch NAME,
+-- tag NAME, and ref refs/....
+-- @param value string: footer value.
+-- @return table|nil: normalized target descriptor.
+local function parse_remote_reference(value)
+   local number = value:match("^#([1-9][0-9]*)$")
+
+   if number then
+      return { kind = "issue", value = number, display = "#"..number }
+   end
+
+   number = value:match("^issue #([1-9][0-9]*)$")
+
+   if number then
+      return { kind = "issue", value = number, display = "issue #"..number }
+   end
+
+   number = value:match("^pull #([1-9][0-9]*)$")
+
+   if number then
+      return { kind = "pull", value = number, display = "pull #"..number }
+   end
+
+   local sha = value:match("^commit ([0-9a-fA-F]+)$")
+
+   if sha and #sha >= 7 and #sha <= 64 then
+      return { kind = "commit", value = sha:lower(), display = "commit "..sha }
+   end
+
+   local branch = value:match("^branch (%S+)$")
+
+   if branch then
+      return { kind = "branch", value = branch, display = "branch "..branch }
+   end
+
+   local tag = value:match("^tag (%S+)$")
+
+   if tag then
+      return { kind = "tag", value = tag, display = "tag "..tag }
+   end
+
+   local ref = value:match("^ref (refs/%S+)$")
+
+   if ref then
+      return { kind = "ref", value = ref, display = "ref "..ref }
+   end
+
+   return nil
+end
+
+--- Check whether a line begins with one of Coil's recognized footer tokens.
+-- @param line string: line to inspect.
+-- @return boolean: true for a recognized footer line.
+local function is_recognized_footer_line(line)
+   if line:match("^Theory%-reference: .+")
+      or line:match("^URL: .+")
+      or line:match("^DOI: .+")
+      or line:match("^BREAKING CHANGE: .+")
+      or line:match("^BREAKING%-CHANGE: .+")
+      or line:match("^Assisted%-by: .+")
+      or line:match("^Signed%-off%-by: .+") then
+      return true
+   end
+
+   local token = line:match("^([A-Za-z][A-Za-z%-]*): .+$")
+
+   return token ~= nil
+      and (IDENTITY_FOOTERS[token] == true
+         or REMOTE_REFERENCE_FOOTERS[token] == true)
+end
+
+--- Check whether a line looks like structured footer metadata.
+-- Recognized footers and unknown trailer-shaped lines are candidates so that
+-- unsupported footer tokens cannot be hidden inside the Impact body.
+-- @param line string: line to inspect.
+-- @return boolean: true for a footer-shaped line.
+local function is_footer_candidate_line(line)
+   if is_recognized_footer_line(line) then
+      return true
+   end
+
+   return line:match("^[A-Za-z][A-Za-z%- ]*: .+$") ~= nil
+end
+
+--- Locate the optional contiguous footer block before the DCO separator.
+-- Optional footers remain contiguous and contain no blank lines. The final
+-- Signed-off-by: is not part of this block; exactly one blank line separates
+-- it from the last preceding content.
+-- @param lines table: normalized message lines.
+-- @param impact_index number: Impact: line.
+-- @param signoff_index number: final Signed-off-by: line.
+-- @param errors table: error array.
+-- @return number|nil, number|nil: first and last optional footer lines.
+local function locate_footer_block(lines, impact_index, signoff_index, errors)
+   local footer_end = signoff_index - 2
+
+   if footer_end <= impact_index then
+      return nil, nil
+   end
+
+   if not is_footer_candidate_line(lines[footer_end]) then
+      for i = impact_index + 1, footer_end do
+         if is_recognized_footer_line(lines[i]) then
+            add_error(
+               errors,
+               "line "..i..": footer block must be contiguous and immediately "
+                  .."precede the Signed-off-by: separator."
+            )
+         end
+      end
+
+      return nil, nil
+   end
+
+   local separator_index
+
+   for i = footer_end - 1, impact_index + 1, -1 do
+      if lines[i] == "" then
+         separator_index = i
+         break
+      end
+   end
+
+   if not separator_index then
+      add_error(
+         errors,
+         "footer block must be separated from Impact: by exactly one blank line."
+      )
+      return nil, nil
+   end
+
+   if separator_index > impact_index + 1
+      and lines[separator_index - 1] == "" then
+      add_error(
+         errors,
+         "footer block must be preceded by exactly one blank line."
+      )
+   end
+
+   local footer_start = separator_index + 1
+
+   for i = footer_start, footer_end do
+      if lines[i] == "" then
+         add_error(
+            errors,
+            "line "..i..": blank lines are not allowed inside the footer block."
+         )
+      end
+   end
+
+   for i = impact_index + 1, separator_index - 1 do
+      if is_recognized_footer_line(lines[i]) then
+         add_error(
+            errors,
+            "line "..i..": footer block must be contiguous; move all footers "
+               .."after the final Impact paragraph."
+         )
+      end
+   end
+
+   return footer_start, footer_end
+end
+
+--- Validate the complete optional footer block.
+-- Theory-reference: requires one following URL: or DOI:. Attribution footers
+-- use Name <email>, Assisted-by: accepts a non-empty provenance value, and
+-- repository reference footers use typed, remotely verifiable targets.
+-- Signed-off-by: is validated separately and cannot appear in this block.
+-- @param lines table: normalized message lines.
+-- @param footer_start number: first optional footer line.
+-- @param footer_end number: final optional footer line.
+-- @param errors table: error array.
+local function validate_footer_block(lines, footer_start, footer_end, errors)
+   local expecting_identifier = false
+   local breaking_count = 0
+
+   for i = footer_start, footer_end do
+      local line = lines[i]
+      local is_identifier = is_url_line(line) or is_doi_line(line)
+
+      if expecting_identifier and not is_identifier then
+         add_error(
+            errors,
+            "line "..i..": Theory-reference: must be immediately followed "
+               .."by URL: or DOI:."
+         )
+         expecting_identifier = false
+      end
+
+      if line:match("^Theory%-reference: .+") then
+         if expecting_identifier then
+            add_error(
+               errors,
+               "line "..i..": previous Theory-reference: is missing URL: or DOI:."
+            )
+         end
+
+         expecting_identifier = true
+      elseif is_url_line(line) or is_doi_line(line) then
+         if not expecting_identifier then
+            add_error(
+               errors,
+               "line "..i..": URL: or DOI: must immediately follow "
+                  .."Theory-reference:."
+            )
+         end
+
+         expecting_identifier = false
+      elseif line:match("^URL:") then
+         add_error(errors, "line "..i..": URL: must contain one HTTPS URL.")
+      elseif line:match("^DOI:") then
+         add_error(
+            errors,
+            "line "..i..": DOI: must use the bare '10.xxxx/...' form."
+         )
+      elseif line:match("^BREAKING CHANGE: .+")
+         or line:match("^BREAKING%-CHANGE: .+") then
+         breaking_count = breaking_count + 1
+         local value = line:match(": (.+)$")
+
+         if not starts_lowercase(value) then
+            add_error(
+               errors,
+               "line "..i..": BREAKING CHANGE description must begin "
+                  .."with lowercase."
+            )
+         end
+
+         expecting_identifier = false
+      elseif line:match("^Assisted%-by: .+") then
+         expecting_identifier = false
+      else
+         local token, value = line:match("^([A-Za-z][A-Za-z%-]*): (.+)$")
+
+         if token and IDENTITY_FOOTERS[token] then
+            local name = parse_identity_footer(line, token)
+
+            if not name then
+               add_error(
+                  errors,
+                  "line "..i..": "..token
+                     ..": must use 'Name <email@example.org>'."
+               )
+            end
+
+            expecting_identifier = false
+         elseif token and REMOTE_REFERENCE_FOOTERS[token] then
+            local target = parse_remote_reference(value)
+
+            if not target then
+               add_error(
+                  errors,
+                  "line "..i..": "..token
+                     ..": must reference #N, issue #N, pull #N, commit HEX, "
+                     .."branch NAME, tag NAME, or ref refs/...."
+               )
+            elseif (token == "Fixes" or token == "Closes")
+               and target.kind ~= "issue" then
+               add_error(
+                  errors,
+                  "line "..i..": "..token..": may reference only an issue."
+               )
+            end
+
+            expecting_identifier = false
+         else
+            add_error(
+               errors,
+               "line "..i..": unsupported footer; allowed metadata includes "
+                  .."Theory-reference/URL/DOI, BREAKING CHANGE, Reviewed-by, "
+                  .."Assisted-by, Co-authored-by, Tested-by, Acked-by, "
+                  .."Reported-by, Suggested-by, "..REMOTE_REFERENCE_FOOTER_LIST
+                  ..". Signed-off-by: is reserved for the final DCO line."
+            )
+            expecting_identifier = false
+         end
+      end
+   end
+
+   if breaking_count > 1 then
+      add_error(errors, "at most one BREAKING CHANGE footer is allowed.")
+   end
+
+   if expecting_identifier then
+      add_error(errors, "final Theory-reference: is missing its URL: or DOI: line.")
+   end
+end
+
+--- Validate the complete commit-message structure and DCO trailer.
+-- @param text string: normalized message.
+-- @param author_name string: expected DCO name.
+-- @param author_email string: expected DCO email.
+-- @return table: validation errors.
+local function validate_structure(text, author_name, author_email)
+   local errors = {}
+   local lines = split_lines(text)
+
+   while #lines > 0 and lines[#lines] == "" do
+      table.remove(lines)
+   end
+
+   if #lines == 0 then
+      add_error(errors, "commit message is empty.")
+      return errors
+   end
+
+   validate_line_lengths(lines, errors)
+
+   local subject = parse_subject(lines[1])
+
+   if not subject then
+      add_error(
+         errors,
+         "subject must match 'type(scope): lowercase subject' "
+            .."or 'type(scope)!: lowercase subject'."
+      )
+   else
+      if not CONVENTIONAL_TYPES[subject.commit_type] then
+         add_error(
+            errors,
+            "commit type '"..subject.commit_type
+               .."' is not allowed; use one of: "
+               ..CONVENTIONAL_TYPE_LIST.."."
+         )
+      end
+
+      if not starts_lowercase(subject.description) then
+         add_error(errors, "subject description must begin with lowercase.")
+      end
+   end
+
+   if lines[2] ~= "" or not lines[3] or lines[3] == "" then
+      add_error(
+         errors,
+         "subject must be followed by exactly one blank separator line."
+      )
+   end
+
+   local sections = locate_sections(lines, errors)
+   local signoff_count = 0
+   local signoff_index
+   local signoff_name
+   local signoff_email
+
+   for i, line in ipairs(lines) do
+      if line:match("^Signed%-off%-by:") then
+         signoff_count = signoff_count + 1
+         signoff_index = i
+         signoff_name, signoff_email = parse_signoff(line)
+      end
+   end
+
+   if signoff_count ~= 1 then
+      add_error(errors, "exactly one Signed-off-by: trailer is required.")
+   elseif signoff_index ~= #lines then
+      add_error(errors, "Signed-off-by: must be the final non-empty line.")
+   elseif signoff_index < 2 or lines[signoff_index - 1] ~= "" then
+      add_error(
+         errors,
+         "Signed-off-by: must be preceded by exactly one blank line."
+      )
+   elseif signoff_index >= 3 and lines[signoff_index - 2] == "" then
+      add_error(
+         errors,
+         "Signed-off-by: must be preceded by exactly one blank line."
+      )
+   elseif not signoff_name then
+      add_error(
+         errors,
+         "Signed-off-by: must use 'Name <email@example.org>'."
+      )
+   elseif author_name ~= "" and author_email ~= "" then
+      if signoff_name ~= author_name
+         or signoff_email:lower() ~= author_email:lower() then
+         add_error(
+            errors,
+            "DCO sign-off must exactly match the commit author "
+               ..author_name.." <"..author_email..">."
+         )
+      end
+   end
+
+   if sections and signoff_index then
+      if sections.Motivation ~= 3 then
+         add_error(
+            errors,
+            "Motivation: must immediately follow the single subject separator."
+         )
+      end
+
+      if not (
+         sections.Motivation < sections.Details
+         and sections.Details < sections.Impact
+         and sections.Impact < signoff_index
+      ) then
+         add_error(
+            errors,
+            "required sections must precede trailers in the required order."
+         )
+      end
+
+      for i = 3, sections.Impact - 1 do
+         if is_recognized_footer_line(lines[i]) then
+            add_error(
+               errors,
+               "line "..i..": footers are allowed only after the Impact body."
+            )
+         end
+      end
+
+      local footer_start, footer_end = locate_footer_block(
+         lines,
+         sections.Impact,
+         signoff_index,
+         errors
+      )
+
+      if footer_start and footer_end then
+         validate_footer_block(lines, footer_start, footer_end, errors)
+      end
+   end
+
+   return errors
+end
+
+--- Return the remote used for reference verification.
+-- Prefer remote.pushDefault, then the current branch remote, then origin.
+-- @return string|nil: remote name.
+local function reference_remote()
+   local configured = git_config("remote.pushDefault")
+
+   if configured and configured ~= "" then
+      return configured
+   end
+
+   local branch = command_output(
+      "git symbolic-ref --quiet --short HEAD 2>/dev/null"
+   )
+
+   if branch then
+      branch = branch:gsub("%s+$", "")
+      local branch_remote = git_config("branch."..branch..".remote")
+
+      if branch_remote and branch_remote ~= "." then
+         return branch_remote
+      end
+   end
+
+   if command_succeeded("git remote get-url origin >/dev/null 2>&1") then
+      return "origin"
+   end
+
+   return nil
+end
+
+--- Return one remote URL.
+-- @param remote string: remote name.
+-- @return string|nil: configured URL.
+local function remote_url(remote)
+   local output = command_output(
+      "git remote get-url "..shell_quote(remote).." 2>/dev/null"
+   )
+
+   if not output then
+      return nil
+   end
+
+   output = output:gsub("%s+$", "")
+   return output ~= "" and output or nil
+end
+
+--- Parse owner/repository from a github.com remote URL.
+-- The gittuf transport prefix is accepted transparently.
+-- @param url string: Git remote URL.
+-- @return string|nil: owner/repository.
+local function github_repository_from_url(url)
+   url = url:gsub("^gittuf::", "")
+
+   local path = url:match("^git@github%.com:(.+)$")
+      or url:match("^ssh://git@github%.com/(.+)$")
+      or url:match("^https://github%.com/(.+)$")
+      or url:match("^git://github%.com/(.+)$")
+
+   if not path then
+      return nil
+   end
+
+   path = path:gsub("%.git$", "")
+
+   if path:match("^[^/]+/[^/]+$") then
+      return path
+   end
+
+   return nil
+end
+
+--- Query one GitHub API endpoint and require HTTP 200.
+-- GITHUB_TOKEN or GH_TOKEN is used when available.
+-- @param repository string: owner/repository.
+-- @param endpoint string: repository-relative API endpoint.
+-- @return boolean: true for HTTP 200.
+local function github_api_exists(repository, endpoint)
+   if not command_exists("curl") then
+      fail("curl is required to verify GitHub issue, pull, and commit references.")
+      return false
+   end
+
+   local token = os.getenv("GITHUB_TOKEN") or os.getenv("GH_TOKEN")
+   local parts = {
+      "curl",
+      "--silent",
+      "--show-error",
+      "--location",
+      "--output /dev/null",
+      "--write-out '%{http_code}'",
+      "--proto '=https'",
+      "--tlsv1.2",
+      "--header 'Accept: application/vnd.github+json'",
+      "--header 'X-GitHub-Api-Version: 2022-11-28'",
+   }
+
+   if token and token ~= "" then
+      table.insert(parts, "--header "..shell_quote("Authorization: Bearer "..token))
+   end
+
+   table.insert(
+      parts,
+      shell_quote(
+         "https://api.github.com/repos/"..repository.."/"..endpoint
+      )
+   )
+   table.insert(parts, "2>/dev/null")
+
+   local output = command_output(table.concat(parts, " "))
+
+   if not output then
+      return false
+   end
+
+   output = output:gsub("%s+$", "")
+   return output == "200"
+end
+
+--- Validate one branch, tag, or full ref with git ls-remote.
+-- @param remote string: remote name.
+-- @param target table: parsed reference target.
+-- @return boolean: true when the target is advertised by the remote.
+local function git_remote_reference_exists(remote, target)
+   local pattern
+
+   if target.kind == "branch" then
+      if not command_succeeded(
+         "git check-ref-format --branch "..shell_quote(target.value)
+            .." >/dev/null 2>&1"
+      ) then
+         return false
+      end
+
+      pattern = "refs/heads/"..target.value
+   elseif target.kind == "tag" then
+      pattern = "refs/tags/"..target.value
+
+      if not command_succeeded(
+         "git check-ref-format "..shell_quote(pattern).." >/dev/null 2>&1"
+      ) then
+         return false
+      end
+   else
+      pattern = target.value
+
+      if not command_succeeded(
+         "git check-ref-format "..shell_quote(pattern).." >/dev/null 2>&1"
+      ) then
+         return false
+      end
+   end
+
+   return command_succeeded(
+      "git ls-remote --exit-code "..shell_quote(remote).." "
+         ..shell_quote(pattern).." >/dev/null 2>&1"
+   )
+end
+
+--- Collect typed repository references from the footer block.
+-- @param text string: normalized commit message.
+-- @return table: array of parsed target descriptors with footer metadata.
+local function collect_remote_references(text)
+   local references = {}
+
+   for _, line in ipairs(split_lines(text)) do
+      local token, value = line:match("^([A-Za-z][A-Za-z%-]*): (.+)$")
+
+      if token and REMOTE_REFERENCE_FOOTERS[token] then
+         local target = parse_remote_reference(value)
+
+         if target then
+            target.footer = token
+            table.insert(references, target)
+         end
+      end
+   end
+
+   return references
+end
+
+--- Verify every typed repository reference against the configured remote.
+-- Git refs use git ls-remote. GitHub issues, pull requests, and commits use
+-- the GitHub REST API derived from the same remote URL.
+-- @param text string: normalized commit message.
+-- @return boolean: true when all cited repository objects exist remotely.
+local function validate_remote_references(text)
+   local references = collect_remote_references(text)
+
+   if #references == 0 then
+      return true
+   end
+
+   local remote = reference_remote()
+
+   if not remote then
+      fail("repository references are present but no verification remote is configured.")
+      return false
+   end
+
+   local url = remote_url(remote)
+
+   if not url then
+      fail("could not read URL for verification remote '"..remote.."'.")
+      return false
+   end
+
+   local github_repository = github_repository_from_url(url)
+      or os.getenv("GITHUB_REPOSITORY")
+   local ok = true
+
+   for _, target in ipairs(references) do
+      local exists = false
+
+      if target.kind == "branch"
+         or target.kind == "tag"
+         or target.kind == "ref" then
+         exists = git_remote_reference_exists(remote, target)
+      else
+         if not github_repository then
+            fail(
+               target.footer..": "..target.display
+                  .." requires a github.com remote for verification."
+            )
+            ok = false
+         else
+            local endpoint
+
+            if target.kind == "issue" then
+               endpoint = "issues/"..target.value
+            elseif target.kind == "pull" then
+               endpoint = "pulls/"..target.value
+            else
+               endpoint = "commits/"..target.value
+            end
+
+            exists = github_api_exists(github_repository, endpoint)
+         end
+      end
+
+      if not exists then
+         fail(
+            target.footer..": referenced "..target.display
+               .." does not exist on remote '"..remote.."'."
+         )
+         ok = false
+      end
+   end
+
+   return ok
+end
+
+--- Build a temporary message path inside the repository metadata.
+-- @param root string: repository root.
+-- @return string: temporary file path.
+local function temporary_message_path(root)
+   local git_dir = command_output(
+      "git -C "..shell_quote(root).." rev-parse --git-dir 2>/dev/null"
+   )
+
+   if not git_dir then
+      return root.."/.coil-commit-message.md"
+   end
+
+   git_dir = git_dir:gsub("%s+$", "")
+
+   if git_dir:sub(1, 1) ~= "/" then
+      git_dir = root.."/"..git_dir
+   end
+
+   local suffix = tostring(os.time()).."."..tostring(math.random(100000, 999999))
+
+   return git_dir.."/coil-commit-message."..suffix..".md"
+end
+
+--- Run one optional spelling, prose, or link checker.
+-- Missing executables are warned and bypassed.
+-- Missing configuration for an installed tool is a repository error.
+-- @param tool table: optional tool descriptor.
+-- @param root string: repository root.
+-- @param message_path string: temporary Markdown message path.
+-- @param has_urls boolean: whether URL trailers exist.
+-- @return boolean: true when the check passes or is bypassed.
+local function run_optional_tool(tool, root, message_path, has_urls)
+   if tool.urls_only and not has_urls then
+      info("no URL: trailers; Lychee check not required.")
+      return true
+   end
+
+   if not command_exists(tool.name) then
+      warn(
+         "optional tool '"..tool.name
+            .."' is not installed; bypassing this check."
+      )
+      return true
+   end
+
+   local config = root.."/"..tool.config
+
+   if not file_exists(config) then
+      fail(
+         "configuration for installed tool '"..tool.name
+            .."' is missing: "..tool.config
+      )
+      return false
+   end
+
+   local command = tool.build(
+      shell_quote(tool.name),
+      shell_quote(config),
+      shell_quote(message_path)
+   )
+
+   if not command_succeeded(command) then
+      fail(tool.name.." rejected the commit message.")
+      return false
+   end
+
+   return true
+end
+
+--- Run all optional spelling, prose, and link checks.
+-- @param text string: normalized commit message.
+-- @param root string: repository root.
+-- @return boolean: true when every available tool passes.
+local function run_optional_tools(text, root)
+   local message_path = temporary_message_path(root)
+
+   if not write_file(message_path, text) then
+      fail("could not create temporary commit-message file.")
+      return false
+   end
+
+   local has_urls = false
+
+   for _, line in ipairs(split_lines(text)) do
+      if is_url_line(line) then
+         has_urls = true
+         break
+      end
+   end
+
+   local ok = true
+
+   for _, tool in ipairs(optional_tools) do
+      if not run_optional_tool(tool, root, message_path, has_urls) then
+         ok = false
+      end
+   end
+
+   os.remove(message_path)
+
+   return ok
+end
+
+--- Parse hook command-line arguments.
+-- @return table|nil: parsed argument table.
+local function parse_arguments()
+   if arg[1] == "--commit" then
+      if not arg[2] or arg[3] then
+         return nil
+      end
+
+      return {
+         commit = arg[2],
+      }
+   end
+
+   if not arg[1] or arg[2] then
+      return nil
+   end
+
+   return {
+      message_file = arg[1],
+   }
+end
+
+--- Execute the commit-message policy.
+-- @return integer: zero on success.
+local function main()
+   math.randomseed(os.time())
+
+   local arguments = parse_arguments()
+
+   if not arguments then
+      fail("expected a commit-message file or --commit <commit>.")
+      return 2
+   end
+
+   local root = repository_root()
+
+   if not root then
+      fail("not inside a Git work tree.")
+      return 1
+   end
+
+   local text
+   local author_name
+   local author_email
+
+   if arguments.commit then
+      text = stored_message(arguments.commit)
+      author_name, author_email = commit_author(arguments.commit)
+   else
+      text = read_file(arguments.message_file)
+      author_name, author_email = current_author()
+   end
+
+   if not text then
+      fail("could not read the commit message.")
+      return 1
+   end
+
+   if not author_name or not author_email then
+      fail("could not determine the commit author identity.")
+      return 1
+   end
+
+   local normalized = normalize_message(text)
+   local errors = validate_structure(
+      normalized,
+      author_name,
+      author_email
+   )
+
+   if #errors > 0 then
+      for _, message in ipairs(errors) do
+         fail(message)
+      end
+
+      return 1
+   end
+
+   if not validate_remote_references(normalized) then
+      return 1
+   end
+
+   if not run_optional_tools(normalized, root) then
+      return 1
+   end
+
+   return 0
+end
+
+os.exit(main())

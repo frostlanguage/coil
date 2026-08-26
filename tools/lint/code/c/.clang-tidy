@@ -1,0 +1,296 @@
+# SPDX-FileCopyrightText: © 2026 Rafael V. Volkmer <rafael.v.volkmer@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-only
+
+---
+
+# Project clang-tidy policy for C23 / LLVM 22.1+.
+#
+# Query-based CustomChecks were introduced in clang-tidy 22.1 and require:
+#   clang-tidy-22 --experimental-custom-checks ...
+#
+# CI policy: every unsuppressed diagnostic is an error. A NOLINT suppression for
+# a project-review API is expected to point to the corresponding deviation/review.
+
+InheritParentConfig: false
+
+Checks:
+  - '-*'
+
+  # Compiler diagnostics enabled through ExtraArgs below.
+  - 'clang-diagnostic-*'
+
+  # Static analyzer: memory, lifetime, UB, taint, libc, security, Unix APIs.
+  - 'clang-analyzer-*'
+  - '-clang-analyzer-cplusplus.*'
+  - '-clang-analyzer-osx.*'
+  - '-clang-analyzer-webkit.*'
+
+  # Generic C-relevant clang-tidy families.
+  - 'bugprone-*'
+  - 'cert-*'
+  - 'concurrency-*'
+  - 'misc-*'
+  - 'performance-*'
+  - 'portability-*'
+  - 'readability-*'
+
+  # Project-specific AST rules declared below.
+  - 'custom-*'
+
+  # -------------------------------------------------------------------------
+  # Mandatory CSTYLE overrides.
+  # -------------------------------------------------------------------------
+
+  # CSTYLE-026/027 requires #pragma once; this check demands include guards.
+  - '-portability-avoid-pragma-once'
+
+  # CSTYLE-022 permits brace-less bodies for a single simple statement.
+  - '-readability-braces-around-statements'
+
+  # CSTYLE-050 explicitly requires #if defined(...) / #if !defined(...).
+  # This check rewrites those forms to #ifdef/#ifndef/#elifdef/#elifndef.
+  - '-readability-use-concise-preprocessor-directives'
+
+  # CSTYLE-021 intentionally uses explicit parentheses for reviewability.
+  - '-readability-redundant-parentheses'
+
+  # CSTYLE-078 requires an explicit cast for functions returning void *.
+  # CSTYLE-096 also permits justified explicit casts after validation.
+  - '-readability-redundant-casting'
+
+  # CSTYLE-062 permits const scalar parameters when they improve intent.
+  - '-readability-avoid-const-params-in-decls'
+
+  # CSTYLE-007 requires lowercase 'u' for sequential enum values, while
+  # CSTYLE-043 requires uppercase U/ULL/F specifically inside macro literals.
+  # A global uppercase-suffix rule therefore conflicts with the project policy.
+  - '-readability-uppercase-literal-suffix'
+  - '-cert-dcl16-c'
+
+  # Configure the underlying reserved-identifier rule ourselves so that the
+  # project's narrowly allowed __COMPILER_STYLE identifiers are not rejected.
+  - '-cert-dcl37-c'
+
+  # Configure the underlying unsafe-functions rule from the canonical CBAN
+  # table. CERT aliases would otherwise re-enable clang-tidy's broad defaults
+  # and reject project-approved APIs such as checked snprintf/memcpy use.
+  - '-cert-msc24-c'
+  - '-cert-msc33-c'
+
+  # C project: enum-size optimization can silently affect externally visible
+  # representation/ABI decisions. CSTYLE-035..041 own that policy instead.
+  - '-performance-enum-size'
+
+WarningsAsErrors:
+  - '*'
+
+HeaderFilterRegex: '.*'
+ExcludeHeaderFilterRegex: '(^|/)(third_party|vendor|external|generated|build[^/]*)(/|$)'
+SystemHeaders: false
+FormatStyle: file
+HeaderFileExtensions: ['h']
+ImplementationFileExtensions: ['c']
+
+# Keep the translation mode deterministic and surface strict C diagnostics.
+# The compilation database remains authoritative for include paths, defines,
+# target, ABI and other project-specific compiler arguments.
+ExtraArgs:
+  - '-std=c23'
+  - '-Wall'
+  - '-Wextra'
+  - '-Wpedantic'
+  - '-Wconversion'
+  - '-Wsign-conversion'
+  - '-Wcast-align'
+  - '-Wcast-qual'
+  - '-Wformat=2'
+  - '-Wformat-nonliteral'
+  - '-Wformat-security'
+  - '-Wshadow-all'
+  - '-Wstrict-prototypes'
+  - '-Wmissing-prototypes'
+  - '-Wvla'
+  - '-Walloca'
+  - '-Wnull-dereference'
+  - '-Wdouble-promotion'
+  - '-Wfloat-equal'
+  - '-Wswitch-enum'
+  - '-Wswitch-default'
+  - '-Wimplicit-fallthrough'
+  - '-Wunreachable-code-aggressive'
+  - '-Wundef'
+  - '-Wcomma'
+  - '-Wconditional-uninitialized'
+  - '-Wdeclaration-after-statement'
+  - '-Wcast-function-type-strict'
+
+CheckOptions:
+  # -------------------------------------------------------------------------
+  # CSTYLE naming rules that clang-tidy can represent directly.
+  # Function names are composite MODULE_lowerCamelCase and are enforced by a
+  # CustomCheck below because readability-identifier-naming cannot express that
+  # composition with a single Case/Prefix/Suffix setting.
+  # -------------------------------------------------------------------------
+  readability-identifier-naming.IgnoreMainLikeFunctions: 'true'
+  readability-identifier-naming.GetConfigPerFile: 'true'
+
+  readability-identifier-naming.VariableCase: 'lower_case'
+  readability-identifier-naming.LocalVariableCase: 'lower_case'
+  readability-identifier-naming.ParameterCase: 'lower_case'
+  readability-identifier-naming.PointerParameterCase: 'lower_case'
+  readability-identifier-naming.GlobalVariableCase: 'lower_case'
+  readability-identifier-naming.GlobalVariablePrefix: 'g_'
+  readability-identifier-naming.StaticVariableCase: 'lower_case'
+  readability-identifier-naming.ConstantCase: 'lower_case'
+
+  readability-identifier-naming.TypedefCase: 'lower_case'
+  readability-identifier-naming.TypedefSuffix: '_t'
+  readability-identifier-naming.StructCase: 'CamelCase'
+  readability-identifier-naming.EnumCase: 'CamelCase'
+  readability-identifier-naming.UnionCase: 'CamelCase'
+  readability-identifier-naming.EnumConstantCase: 'UPPER_CASE'
+  readability-identifier-naming.MacroDefinitionCase: 'UPPER_CASE'
+  readability-identifier-naming.LabelCase: 'lower_case'
+
+  # CSTYLE-054..057. clang-tidy has no exact cyclomatic-complexity check, so
+  # BranchThreshold is an additional conservative structural gate; cognitive
+  # complexity and parameter count map directly to documented project limits.
+  readability-function-cognitive-complexity.Threshold: '15'
+  readability-function-cognitive-complexity.DescribeBasicIncrements: 'true'
+  readability-function-cognitive-complexity.IgnoreMacros: 'false'
+
+  readability-function-size.LineThreshold: '100'
+  readability-function-size.StatementThreshold: '50'
+  readability-function-size.BranchThreshold: '10'
+  readability-function-size.ParameterThreshold: '5'
+  readability-function-size.NestingThreshold: '4'
+  readability-function-size.VariableThreshold: '20'
+  readability-function-size.IgnoreMacros: 'false'
+
+  # CSTYLE-046: only neutral 0/1 literals are exempt from magic-number policy.
+  # clang-tidy always exempts 0; explicitly reduce its default integer allowlist
+  # from 1,2,3,4 to 1 only.
+  readability-magic-numbers.IgnoredIntegerValues: '1'
+  readability-magic-numbers.IgnorePowersOf2IntegerValues: 'false'
+  readability-magic-numbers.IgnoredFloatingPointValues: '1.0'
+  readability-magic-numbers.IgnoreAllFloatingPointValues: 'false'
+  readability-magic-numbers.IgnoreBitFieldsWidths: 'false'
+  readability-magic-numbers.IgnoreTypeAliases: 'false'
+
+  # CSTYLE permits idiomatic integer truth tests in examples, but pointer
+  # nullability must remain explicit. Keep integer conditions, reject implicit
+  # pointer-to-bool conversion.
+  readability-implicit-bool-conversion.AllowIntegerConditions: 'true'
+  readability-implicit-bool-conversion.AllowPointerConditions: 'false'
+
+  # CSTYLE-097: maximize detection of implicit narrowing/conversion hazards.
+  bugprone-narrowing-conversions.WarnOnIntegerNarrowingConversion: 'true'
+  bugprone-narrowing-conversions.WarnOnIntegerToFloatingPointNarrowingConversion: 'true'
+  bugprone-narrowing-conversions.WarnOnFloatingPointNarrowingConversion: 'true'
+  bugprone-narrowing-conversions.WarnOnEquivalentBitWidth: 'true'
+  bugprone-narrowing-conversions.PedanticMode: 'true'
+  bugprone-narrowing-conversions.IgnoreConversionFromTypes: ''
+
+  # Strict call-site review: adjacent same/convertible parameters are suspicious.
+  bugprone-easily-swappable-parameters.MinimumLength: '2'
+  bugprone-easily-swappable-parameters.IgnoredParameterNames: ''
+
+  # Argument comments, when used, must match exactly; boolean literals receive
+  # explicit argument-name comments when clang-tidy can safely add them.
+  bugprone-argument-comment.StrictMode: 'true'
+  bugprone-argument-comment.CommentBoolLiterals: 'true'
+  bugprone-argument-comment.IgnoreSingleArgument: 'false'
+
+  # CSTYLE-009 allows __ only for compiler/builtin/system information. clang-tidy
+  # cannot infer semantic intent, so only the uppercase project form is exempted;
+  # project review still decides whether each use belongs to an allowed category.
+  bugprone-reserved-identifier.Invert: 'false'
+  bugprone-reserved-identifier.AllowedIdentifiers: '^__[A-Z][A-Z0-9_]*$'
+
+  # CSTYLE-085 canonical CBAN direct-call policy.
+  # Broad clang-tidy defaults are deliberately OFF because they classify several
+  # APIs more aggressively than the mandatory project table (for example
+  # snprintf/memcpy). Only project bans/reviews are encoded here.
+  bugprone-unsafe-functions.ReportDefaultFunctions: 'false'
+  bugprone-unsafe-functions.ReportMoreUnsafeFunctions: 'false'
+  bugprone-unsafe-functions.CustomFunctions: >-
+    ^(gets|_getts|strcpy|wcscpy|_tcscpy|_mbscpy|lstrcpy|StrCpy|strcat|wcscat|_tcscat|_mbscat|lstrcat|StrCat|sprintf|vsprintf|wsprintf|wvsprintf|scanf|vscanf|atoi|atol|atoll|atof|strtok|bcopy|bcmp|alloca|_alloca|system|tmpnam|tempnam|mktemp|_mktemp|asctime|ctime|IsBadReadPtr|IsBadWritePtr)$,,> CSTYLE-085 CBAN direct-call ban: this API is forbidden by project policy;
+    ^(strncpy|wcsncpy|_tcsncpy|_mbsncpy|strncat|wcsncat|fscanf|vfscanf|sscanf|vsscanf|itoa|_itoa|ltoa|_ltoa|ultoa|_ultoa|strtok_r|strsep|bzero|realloc|popen|execlp|execvp|putenv|signal|pthread_cancel|crypt|strerror|localtime|gmtime|_splitpath|_makepath|_fullpath)$,,> CSTYLE-085 CBAN review: use requires an approved documented review or deviation
+
+  # CSTYLE-066: discarded non-void return values are forbidden by default.
+  # This intentionally checks all functions; functions whose contracts prove an
+  # ignorable return require an explicit local deviation/suppression.
+  bugprone-unused-return-value.CheckedFunctions: '.*'
+
+  # Enum check should never discourage the project's explicit sequential form.
+  readability-enum-initial-value.AllowExplicitZeroFirstInitialValue: 'true'
+  readability-enum-initial-value.AllowExplicitSequentialInitialValues: 'true'
+
+  # Keep macro analysis strict; CSTYLE-043..048 treats macros as high-risk code.
+  bugprone-chained-comparison.IgnoreMacros: 'false'
+
+CustomChecks:
+  # CSTYLE-003: functions use MODULE_lowerCamelCase. `main` is the only generic
+  # language entry-point exception encoded here. Platform/ABI callbacks that
+  # require foreign names need a documented NOLINT/custom-function-name.
+  - Name: 'function-name'
+    Query: |
+      match functionDecl(
+        unless(isMain()),
+        unless(matchesName("^[A-Z][A-Z0-9_]*_[a-z][A-Za-z0-9]*$"))
+      ).bind("function")
+    Diagnostic:
+      - BindName: 'function'
+        Message: 'CSTYLE-003: function name must match MODULE_lowerCamelCase'
+        Level: Warning
+
+  # CSTYLE-074: continue always targets a loop and is therefore unambiguously
+  # forbidden. `break` is not encoded here because CSTYLE-075 explicitly permits
+  # switch-case break; clang-query cannot reliably distinguish the nearest break
+  # target in all nested switch/loop arrangements without a semantic custom check.
+  - Name: 'no-continue'
+    Query: |
+      match continueStmt().bind("continue")
+    Diagnostic:
+      - BindName: 'continue'
+        Message: 'CSTYLE-074: continue is forbidden; express loop control in the loop condition/state'
+        Level: Warning
+
+  # CSTYLE-108: variable-length arrays are forbidden.
+  - Name: 'no-vla'
+    Query: |
+      match varDecl(hasType(variableArrayType())).bind("vla")
+    Diagnostic:
+      - BindName: 'vla'
+        Message: 'CSTYLE-108: variable-length arrays are forbidden'
+        Level: Warning
+
+  # CSTYLE-088: function-level static mutable/hidden state is forbidden by
+  # default. A truly exceptional case requires a documented suppression.
+  - Name: 'no-static-local'
+    Query: |
+      match varDecl(isStaticLocal()).bind("static_local")
+    Diagnostic:
+      - BindName: 'static_local'
+        Message: 'CSTYLE-088: function-level static variables are forbidden'
+        Level: Warning
+
+  # CSTYLE-107: local automatic variables must be declared at function scope,
+  # before validation/normal statements. This catches declarations in nested
+  # compound scopes and declarations in a for initializer. The compiler flag
+  # -Wdeclaration-after-statement covers late declarations at top function scope.
+  - Name: 'no-nested-local-declaration'
+    Query: |
+      match varDecl(
+        hasLocalStorage(),
+        anyOf(
+          hasAncestor(forStmt()),
+          hasAncestor(compoundStmt(hasAncestor(compoundStmt())))
+        )
+      ).bind("local")
+    Diagnostic:
+      - BindName: 'local'
+        Message: 'CSTYLE-107: local variables must be declared at function scope before normal statements'
+        Level: Warning
+
+# EOF

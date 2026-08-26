@@ -1,0 +1,16 @@
+{
+  "pythonVersion": "3.10",
+  "typeCheckingMode": "strict",
+  "reportMissingTypeStubs": "none",
+  "reportUnknownMemberType": "warning",
+  "reportUnknownArgumentType": "warning",
+  "reportUnknownVariableType": "warning",
+  "exclude": [
+    "**/.git",
+    "**/.venv",
+    "**/venv",
+    "**/build",
+    "**/dist",
+    "**/vendor"
+  ]
+}

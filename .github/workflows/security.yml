@@ -1,0 +1,251 @@
+# SPDX-FileCopyrightText: © 2026 Rafael V. Volkmer <rafael.v.volkmer@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-only
+
+---
+name: Security
+
+on:
+  push:
+    branches:
+      - "**"
+    tags:
+      - "**"
+  pull_request:
+    branches:
+      - "**"
+  merge_group: {}
+  workflow_dispatch: {}
+
+permissions: {}
+
+concurrency:
+  group: >-
+    ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  GITLEAKS_VERSION: "8.30.1"
+  GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+  ZIZMOR_VERSION: "1.29.0"
+  ZIZMOR_SHA256: "dd96df044a6e8538d5f423790f453bdd03d49e5b2bcc38214acc41a2f1297839"
+  GITTUF_VERSION: "0.15.0"
+  GITTUF_SHA256: "e60629e4d165bf47ac450fde834af20d7c5ff1f08f15d685980c37b9d522ae1d"
+
+jobs:
+  zizmor:
+    name: GitHub Actions security
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install zizmor
+        run: |
+          set -euo pipefail
+
+          archive="zizmor-x86_64-unknown-linux-gnu.tar.gz"
+          destination="${RUNNER_TEMP}/${archive}"
+          base_url="https://github.com/zizmorcore/zizmor/releases/download"
+          url="${base_url}/v${ZIZMOR_VERSION}/${archive}"
+
+          curl \
+            --fail \
+            --silent \
+            --show-error \
+            --location \
+            --proto '=https' \
+            --tlsv1.2 \
+            "${url}" \
+            --output "${destination}"
+
+          printf '%s  %s\n' \
+            "${ZIZMOR_SHA256}" \
+            "${destination}" \
+            | sha256sum --check --strict
+
+          tar \
+            --extract \
+            --gzip \
+            --file="${destination}" \
+            --directory="${RUNNER_TEMP}" \
+            zizmor
+
+      - name: Audit GitHub Actions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          "${RUNNER_TEMP}/zizmor" \
+            --config tools/security/actions/zizmor.yml \
+            --format github \
+            --pedantic \
+            --strict-collection \
+            .github/workflows
+
+  gitleaks:
+    name: Gitleaks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download Gitleaks
+        run: |
+          set -euo pipefail
+
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          destination="${RUNNER_TEMP}/${archive}"
+          url="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${archive}"
+
+          curl \
+            --fail \
+            --silent \
+            --show-error \
+            --location \
+            --proto '=https' \
+            --tlsv1.2 \
+            "${url}" \
+            --output "${destination}"
+
+          printf '%s  %s\n' \
+            "${GITLEAKS_SHA256}" \
+            "${destination}" \
+            | sha256sum --check --strict
+
+          extraction_directory="${RUNNER_TEMP}/gitleaks-release"
+          mkdir --parents "${extraction_directory}"
+
+          tar \
+            --extract \
+            --gzip \
+            --file="${destination}" \
+            --directory="${extraction_directory}"
+
+          install \
+            --mode=0755 \
+            "${extraction_directory}/gitleaks" \
+            "${RUNNER_TEMP}/gitleaks"
+
+      - name: Scan Git history for secrets
+        run: |
+          set -euo pipefail
+
+          "${RUNNER_TEMP}/gitleaks" git \
+            --config tools/security/git/gitleaks.toml \
+            --redact \
+            --verbose \
+            .
+
+  gittuf-policy:
+    name: gittuf policy
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' &&
+       (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Fetch gittuf metadata
+        id: metadata
+        run: |
+          set -euo pipefail
+
+          set +e
+          git ls-remote \
+            --exit-code \
+            --refs \
+            origin \
+            'refs/gittuf/*' \
+            > "${RUNNER_TEMP}/gittuf-refs.txt"
+          ls_remote_status=$?
+          set -e
+
+          if [[ "${ls_remote_status}" -eq 2 ]]; then
+            printf '%s\n' 'initialized=false' >> "${GITHUB_OUTPUT}"
+            printf '%s\n' \
+              'gittuf is not initialized; policy verification is skipped.'
+            exit 0
+          fi
+
+          if [[ "${ls_remote_status}" -ne 0 ]]; then
+            printf '%s\n' 'Failed to query remote gittuf metadata.' >&2
+            exit "${ls_remote_status}"
+          fi
+
+          git fetch \
+            --no-tags \
+            origin \
+            '+refs/gittuf/*:refs/gittuf/*'
+
+          if git show-ref --verify --quiet refs/gittuf/policy; then
+            printf '%s\n' 'initialized=true' >> "${GITHUB_OUTPUT}"
+          else
+            printf '%s\n' 'initialized=false' >> "${GITHUB_OUTPUT}"
+            printf '%s\n' \
+              'gittuf policy ref is absent; policy verification is skipped.'
+          fi
+
+      - name: Download gittuf
+        if: steps.metadata.outputs.initialized == 'true'
+        run: |
+          set -euo pipefail
+
+          filename="gittuf_${GITTUF_VERSION}_linux_amd64"
+          destination="${RUNNER_TEMP}/gittuf"
+          url="https://github.com/gittuf/gittuf/releases/download/v${GITTUF_VERSION}/${filename}"
+
+          curl \
+            --fail \
+            --silent \
+            --show-error \
+            --location \
+            --proto '=https' \
+            --tlsv1.2 \
+            "${url}" \
+            --output "${destination}"
+
+          printf '%s  %s\n' \
+            "${GITTUF_SHA256}" \
+            "${destination}" \
+            | sha256sum --check --strict
+
+          chmod 0755 "${destination}"
+
+      - name: Verify gittuf policy
+        if: steps.metadata.outputs.initialized == 'true'
+        run: |
+          set -euo pipefail
+
+          ref="${GITHUB_REF}"
+
+          if [[ "${ref}" != refs/heads/* && "${ref}" != refs/tags/* ]]; then
+            ref="refs/heads/main"
+          fi
+
+          "${RUNNER_TEMP}/gittuf" verify-ref "${ref}"
+
+# EOF
