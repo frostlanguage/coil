@@ -15,9 +15,9 @@ SPDX-License-Identifier: GPL-3.0-only
 
 ---
 
-# C code style guide
+# C code standard
 
-This document defines the C coding conventions for the project.
+This document defines the C coding standard for the project.
 
 Goals:
 
@@ -26,11 +26,11 @@ Goals:
 - maintainability
 - predictable reviews
 
-Follow this guide unless a module defines a stricter local rule.
+Follow this standard unless a module defines a stricter local rule.
 
 ---
 
-## Guide usage
+## Standard usage
 
 Read the numbered sections in order during module design. During review, open
 its governing section and follow the `Related pitfalls` links for failure modes,
@@ -41,7 +41,11 @@ review notes, static-analysis suppressions, deviation records, and test names.
 The heading states the rule. The identifier gives tooling and documentation a
 stable reference independent of the prose.
 
-The guide separates concerns in this order:
+The document keeps the `CSTYLE-*` prefix as a stable control namespace. The
+file and title rename do not rename existing controls or break references in
+CI, review records, or the pitfall catalog.
+
+The standard separates concerns in this order:
 
 1. style and local code shape;
 2. interfaces, headers, data layout, and ABI;
@@ -56,22 +60,29 @@ The guide separates concerns in this order:
 
 ## Document relationship
 
-The style guide and the pitfall catalog form one review system. The style guide
-states project rules. [Common C Pitfalls](./c-common-pitfalls.md) records the
-failure modes those rules prevent and maps them to CWE and external standards.
+The project uses three C review documents. The [C Code Standard](./c-code-standard.md)
+defines local C rules and stable `CSTYLE-*` controls. The
+[C Module Architecture](./c-module-architecture.md) defines ownership, header,
+build, callback, and symbol boundaries with stable `CMOD-*` controls.
+[Common C Pitfalls](./c-common-pitfalls.md) maps failure modes to the controls
+that prevent or constrain them.
 
 ```mermaid
 flowchart TD
     standards["C23 / CERT C / MISRA C / TS 17961 / domain standards"]
-    guide["C Code Style Guide<br/>CSTYLE-* rules"]
+    standard["C Code Standard<br/>CSTYLE-* rules"]
+    modules["C Module Architecture<br/>CMOD-* rules"]
     implementation["Implementation"]
     review["Code review"]
     pitfalls["Common C Pitfalls<br/>CPIT-* catalog"]
     verification["Static analysis / tests / CI"]
 
-    standards --> guide
-    guide --> implementation
-    guide --> review
+    standards --> standard
+    standard --> modules
+    standard --> implementation
+    modules --> implementation
+    standard --> review
+    modules --> review
     implementation --> pitfalls
     review --> pitfalls
     pitfalls --> verification
@@ -107,11 +118,11 @@ shared state, machine-level hazards, and deterministic initialization.
 
 ## Language model and control-flow rationale
 
-This guide uses the imperative systems-language model for C. Program execution uses
-an ordered sequence of statements that mutate state through assignments, calls,
-branches, loops, and object-lifetime operations. Reviewers, compilers, static
-analyzers, and tests need visible state transitions, ownership transfers, side
-effects, and failure paths.
+This standard uses the imperative systems-language model for C. Program execution
+uses an ordered sequence of statements that mutate state through assignments,
+calls, branches, loops, and object-lifetime operations. Reviewers, compilers,
+static analyzers, and tests need visible state transitions, ownership transfers,
+side effects, and failure paths.
 
 The project uses compile-time typing with weak checks. Translation assigns types
 to expressions and objects. C permits implicit arithmetic conversions, explicit
@@ -130,7 +141,7 @@ vocabulary for generations of C programmers. [MISRA C][misra-c],
 security constraints.
 
 At function level, the project uses Single Entry, Single Exit (SESE) for its
-control-flow discipline. The guide prefers one entry point, one normal exit
+control-flow discipline. The standard prefers one entry point, one normal exit
 label, one return path, a visible `ret` variable, and cleanup through
 `function_output`. This discipline gives the project a concrete coding-rule
 form of structured programming. Sequence, selection, and iteration stay
@@ -147,7 +158,7 @@ in [their PDG work][ferrante-pdg-sese].
 [Program-structure-tree research][johnson-pst-sese] extends the SESE-region
 model.
 
-Follow this guide unless a module defines a stricter local rule.
+Follow this standard unless a module defines a stricter local rule.
 
 ---
 
@@ -202,18 +213,25 @@ size_t payload_bytes = 0u;
 
 **Rule ID:** `CSTYLE-003-1-1-2-functions`
 
-Use the format `MODULE_myFunction`.
+Use the visibility level to choose the module prefix.
 
 Rules:
 
-- `MODULE` in `SCREAMING_CASE`
-- function suffix in `lowerCamelCase`
+- public API functions use `MODULE_myFunction`
+- `MODULE` uses `SCREAMING_CASE`
+- module-internal and private functions use `module_myFunction`
+- the internal `module` prefix uses lowercase project naming
+- every function suffix uses `lowerCamelCase`
+- symbol visibility and export controls, not spelling alone, define the ABI
 
 ```c id=functions-example
-static int MODULE_myFunction(int my_arg);
-static inline int UTIL_parseString(int my_arg);
+static int module_parseValue(int my_arg);
+static inline int util_parseString(int my_arg);
 int NETWORK_sendPacket(int my_arg);
 ```
+
+The [C Module Architecture](./c-module-architecture.md#84-public-symbol-naming-must-reveal-only-the-public-api)
+defines the matching public, internal, and private symbol levels.
 
 #### 1.1.3 Types
 
@@ -226,7 +244,8 @@ typedef enum MemoryStateMachine
 {
     MEM_STATE_STOP  = 0u,
     MEM_STATE_START = 1u,
-    MEM_STATE_IDLE  = 2u
+    MEM_STATE_IDLE  = 2u,
+    MEM_STATE_MAX   = 3u
 } mem_state_t;
 
 typedef struct IntWrapper
@@ -251,8 +270,9 @@ typedef struct IntWrapper
 
 typedef enum UserStatus
 {
-    USER_ACTIVE,
-    USER_INACTIVE
+    USER_ACTIVE   = 0u,
+    USER_INACTIVE = 1u,
+    USER_MAX      = 2u
 } user_status_t;
 ```
 
@@ -267,7 +287,8 @@ typedef enum MemoryStateMachine
 {
     MEM_STATE_STOP  = 0u,
     MEM_STATE_START = 1u,
-    MEM_STATE_IDLE  = 2u
+    MEM_STATE_IDLE  = 2u,
+    MEM_STATE_MAX   = 3u
 } mem_state_t;
 ```
 
@@ -315,16 +336,23 @@ function_output:
 
 Use `SCREAMING_CASE`.
 
-Use prefix `__` only for:
+Project identifiers must never begin with `__` or with `_` followed by an
+uppercase letter. Those forms belong to namespaces reserved for the C
+implementation.
 
-- compiler attributes
-- compiler built-ins
-- general system/compiler information
+When a project-defined macro or adapter symbol needs an explicit marker for
+compiler, platform, or system-specific behavior, use the suffix `__` instead.
+The suffix is part of the project naming convention and does not grant access
+to implementation-reserved namespaces.
+
+Compiler-provided spellings such as `__attribute__` and `__builtin_*` are not
+project identifiers. They may appear only inside compiler adapter code and must
+be hidden behind project-defined names before ordinary project code uses them.
 
 ```c id=macros-and-defines-example
-#define MAX_LEN           ((size_t)(10U))
-#define MAX_LEN_SUM(len_) ((size_t)(10U + (len_)))
-#define __VERSION_CHECK   ((uint32_t)(100U))
+#define MAX_LEN         ((size_t)(10U))
+#define BUFFER_ALIGN    ((size_t)(8U))
+#define VERSION_CHECK__ ((uint32_t)(100U))
 ```
 
 #### 1.1.9 Macro Arguments
@@ -334,8 +362,8 @@ Use prefix `__` only for:
 Use `snake_case` and end with `_`.
 
 ```c id=macro-arguments-example
-#define MAKE_A_SUM(num0_, num1_) \
-    ((size_t)((num0_) + (num1_)))
+#define STRINGIFY_TOKEN(token_) \
+    #token_
 ```
 
 #### 1.1.10 File Names
@@ -441,16 +469,14 @@ Break long lines at logical boundaries:
 - array initializers
 
 ```c id=long-line-breaking-example
-#define EX_DEFAULT_VALUE  ((int)(10U))
+int ret = EXIT_SUCCESS;
 
-int result = EX_performComplexCalculation(input_value1,
-                                          input_value2,
-                                          input_value3,
-                                          config_ptr);
-
-size_t total_size =
-    (sizeof(buffer_t) * buffer_count) +
-    (sizeof(metadata_t) * metadata_count);
+ret = EX_performComplexCalculation(input_value_a,
+                                   input_value_b,
+                                   input_value_c,
+                                   config_ptr);
+if (ret != EXIT_SUCCESS)
+    goto function_output;
 ```
 
 #### 1.2.3 Continued-Line Indentation
@@ -465,10 +491,12 @@ Prefer:
 - one additional indentation level
 
 ```c id=continued-line-indentation-prefer
-size_t total =
-    a_long_variable_name +
-    another_variable +
-    yet_another_variable;
+bool is_ready = false;
+
+is_ready =
+    has_input &&
+    has_capacity &&
+    is_initialized;
 ```
 
 #### 1.2.4 Long Strings
@@ -532,8 +560,11 @@ Correct:
 ```c id=spaces-around-operators-correct
 #define EX_DEFAULT_VALUE  ((int)(10U))
 
-int sum = a + b;
-int product = x * y;
+bool is_equal = false;
+bool is_ready = false;
+
+is_equal = (value_a == value_b);
+is_ready = is_enabled && has_input;
 
 if (value == EX_DEFAULT_VALUE)
     EX_doSomething();
@@ -561,7 +592,16 @@ expressions.
 Correct:
 
 ```c id=parentheses-in-expressions-correct
-int total = ((value_a + value_b) * (value_c - value_d));
+#define EX_VALUE_A  ((uint32_t)(1U))
+#define EX_VALUE_B  ((uint32_t)(2U))
+#define EX_VALUE_C  ((uint32_t)(3U))
+#define EX_VALUE_D  ((uint32_t)(1U))
+
+uint32_t total = 0u;
+
+total =
+    ((EX_VALUE_A + EX_VALUE_B) *
+     (EX_VALUE_C - EX_VALUE_D));
 
 if ((value_x > value_y) && (value_y != 0))
     EX_doSomething();
@@ -589,15 +629,13 @@ Rules:
 Correct:
 
 ```c id=single-line-if-and-loop-bodies-correct
-#define EX_ERROR_VALUE  ((int)(-EINVAL))
-
 size_t index = 0u;
 
 if (flag)
-    return EX_ERROR_VALUE;
+    EX_doSomething();
 
 for (index = 0u; index < count; index++)
-    sum += array[index];
+    flags[index] = false;
 
 if (flag)
 {
@@ -631,10 +669,11 @@ Keep `*` attached to the variable name.
 Correct:
 
 ```c id=pointer-position-correct
-int *ptr1;
-int *ptr2;
-char *buffer;
-int *const ptr = NULL;
+int data = 0;
+int *ptr1 = (int *)(NULL);
+int *ptr2 = (int *)(NULL);
+char *buffer = (char *)(NULL);
+int *const ptr = &data;
 ```
 
 Not acceptable:
@@ -697,43 +736,22 @@ This section defines header, module boundary, and binary interface rules.
 
 **Rule ID:** `CSTYLE-026-2-1-1-header-inclusion-policy`
 
-Use `#pragma once` in header files instead of traditional include guards.
+Use standard preprocessor include guards in project header files.
 
 Rules:
 
-- every project header must start with `#pragma once`
-- do not add `#ifndef`, `#define`, or `#endif` include guards in new headers
-- when touching an old header, prefer migrating it to `#pragma once`
+- every project header must define one unique include guard
+- derive the guard from the project, module, and header name when needed
+- use `SCREAMING_CASE` and end header guard identifiers with `_H`
+- use explicit `#if !defined(...)` instead of `#ifndef`
+- do not use `#pragma once` as the project header-inclusion mechanism
+- when touching an old project header, migrate `#pragma once` to an include
+  guard unless an external or generated file must remain unchanged
+
+Prefer:
 
 ```c id=header-inclusion-policy-example
-#pragma once
-
-#include <stdint.h>
-
-typedef struct AppConfig
-{
-    uint32_t id;
-} app_config_t;
-```
-
-#### 2.1.2 Advantages of `#pragma once`
-
-**Rule ID:** `CSTYLE-027-2-1-2-advantages-of-pragma-once`
-
-Prefer `#pragma once` because it improves header maintenance.
-
-Advantages:
-
-- less boilerplate
-- lower risk of copy-paste mistakes in guard names
-- easier to read at the top of the file
-- avoids duplicated or inconsistent macro guard identifiers
-- clearly expresses the intent that the file must be included only once
-
-Avoid:
-
-```c id=advantages-of-pragma-once-avoid
-#ifndef APP_CONFIG_H
+#if !defined(APP_CONFIG_H)
 #define APP_CONFIG_H
 
 #include <stdint.h>
@@ -744,6 +762,43 @@ typedef struct AppConfig
 } app_config_t;
 
 #endif
+```
+
+#### 2.1.2 Advantages of Include Guards
+
+**Rule ID:** `CSTYLE-027-2-1-2-advantages-of-include-guards`
+
+Include guards are the project default because they use standard C
+preprocessing facilities and do not require a compiler-specific pragma.
+
+Advantages:
+
+- work through standard preprocessing directives across conforming toolchains
+- keep header inclusion independent of compiler-specific `#pragma once`
+  behavior
+- give each public header an explicit and reviewable identity macro
+- remain predictable in generated, copied, vendored, or unusual build layouts
+- align with the project's explicit `defined(...)` preprocessor style
+
+The guard name must be unique enough to avoid collisions with other project,
+third-party, generated, or platform headers. Add a project or module prefix
+when the file name alone does not provide sufficient uniqueness.
+
+`#pragma once` is widely supported by common compilers, but it is not the
+project default because ISO C does not standardize the `once` pragma semantics.
+Portable project headers must not depend on that extension.
+
+Avoid:
+
+```c id=advantages-of-include-guards-avoid
+#pragma once
+
+#include <stdint.h>
+
+typedef struct AppConfig
+{
+    uint32_t id;
+} app_config_t;
 ```
 
 #### 2.1.3 Include Order
@@ -814,17 +869,56 @@ functions in a dedicated adapter header or module.
 Prefer:
 
 ```c id=external-dependency-wrappers-prefer
-#pragma once
+#if !defined(SSL_WRAPPER_H)
+#define SSL_WRAPPER_H
+
+#include <errno.h>
+#include <stdlib.h>
 
 #include <openssl/ssl.h>
 
-#define SSL_WRAP_INIT() \
-    SSL_library_init()
-
-static inline SSL_CTX *SSL_WRAP_ctxNew(void)
+static inline int SSL_WRAP_ctxNew(SSL_CTX **ctx_out)
 {
-    return SSL_CTX_new(SSLv23_client_method());
+    int ret = EXIT_SUCCESS;
+
+    SSL_CTX *ctx = (SSL_CTX *)(NULL);
+
+    if (ctx_out == (SSL_CTX **)(NULL))
+    {
+        ret = -EINVAL;
+        goto function_output;
+    }
+
+    if (*ctx_out != (SSL_CTX *)(NULL))
+    {
+        ret = -EINVAL;
+        goto function_output;
+    }
+
+    ctx = SSL_CTX_new(TLS_client_method());
+    if (ctx == (SSL_CTX *)(NULL))
+    {
+        ret = -EIO;
+        goto function_output;
+    }
+
+    *ctx_out = ctx;
+
+function_output:
+    return ret;
 }
+
+static inline void SSL_WRAP_ctxFree(SSL_CTX **ctx)
+{
+    if ((ctx != (SSL_CTX **)(NULL)) &&
+        (*ctx != (SSL_CTX *)(NULL)))
+    {
+        SSL_CTX_free(*ctx);
+        *ctx = (SSL_CTX *)(NULL);
+    }
+}
+
+#endif
 ```
 
 Usage:
@@ -832,14 +926,22 @@ Usage:
 ```c id=external-dependency-wrappers-usage
 #include "ssl_wrapper.h"
 
+#include <stdlib.h>
+
 int APP_main(void)
 {
-    SSL_CTX *ctx = NULL;
+    int ret = EXIT_SUCCESS;
 
-    SSL_WRAP_INIT();
-    ctx = SSL_WRAP_ctxNew();
+    SSL_CTX *ctx = (SSL_CTX *)(NULL);
 
-    return 0;
+    ret = SSL_WRAP_ctxNew(&ctx);
+    if (ret != EXIT_SUCCESS)
+        goto function_output;
+
+function_output:
+    SSL_WRAP_ctxFree(&ctx);
+
+    return ret;
 }
 ```
 
@@ -1093,14 +1195,46 @@ function.
 Prefer:
 
 ```c id=struct-serialization-prefer
-uint8_t buffer[6] = { 0u };
+#define PACKET_SERIALIZED_SIZE_BYTES  ((size_t)(6U))
 
-buffer[0] = (uint8_t)((packet.id >> 24u) & 0xFFu);
-buffer[1] = (uint8_t)((packet.id >> 16u) & 0xFFu);
-buffer[2] = (uint8_t)((packet.id >> 8u) & 0xFFu);
-buffer[3] = (uint8_t)(packet.id & 0xFFu);
-buffer[4] = (uint8_t)((packet.size >> 8u) & 0xFFu);
-buffer[5] = (uint8_t)(packet.size & 0xFFu);
+int PACKET_serialize(const packet_t *packet,
+                     uint8_t *buffer,
+                     size_t buffer_size)
+{
+    int ret = EXIT_SUCCESS;
+
+    size_t offset = 0u;
+
+    if ((packet == (const packet_t *)(NULL)) ||
+        (buffer == (uint8_t *)(NULL)))
+    {
+        ret = -EINVAL;
+        goto function_output;
+    }
+
+    if (buffer_size < PACKET_SERIALIZED_SIZE_BYTES)
+    {
+        ret = -ENOSPC;
+        goto function_output;
+    }
+
+    ret = BYTE_writeU32Be(buffer,
+                          buffer_size,
+                          &offset,
+                          packet->id);
+    if (ret != EXIT_SUCCESS)
+        goto function_output;
+
+    ret = BYTE_writeU16Be(buffer,
+                          buffer_size,
+                          &offset,
+                          packet->size);
+    if (ret != EXIT_SUCCESS)
+        goto function_output;
+
+function_output:
+    return ret;
+}
 ```
 
 Or:
@@ -1231,31 +1365,38 @@ Rules:
 Use `do { ... } while (0)` for macros without return value.
 
 ```c id=multi-statement-macros-example
-#define LOG_ERROR(msg_)                         \
-    do                                          \
-    {                                           \
-        fprintf(stderr, "ERROR: %s\n", (msg_)); \
-        exit(EXIT_FAILURE);                     \
+#define APP_ASSIGN_PAIR(first_ptr_, first_value_, \
+                        second_ptr_, second_value_) \
+    do                                                \
+    {                                                 \
+        *(first_ptr_) = (first_value_);               \
+        *(second_ptr_) = (second_value_);             \
     } while (0)
 ```
 
 Use `({ ... })` only when the compiler/project allows it and the macro must
-return a value.
+return a value. Because this is compiler-specific behavior, the project macro
+uses the trailing `__` adapter marker.
 
 ```c id=multi-statement-macros-example-2
-#define DOUBLE(value_)             \
-    ({                             \
-        typeof(value_) _tmp =      \
-            (value_);              \
-        (_tmp + _tmp);             \
+#define MIN_VALUE__(value_a_, value_b_) \
+    ({                                    \
+        typeof(value_a_) value_a_tmp =    \
+            (value_a_);                   \
+        typeof(value_b_) value_b_tmp =    \
+            (value_b_);                   \
+        (value_a_tmp < value_b_tmp)       \
+            ? value_a_tmp                 \
+            : value_b_tmp;                \
     })
 ```
 
-The temporary assignment pattern, such as
-`typeof(value_) _tmp = (value_)`, is used to evaluate the macro argument
-only once. This prevents bugs caused by side effects in expressions like
-`i++`, function calls, or other non-trivial arguments. It also preserves
-the original argument type and makes the macro behavior more predictable.
+The temporary assignment pattern evaluates each macro argument only once.
+This prevents repeated-evaluation bugs and preserves the original argument
+type. Callers still must not pass side-effecting expressions into macro
+arguments. The block-scoped temporaries in this GNU statement expression are
+part of the documented compiler-adapter deviation and are not permitted in
+ordinary project functions.
 
 #### 3.1.3 Preprocessor Restrictions
 
@@ -1364,14 +1505,15 @@ Rules:
 Prefer:
 
 ```c id=token-pasting-and-stringification-prefer
-#define REGISTER_FUNC(name_)                    \
-    void app_func_##name_(void)                \
-    {                                          \
-        fprintf(stdout, "Function %s called\n", #name_); \
+#define APP_DECLARE_FLAG(name_, bit_) \
+    enum                              \
+    {                                 \
+        APP_FLAG_##name_ =            \
+            (1U << (bit_))            \
     }
 
-REGISTER_FUNC(foo)
-REGISTER_FUNC(bar)
+APP_DECLARE_FLAG(READ, 0U);
+APP_DECLARE_FLAG(WRITE, 1U);
 ```
 
 Why this rule exists:
@@ -1407,11 +1549,14 @@ flags = SET_MASK(register_value, get_mask());
 Prefer:
 
 ```c id=no-side-effects-in-macro-arguments-prefer
-uint32_t value_a_tmp = value_a;
-uint32_t mask = get_mask();
+uint32_t mask = 0u;
+uint32_t value_a_tmp = 0u;
 
-result = MAX(value_a_tmp, value_b);
-flags = SET_MASK(register_value, mask);
+value_a_tmp = value_a;
+mask = MASK_getCurrent();
+
+result = UTIL_MAX(value_a_tmp, value_b);
+flags = REG_SET_MASK(register_value, mask);
 ```
 
 ### 3.2 Conditional Compilation
@@ -1436,9 +1581,9 @@ Prefer:
 
 ```c id=preprocessor-conditionals-prefer
 #if defined(CONFIG_FEATURE_X)
-int feature_value = 1;
+#define APP_FEATURE_X_ENABLED  ((int)(1))
 #elif !defined(CONFIG_FEATURE_X)
-int feature_value = 0;
+#define APP_FEATURE_X_ENABLED  ((int)(0))
 #endif
 ```
 
@@ -1498,9 +1643,12 @@ Why this rule exists:
 
 **Rule ID:** `CSTYLE-052-3-3-compiler-extensions`
 
-Compiler extensions are forbidden in portable code.
+Compiler extensions are forbidden in portable implementation code.
+Project headers use standard include guards under
+`CSTYLE-026-2-1-1-header-inclusion-policy` and do not rely on `#pragma once`.
 
-Allowed only behind portability macros or compiler adapter headers:
+Compiler-specific tokens are allowed only behind portability macros or compiler
+adapter headers:
 
 - attributes
 - builtins
@@ -1508,13 +1656,21 @@ Allowed only behind portability macros or compiler adapter headers:
 - checked arithmetic builtins
 - alignment builtins
 
+Project-defined adapter identifiers that expose compiler or platform behavior
+use the trailing `__` marker. Project identifiers must never copy the reserved
+leading-underscore form used by compiler-provided tokens.
+
 GNU-only constructs such as `typeof` and `({ ... })` require a documented
 deviation or must be isolated in compiler adapter headers.
+
+The following definition belongs in a compiler adapter header. The
+implementation-reserved token stays inside the adapter, while project code sees
+only `MEM_ATTR_PRINTF__`.
 
 Prefer:
 
 ```c id=compiler-extensions-prefer
-#define MEM_ATTR_PRINTF(fmt_idx_, arg_idx_) \
+#define MEM_ATTR_PRINTF__(fmt_idx_, arg_idx_) \
     __attribute__((format(printf, fmt_idx_, arg_idx_)))
 ```
 
@@ -1564,18 +1720,25 @@ Maximum recommended threshold: `10`
 ```c id=cyclomatic-complexity-example
 int EX_complexFunction(int value_a, int value_b, int value_c)
 {
+    int ret = EXIT_SUCCESS;
+
+    bool is_running = true;
+
     if (value_a > 0)
     {
         if (value_b > 0)
         {
-            while (value_c > 0)
+            while ((value_c > 0) && is_running)
             {
-                /* multiple nested paths */
+                value_c--;
+                if (value_c == 0)
+                    is_running = false;
             }
         }
     }
 
-    return (value_a + value_b + value_c);
+function_output:
+    return ret;
 }
 ```
 
@@ -1592,10 +1755,11 @@ Maximum recommended threshold: `15`
 int EX_complexFunction(int *array, size_t size, int flag)
 {
     int ret = EXIT_SUCCESS;
+
     size_t index_i = 0u;
     size_t index_j = 0u;
 
-    if (array == NULL)
+    if (array == (int *)(NULL))
     {
         ret = -EINVAL;
         goto function_output;
@@ -1611,14 +1775,10 @@ int EX_complexFunction(int *array, size_t size, int flag)
         {
             for (index_j = 0u; index_j < size; index_j++)
             {
-                if (index_i != index_j)
+                if ((index_i != index_j) &&
+                    (array[index_j] > EX_ARRAY_MAX))
                 {
-                    array[index_i] += array[index_j];
-
-                    if (array[index_i] > EX_ARRAY_MAX)
-                    {
-                        array[index_i] = EX_ARRAY_MAX;
-                    }
+                    array[index_i] = EX_ARRAY_MAX;
                 }
             }
         }
@@ -1801,10 +1961,11 @@ ret = FILE_read(buffer, size);
 if (ret != EXIT_SUCCESS)
     goto function_output;
 
-index++;
-
 while (index < size)
+{
     EX_doSomething();
+    index++;
+}
 ```
 
 #### 4.1.5 Const Parameters
@@ -1871,13 +2032,18 @@ int FRAME_encode(uint8_t *buffer);
 
 **Rule ID:** `CSTYLE-064-4-1-7-return-convention`
 
-Default rule:
+Default rule for fallible project operations:
 
 - functions should return `int`
 - use negative POSIX-style error codes
 - avoid multiple returns
 - use `ret`
 - exit through `function_output`
+
+Callbacks, interrupt handlers, and infallible accessors or predicates may use a
+return type required by their domain contract. This exception does not permit
+hidden failure channels or multiple ad hoc exits. If an operation can fail,
+prefer the normal `ret` plus `function_output` convention.
 
 ```c id=return-convention-example
 #include <errno.h>
@@ -1887,7 +2053,7 @@ int EX_processItem(int *item, size_t size)
 {
     int ret = EXIT_SUCCESS;
 
-    if (item == NULL)
+    if (item == (int *)(NULL))
     {
         ret = -EINVAL;
         goto function_output;
@@ -1985,12 +2151,14 @@ Rules:
 Prefer:
 
 ```c id=logging-and-assertions-prefer
-assert(buffer != NULL);
+assert(buffer != (uint8_t *)(NULL));
 
 ret = STORAGE_read(block_id, data);
 if (ret != EXIT_SUCCESS)
 {
-    LOG_ERROR("STORAGE_read failed: block_id=%u ret=%d", block_id, ret);
+    LOG_ERROR("STORAGE_read failed: block_id=%u ret=%d",
+              block_id,
+              ret);
     goto function_output;
 }
 ```
@@ -2037,15 +2205,22 @@ MEM_log(level, user_input);
 Prefer:
 
 ```c id=format-string-safety-prefer
-printf("%s", user_input);
-MEM_log(level, "%s", user_input);
+if (user_input == (const char *)(NULL))
+{
+    ret = -EINVAL;
+    goto function_output;
+}
+
+ret = MEM_log(level, "%s", user_input);
+if (ret != EXIT_SUCCESS)
+    goto function_output;
 ```
 
 Example logging wrapper:
 
 ```c id=format-string-safety-wrapper-example
-__attribute__((format(printf, 2, 3)))
-void MEM_log(mem_log_level_e level, const char *fmt, ...);
+MEM_ATTR_PRINTF__(2, 3)
+int MEM_log(mem_log_level_t level, const char *fmt, ...);
 ```
 
 #### Analyzability
@@ -2096,7 +2271,7 @@ file_op_ret_t FILE_openFile(const char *path)
 {
     file_op_ret_t ret = FILE_OP_RET_SUCCESS;
 
-    if (path == NULL)
+    if (path == (const char *)(NULL))
     {
         ret = FILE_OP_RET_INVALID_PATH;
         goto function_output;
@@ -2181,7 +2356,10 @@ Prefer:
 bool is_running = true;
 
 while (is_running)
+{
     EX_doSomething();
+    is_running = EX_shouldContinue();
+}
 ```
 
 Avoid:
@@ -2209,7 +2387,11 @@ Why this rule exists:
 - [CPIT-046: Infinite loop without progress](./c-common-pitfalls.md#cpit-046-infinite-loop-without-progress)
 - [CPIT-083: Unbounded blocking](./c-common-pitfalls.md#cpit-083-unbounded-blocking)
 
-Do not use `break` or `continue`.
+Do not use `break` or `continue` to alter loop control.
+
+This prohibition applies to iteration statements. `break` remains permitted
+and normally required to terminate `switch` cases under
+`CSTYLE-075-4-1-16-switch-statements`.
 
 Goals:
 
@@ -2220,17 +2402,23 @@ Goals:
 Prefer:
 
 ```c id=loop-control-prefer
+bool condition_matches = false;
 bool is_running = true;
-
-while (is_running)
-    EX_doSomething();
-
 bool should_continue = true;
 size_t index = 0u;
 
-for (index = 0u; (index < size) && should_continue; index++)
+while (is_running)
 {
-    if (check_condition(array[index]))
+    EX_doSomething();
+    is_running = EX_shouldContinue();
+}
+
+for (index = 0u;
+     (index < size) && should_continue;
+     index++)
+{
+    condition_matches = EX_checkCondition(array[index]);
+    if (condition_matches)
         should_continue = false;
 }
 ```
@@ -2315,10 +2503,22 @@ Always verify the result of dynamic allocation.
 Prefer:
 
 ```c id=allocation-rules-prefer
-int *buffer = NULL;
+int *buffer = (int *)(NULL);
 
-buffer = (int *)malloc(sizeof(*buffer) * count);
-if (buffer == NULL)
+size_t alloc_size = 0u;
+bool has_overflow = false;
+
+has_overflow = ARITH_mulSize(count,
+                             sizeof(*buffer),
+                             &alloc_size);
+if (has_overflow)
+{
+    ret = -ENOMEM;
+    goto function_output;
+}
+
+buffer = (int *)malloc(alloc_size);
+if (buffer == (int *)(NULL))
 {
     ret = -ENOMEM;
     goto function_output;
@@ -2335,9 +2535,14 @@ destination pointer type explicitly.
 Prefer:
 
 ```c id=cast-void-return-values-prefer
-int *buffer = NULL;
+int *buffer = (int *)(NULL);
 
-buffer = (int *)malloc(sizeof(*buffer) * count);
+buffer = (int *)malloc(sizeof(*buffer));
+if (buffer == (int *)(NULL))
+{
+    ret = -ENOMEM;
+    goto function_output;
+}
 ```
 
 Avoid:
@@ -2364,10 +2569,33 @@ Never write the pointed type manually in allocation expressions.
 
 All allocation size arithmetic must be checked before use.
 
+Use project checked-arithmetic helpers such as `ARITH_mulSize()` in ordinary
+code. Compiler-specific overflow builtins belong behind the compiler adapter
+layer defined by `CSTYLE-052-3-3-compiler-extensions`.
+
 Prefer:
 
 ```c id=allocation-size-safety-prefer
-ptr = malloc(sizeof(*ptr) * count);
+item_t *ptr = (item_t *)(NULL);
+
+size_t alloc_size = 0u;
+bool has_overflow = false;
+
+has_overflow = ARITH_mulSize(count,
+                             sizeof(*ptr),
+                             &alloc_size);
+if (has_overflow)
+{
+    ret = -ENOMEM;
+    goto function_output;
+}
+
+ptr = (item_t *)malloc(alloc_size);
+if (ptr == (item_t *)(NULL))
+{
+    ret = -ENOMEM;
+    goto function_output;
+}
 ```
 
 Avoid:
@@ -2379,15 +2607,26 @@ ptr = malloc(sizeof(int) * count);
 Use checked multiplication before calculating `count * sizeof(*ptr)`.
 
 ```c id=allocation-size-safety-checked-example
-size_t alloc_size = 0u;
+item_t *ptr = (item_t *)(NULL);
 
-if (__builtin_mul_overflow(count, sizeof(*ptr), &alloc_size))
+size_t alloc_size = 0u;
+bool has_overflow = false;
+
+has_overflow = ARITH_mulSize(count,
+                             sizeof(*ptr),
+                             &alloc_size);
+if (has_overflow)
 {
     ret = -ENOMEM;
     goto function_output;
 }
 
 ptr = (item_t *)malloc(alloc_size);
+if (ptr == (item_t *)(NULL))
+{
+    ret = -ENOMEM;
+    goto function_output;
+}
 ```
 
 #### 5.1.4 `realloc` Safety
@@ -2410,10 +2649,22 @@ Rules:
 Prefer:
 
 ```c id=realloc-safety-prefer
-int *tmp_ptr = NULL;
+int *tmp_ptr = (int *)(NULL);
 
-tmp_ptr = (int *)realloc(buffer, sizeof(*buffer) * new_count);
-if (tmp_ptr == NULL)
+size_t alloc_size = 0u;
+bool has_overflow = false;
+
+has_overflow = ARITH_mulSize(new_count,
+                             sizeof(*buffer),
+                             &alloc_size);
+if (has_overflow)
+{
+    ret = -ENOMEM;
+    goto function_output;
+}
+
+tmp_ptr = (int *)realloc(buffer, alloc_size);
+if (tmp_ptr == (int *)(NULL))
 {
     ret = -ENOMEM;
     goto function_output;
@@ -2567,7 +2818,7 @@ Use safer alternatives and keep buffer size explicit at the call site.
 
 This standard-library policy complements:
 
-- [C Code Style Guide](./c-code-style.md)
+- [C Code Standard](./c-code-standard.md)
 - [Common C Pitfalls](./c-common-pitfalls.md)
 - Test, Metrics, and Verification Architecture
 - static-analysis configuration
@@ -2830,8 +3081,22 @@ Prefer:
 ```c id=string-handling-prefer
 int written = 0;
 
-written = snprintf(path, path_size, "%s/%s", dir_path, file_name);
-if ((written < 0) || ((size_t)written >= path_size))
+if ((path == (char *)(NULL)) ||
+    (dir_path == (const char *)(NULL)) ||
+    (file_name == (const char *)(NULL)) ||
+    (path_size == 0u))
+{
+    ret = -EINVAL;
+    goto function_output;
+}
+
+written = snprintf(path,
+                   path_size,
+                   "%s/%s",
+                   dir_path,
+                   file_name);
+if ((written < 0) ||
+    ((size_t)written >= path_size))
 {
     ret = -ENOSPC;
     goto function_output;
@@ -2876,17 +3141,32 @@ Rules:
 Prefer:
 
 ```c id=state-visibility-prefer
-static int g_global_counter = 0;
-static bool g_is_initialized = false;
-
-static int EX_helperCompute(int value)
+typedef struct ExampleState
 {
-    return (value * 2);
-}
+    uint32_t counter;
+    bool is_initialized;
+} example_state_t;
 
-void EX_increment(int *counter)
+int EX_increment(example_state_t *state)
 {
-    (*counter)++;
+    int ret = EXIT_SUCCESS;
+
+    if (state == (example_state_t *)(NULL))
+    {
+        ret = -EINVAL;
+        goto function_output;
+    }
+
+    if (state->counter == UINT32_MAX)
+    {
+        ret = -ERANGE;
+        goto function_output;
+    }
+
+    state->counter++;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -2948,7 +3228,9 @@ Prefer:
 
 ```c id=volatile-rules-prefer
 volatile uint32_t *reg_status =
-    (volatile uint32_t *)register_base;
+    (volatile uint32_t *)(NULL);
+
+reg_status = MMIO_getStatusRegister();
 ```
 
 ### 6.3 Thread Safety Documentation
@@ -3005,13 +3287,23 @@ Rules:
 Prefer:
 
 ```c id=thread-lifecycle-and-cleanup-prefer
+int cleanup_ret = EXIT_SUCCESS;
+
 ret = MEM_threadRegister(thread_ctx);
 if (ret != EXIT_SUCCESS)
     goto function_output;
 
 /* Thread work. */
 
-MEM_threadDeregister(thread_ctx);
+cleanup_ret = MEM_threadDeregister(thread_ctx);
+if ((ret == EXIT_SUCCESS) &&
+    (cleanup_ret != EXIT_SUCCESS))
+{
+    ret = cleanup_ret;
+}
+
+function_output:
+    return ret;
 ```
 
 ### 6.5 Synchronization Rules
@@ -3045,14 +3337,34 @@ Rules:
 Prefer:
 
 ```c id=synchronization-rules-prefer
-pthread_mutex_lock(&queue_mutex);
+bool is_locked = false;
+int unlock_ret = EXIT_SUCCESS;
 
-while (queue_is_empty == true)
+ret = THREAD_mutexLock(&queue_mutex);
+if (ret != EXIT_SUCCESS)
+    goto function_output;
+
+is_locked = true;
+
+while (queue_is_empty)
 {
-    pthread_cond_wait(&queue_cond, &queue_mutex);
+    ret = THREAD_condWait(&queue_cond, &queue_mutex);
+    if (ret != EXIT_SUCCESS)
+        goto function_output;
 }
 
-pthread_mutex_unlock(&queue_mutex);
+function_output:
+    if (is_locked)
+    {
+        unlock_ret = THREAD_mutexUnlock(&queue_mutex);
+        if ((ret == EXIT_SUCCESS) &&
+            (unlock_ret != EXIT_SUCCESS))
+        {
+            ret = unlock_ret;
+        }
+    }
+
+    return ret;
 ```
 
 Atomic publication example:
@@ -3126,12 +3438,17 @@ static volatile uint32_t g_event_flags = 0u;
 
 void ISR_onEvent(void)
 {
-    g_event_flags |= EVENT_FLAG_RX;
+    ISR_ATOMIC_fetchOrU32(&g_event_flags, EVENT_FLAG_RX);
 }
 ```
 
-The read, clear, or update side in normal context must still use an atomic
-or critical-section strategy when required by the platform.
+`ISR_ATOMIC_fetchOrU32()` represents a platform adapter whose contract must
+prove that the read-modify-write operation is atomic and safe in interrupt
+context on the supported target. `volatile` alone does not provide that
+atomicity.
+
+The read, clear, or update side in normal context must still use the same
+platform-approved atomic or critical-section strategy.
 
 ### 6.7 Signal Handler Safety
 
@@ -3180,11 +3497,31 @@ Rules:
 - pointer/integer conversions in adapter modules must document width,
   alignment, and provenance assumptions
 
+The example below assumes `raw_value` is a signed integer type and that
+`base_ptr` names suitably aligned object storage.
+
 Prefer:
 
 ```c id=cast-rules-prefer
-value_u32 = (uint32_t)raw_value;
+uint8_t *buffer_ptr = (uint8_t *)(NULL);
 
+uint32_t value_u32 = 0u;
+uint64_t checked_value = 0u;
+
+if (raw_value < 0)
+{
+    ret = -ERANGE;
+    goto function_output;
+}
+
+checked_value = (uint64_t)raw_value;
+if (checked_value > (uint64_t)UINT32_MAX)
+{
+    ret = -ERANGE;
+    goto function_output;
+}
+
+value_u32 = (uint32_t)checked_value;
 buffer_ptr = (uint8_t *)base_ptr;
 ```
 
@@ -3224,16 +3561,29 @@ Rules:
 - enum/integer conversions require validation
 - pointer/integer conversions are forbidden outside low-level modules
 
+The example below assumes `value` is an `int32_t` or another signed integer
+whose nonnegative values are representable in `uint32_t`.
+
 Prefer:
 
 ```c id=numeric-conversion-rules-prefer
-if ((value < 0) || (value > (int)UINT16_MAX))
+uint16_t value_u16 = 0u;
+uint32_t value_u32 = 0u;
+
+if (value < 0)
 {
     ret = -ERANGE;
     goto function_output;
 }
 
-value_u16 = (uint16_t)value;
+value_u32 = (uint32_t)value;
+if (value_u32 > (uint32_t)UINT16_MAX)
+{
+    ret = -ERANGE;
+    goto function_output;
+}
+
+value_u16 = (uint16_t)value_u32;
 ```
 
 Avoid:
@@ -3343,9 +3693,9 @@ counter = counter++ + 1;
 Rules:
 
 - validate array indexes before access
-- initialize pointers to `NULL` or a valid address before use
+- initialize pointers to typed `NULL` or a valid address before use
 - validate pointers before dereference
-- set pointers to `NULL` after `free` when practical
+- set pointers to typed `NULL` after `free` when practical
 - keep expressions simple and explicit
 - never rely on signed overflow behavior
 - never shift by a count greater than or equal to the type width
@@ -3360,14 +3710,21 @@ if (index < ARRAY_MAX)
 
 ```c id=undefined-behavior-avoidance-example-2
 free(buffer);
-buffer = NULL;
+buffer = (uint8_t *)(NULL);
 ```
 
 ```c id=undefined-behavior-avoidance-example-3
+bool has_overflow = false;
 int32_t result = 0;
-bool add_ok = false;
 
-add_ok = !__builtin_add_overflow(value_a, value_b, &result);
+has_overflow = ARITH_addInt32(value_a,
+                              value_b,
+                              &result);
+if (has_overflow)
+{
+    ret = -ERANGE;
+    goto function_output;
+}
 ```
 
 ### 7.2 C Behavior Categories
@@ -3424,19 +3781,43 @@ Rules:
 Prefer:
 
 ```c id=integer-overflow-and-shift-safety-prefer
-uint32_t value_u32 = 1u;
-uint32_t result_u32 = 0u;
+#define EX_UINT32_BIT_COUNT  ((uint32_t)(32U))
 
-if (shift < 32u)
+uint32_t result_u32 = 0u;
+uint32_t value_u32 = 1u;
+
+if (shift < EX_UINT32_BIT_COUNT)
 {
     result_u32 = value_u32 << shift;
 }
 ```
 
 ```c id=integer-overflow-and-shift-safety-example
-bool EX_addInt32(int32_t value_a, int32_t value_b, int32_t *result)
+int EX_addInt32(int32_t value_a,
+                int32_t value_b,
+                int32_t *result)
 {
-    return !__builtin_add_overflow(value_a, value_b, result);
+    int ret = EXIT_SUCCESS;
+
+    bool has_overflow = false;
+
+    if (result == (int32_t *)(NULL))
+    {
+        ret = -EINVAL;
+        goto function_output;
+    }
+
+    has_overflow = ARITH_addInt32(value_a,
+                                  value_b,
+                                  result);
+    if (has_overflow)
+    {
+        ret = -ERANGE;
+        goto function_output;
+    }
+
+function_output:
+    return ret;
 }
 ```
 
@@ -3470,7 +3851,8 @@ Rules:
 - reject arithmetic that would wrap, truncate, or exceed object limits
 - keep allocation arithmetic in `size_t` unless a narrower domain is
   intentionally required
-- use checked arithmetic helpers or compiler builtins when available
+- use project checked-arithmetic helpers in ordinary code
+- keep compiler-specific overflow builtins inside compiler adapters
 - alignment helpers must reject zero and non-power-of-two alignments unless
   the API explicitly supports them
 
@@ -3478,8 +3860,12 @@ Prefer:
 
 ```c id=checked-integer-arithmetic-prefer
 size_t total_size = 0u;
+bool has_overflow = false;
 
-if (__builtin_add_overflow(header_size, payload_size, &total_size))
+has_overflow = ARITH_addSize(header_size,
+                             payload_size,
+                             &total_size);
+if (has_overflow)
 {
     ret = -ENOMEM;
     goto function_output;
@@ -3489,19 +3875,27 @@ if (__builtin_add_overflow(header_size, payload_size, &total_size))
 Alignment example:
 
 ```c id=checked-integer-arithmetic-align-example
-if ((align == 0u) || ((align & (align - 1u)) != 0u))
+size_t alignment_adjustment = 0u;
+bool has_overflow = false;
+
+if ((align == 0u) ||
+    ((align & (align - 1u)) != 0u))
 {
     ret = -EINVAL;
     goto function_output;
 }
 
-if (__builtin_add_overflow(size, align - 1u, &rounded_size))
+alignment_adjustment = align - 1u;
+has_overflow = ARITH_addSize(size,
+                             alignment_adjustment,
+                             &rounded_size);
+if (has_overflow)
 {
     ret = -ENOMEM;
     goto function_output;
 }
 
-rounded_size &= ~(align - 1u);
+rounded_size &= ~alignment_adjustment;
 ```
 
 ### 7.5 Division and Remainder Safety
@@ -3559,15 +3953,15 @@ Rules:
 Prefer:
 
 ```c id=bitwise-and-mask-rules-prefer
-#define FLAG_READ   ((uint32_t)(1u << 0u)) /* bit 0 */
-#define FLAG_WRITE  ((uint32_t)(1u << 1u)) /* bit 1 */
-#define FLAG_EXEC   ((uint32_t)(1u << 2u)) /* bit 2 */
+#define PERM_FLAG_READ   ((uint32_t)(1U << 0U)) /* bit 0 */
+#define PERM_FLAG_WRITE  ((uint32_t)(1U << 1U)) /* bit 1 */
+#define PERM_FLAG_EXEC   ((uint32_t)(1U << 2U)) /* bit 2 */
 
 uint32_t permissions = 0u;
 
-permissions = FLAG_READ | FLAG_WRITE;
+permissions = PERM_FLAG_READ | PERM_FLAG_WRITE;
 
-if ((permissions & FLAG_EXEC) != 0u)
+if ((permissions & PERM_FLAG_EXEC) != 0u)
     EX_runExecutable();
 ```
 
@@ -3605,11 +3999,12 @@ Rules:
 Prefer:
 
 ```c id=hardware-register-read-modify-write-rules-prefer
-#define REG_CTRL_ENABLE_MASK  ((uint32_t)(1u << 0u))
-#define REG_CTRL_MODE_MASK    ((uint32_t)(3u << 4u))
+#define REG_CTRL_ENABLE_MASK  ((uint32_t)(1U << 0U))
+#define REG_CTRL_MODE_MASK    ((uint32_t)(3U << 4U))
 
 uint32_t reg_value = 0u;
 
+/* REG_CTRL is documented as ordinary read/write; RMW is permitted. */
 reg_value = *reg_ctrl;
 reg_value &= ~REG_CTRL_MODE_MASK;
 reg_value |= REG_CTRL_ENABLE_MASK;
@@ -3708,7 +4103,7 @@ int EX_myFunction(void *param)
 {
     int ret = EXIT_SUCCESS;
 
-    int arr[MAX_LEN] = { [0u ... (MAX_LEN - 1u)] = 0 };
+    int arr[MAX_LEN] = { 0 };
 
     my_struct_t struct0 = { 0 };
     my_struct_t struct1 = { 0 };
@@ -3718,9 +4113,9 @@ int EX_myFunction(void *param)
     void *ptr = (void *)(NULL);
     int *ptr_int = (int *)(NULL);
 
+    char option = '\0';
     double value_d = 0.0;
     float value_f = 0.0F;
-    char option = '\0';
     size_t iterator = 0u;
     int var0 = 0;
 
@@ -3743,13 +4138,18 @@ function_output:
 
 Rules:
 
-- always use designated initializers
-- prefer range designators for bulk initialization
+- use `{ 0 }` for portable whole-array zero initialization
+- use designated initializers when assigning specific named elements
+- do not use GNU range designators in portable project code
 - never use VLA
 - statically allocated arrays must have compile-time constant size
 
+GNU range designators such as `[0 ... N]` are compiler extensions and require
+an isolated adapter or a documented deviation under the compiler-extension
+policy.
+
 ```c id=array-initialization-example
-int arr[MAX_LEN] = { [0u ... (MAX_LEN - 1u)] = 0 };
+int arr[MAX_LEN] = { 0 };
 ```
 
 For arrays indexed by enum values, prefer enum designators.
@@ -3788,10 +4188,10 @@ Use these section boundaries during final review:
 - `Initialization Practices`: declare and initialize predictably
 
 If a change improves readability but breaks one of these rules, prefer
-consistency with the guide unless the module already defines a stricter local
+consistency with the standard unless the module already defines a stricter local
 convention.
 
-After the rule review, use the
+After the standard review, use the
 [Common C Pitfalls review checklist](./c-common-pitfalls.md#review-checklist)
 to trace failure modes to their primary `CSTYLE-*` controls.
 
@@ -3852,3 +4252,4 @@ to trace failure modes to their primary `CSTYLE-*` controls.
 [sil-4-badge]: https://img.shields.io/badge/SIL%204-IEC%2061508-DA3633?style=flat-square&logo=target&logoColor=white&labelColor=1F2328
 
 <!-- EOF -->
+
