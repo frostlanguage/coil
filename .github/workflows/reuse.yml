@@ -1,0 +1,77 @@
+# SPDX-FileCopyrightText: 2026 Rafael V. Volkmer
+# SPDX-License-Identifier: GPL-3.0-only
+
+---
+name: REUSE
+
+on:
+  push:
+    branches:
+      - "**"
+    tags:
+      - "**"
+
+  pull_request:
+    branches:
+      - "**"
+
+  merge_group: {}
+
+  release:
+    types:
+      - published
+      - prereleased
+      - released
+
+  workflow_dispatch: {}
+
+permissions: {}
+
+concurrency:
+  group: >-
+    ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  reuse:
+    name: REUSE compliance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Create isolated Python environment
+        run: |
+          set -euo pipefail
+
+          python3 -m venv "${RUNNER_TEMP}/reuse"
+
+      - name: Install REUSE
+        run: |
+          set -euo pipefail
+
+          "${RUNNER_TEMP}/reuse/bin/python" \
+            -m pip \
+            install \
+            --disable-pip-version-check \
+            --no-input \
+            "reuse==6.2.0"
+
+      - name: Check REUSE compliance
+        run: |
+          set -euo pipefail
+
+          "${RUNNER_TEMP}/reuse/bin/reuse" lint
+
+# EOF
