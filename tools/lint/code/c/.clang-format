@@ -7,21 +7,21 @@
 ---
 
 # =============================
-# 1. Base Style
+# 1. Base Style — CSTYLE-015..019
 # =============================
 BasedOnStyle:                               Mozilla         # inherit Mozilla defaults only for unspecified options
-Language:                                   c               # clang-format uses Cpp for C and C++
+Language:                                   C               # target the dedicated clang-format 22 C parser
 IndentWidth:                                8               # use Linux kernel-style 8-column indentation
 ContinuationIndentWidth:                    8               # use 8 columns for continuation indentation
 TabWidth:                                   8               # interpret tabs using Linux kernel 8-column stops
 UseTab:                                     ForIndentation  # use tabs for indentation and spaces for alignment
-ColumnLimit:                                80              # follow the Linux kernel preferred line length
+ColumnLimit:                                80              # enforce the CSTYLE-015 line limit
 BreakBeforeBraces:                          Custom          # use the explicit Allman-style rules defined below
 ReflowComments:                             true            # reflow comments when required by the column limit
 InsertNewlineAtEOF:                         true            # always terminate source files with a newline
 
 # =============================
-# 2. Brace Wrapping
+# 2. Brace Wrapping — CSTYLE-019/022
 # =============================
 BraceWrapping:
   AfterCaseLabel:                           true        # place case-local block braces on a new line
@@ -37,10 +37,10 @@ BraceWrapping:
   SplitEmptyRecord:                         true        # keep empty struct and union bodies vertically expanded
 
 # =============================
-# 3. Alignment Rules
+# 3. Alignment Rules — CSTYLE-007/016/017/043
 # =============================
 AlignAfterOpenBracket:                      true        # align wrapped expressions after their opening bracket
-BracedInitializerIndentWidth:               2           # indent initializer contents by 2 spaces
+BracedInitializerIndentWidth:               8           # use one project indentation level in initializers
 AlignArrayOfStructures:                     Right       # align tabular arrays of structures by their right edge
 
 AlignConsecutiveAssignments:                            # configure alignment of adjacent assignments
@@ -79,7 +79,7 @@ AlignTrailingComments:                                  # configure alignment of
   OverEmptyLines:                           0           # never align comments across an empty line
 
 # =============================
-# 4. Bin Packing & Wrapping
+# 4. Bin Packing & Wrapping — CSTYLE-015..018/022
 # =============================
 AllowAllArgumentsOnNextLine:                true        # allow compact argument groups on a continuation line
 AllowAllParametersOfDeclarationOnNextLine:  true        # allow compact parameter groups on a continuation line
@@ -99,13 +99,13 @@ BitFieldColonSpacing:                       Both        # format bit fields as `
 
 BreakAdjacentStringLiterals:                true        # permit adjacent string literals to wrap independently
 BreakAfterAttributes:                       Never       # keep attributes attached whenever they naturally fit
-BreakBeforeBinaryOperators:                 All         # put wrapped binary operators at the next line beginning
+BreakBeforeBinaryOperators:                 None        # keep operators at line ends as in CSTYLE-016 examples
 BreakBeforeInlineASMColon:                  OnlyMultiline # split inline assembly operands only when necessary
 BreakBeforeTernaryOperators:                true        # put wrapped ternary operators before their operands
 BreakStringLiterals:                        true        # split string literals when required by the column limit
 
 # =============================
-# 5. Pointer & Qualifier Style
+# 5. Pointer & Qualifier Style — CSTYLE-023/024
 # =============================
 DerivePointerAlignment:                     false       # never infer pointer placement from existing source
 PointerAlignment:                           Right       # format pointers as `type *name`
@@ -113,17 +113,25 @@ QualifierAlignment:                         Leave       # preserve const/volatil
 SpaceAroundPointerQualifiers:               Default     # use standard spacing around pointer qualifiers
 
 # =============================
-# 6. Includes & Miscellaneous
+# 6. Includes & Miscellaneous — CSTYLE-021/026..028
 # =============================
 SortIncludes:                               true        # sort include directives deterministically
 IncludeBlocks:                              Regroup     # regroup related include directives by category
 MainIncludeChar:                            Quote       # identify project main headers through quoted includes
 
-IncludeCategories:                                      # define deterministic project/system include ordering
-  - Regex:                                  '^"'        # match project headers written with double quotes
-    Priority:                               1           # place project headers before system headers
-  - Regex:                                  '^<'        # match system headers written with angle brackets
-    Priority:                               2           # place system headers after project headers
+IncludeCategories:                                      # own header is category 0 automatically
+  - Regex:                                  '^<(assert|complex|ctype|errno|fenv|float|inttypes|iso646|limits)\.h>$'
+    Priority:                               1           # C standard library headers
+  - Regex:                                  '^<(locale|math|setjmp|signal|stdalign|stdarg|stdatomic|stdbit)\.h>$'
+    Priority:                               1
+  - Regex:                                  '^<(stdbool|stdckdint|stddef|stdint|stdio|stdlib|stdnoreturn|string)\.h>$'
+    Priority:                               1
+  - Regex:                                  '^<(tgmath|threads|time|uchar|wchar|wctype)\.h>$'
+    Priority:                               1           # C standard library headers
+  - Regex:                                  '^<'        # third-party or platform headers
+    Priority:                               2
+  - Regex:                                  '^"'        # remaining project headers
+    Priority:                               3
 
 RemoveParentheses:                          Leave       # preserve explicitly written parentheses
 RemoveSemicolon:                            false       # preserve explicitly written semicolons
@@ -131,10 +139,10 @@ EnumTrailingComma:                          Leave       # never insert or remove
 DisableFormat:                              false       # keep clang-format enabled globally
 
 # =============================
-# 7. Indentation & Directives
+# 7. Indentation & Directives — CSTYLE-008/050/075
 # =============================
 IndentCaseBlocks:                           false       # do not add another level inside explicit case blocks
-IndentCaseLabels:                           true        # indent case and default labels inside switch statements
+IndentCaseLabels:                           false       # align labels with CSTYLE-075 switch examples
 IndentGotoLabels:                           false       # keep goto labels aligned with their containing scope
 IndentPPDirectives:                         BeforeHash  # indent nested preprocessor directives before the '#'
 PPIndentWidth:                              2           # indent nested preprocessor directives by 2 spaces
@@ -142,7 +150,7 @@ IndentWrappedFunctionNames:                 false       # do not indent wrapped 
 InsertBraces:                               false       # never modify control-flow semantics by inserting braces
 
 # =============================
-# 8. Parentheses & Spacing
+# 8. Parentheses & Spacing — CSTYLE-020/021
 # =============================
 SpaceBeforeParens:                          Custom      # explicitly define spacing before parentheses
 
@@ -168,7 +176,7 @@ SpacesInLineCommentPrefix:                              # normalize whitespace f
   Maximum:                                  1           # allow exactly one space following `//`
 
 # =============================
-# 9. Numeric Literals & Line Endings
+# 9. Numeric Literals & Line Endings — CSTYLE-007/043
 # =============================
 IntegerLiteralSeparator:                                # normalize separators without introducing C++ syntax
   Binary:                                   -1          # remove separators from binary integer literals
@@ -179,7 +187,7 @@ NumericLiteralCase:                                     # normalize capitalizati
   ExponentLetter:                           Lower       # use lowercase `e` for floating-point exponents
   HexDigit:                                 Upper       # use uppercase hexadecimal digits `A` through `F`
   Prefix:                                   Lower       # use lowercase prefixes such as `0x`
-  Suffix:                                   Upper       # use uppercase C integer and floating-point suffixes
+  Suffix:                                   Leave       # enum `u` and macro `U` are context-specific rules
 
 LineEnding:                                 LF          # always emit Unix LF line endings
 MaxEmptyLinesToKeep:                        1           # retain at most one consecutive empty line

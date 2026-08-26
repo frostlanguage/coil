@@ -375,8 +375,9 @@ end
 -- @param subject string: first commit-message line.
 -- @return table|nil: parsed subject fields.
 local function parse_subject(subject)
-   local commit_type, scope, bang, description =
-      subject:match("^([a-z][a-z0-9%-]*)%(([a-z0-9][a-z0-9%._/%-]*)%)(!?): (.+)$")
+   local pattern =
+      "^([a-z][a-z0-9%-]*)%(([a-z0-9][a-z0-9%._/%-]*)%)(!?): (.+)$"
+   local commit_type, scope, bang, description = subject:match(pattern)
 
    if not commit_type then
       return nil
@@ -694,7 +695,8 @@ local function locate_footer_block(lines, impact_index, signoff_index, errors)
    if not separator_index then
       add_error(
          errors,
-         "footer block must be separated from Impact: by exactly one blank line."
+         "footer block must be separated from Impact: by exactly one "..
+            "blank line."
       )
       return nil, nil
    end
@@ -761,7 +763,8 @@ local function validate_footer_block(lines, footer_start, footer_end, errors)
          if expecting_identifier then
             add_error(
                errors,
-               "line "..i..": previous Theory-reference: is missing URL: or DOI:."
+               "line "..i..": previous Theory-reference: is missing "..
+                  "URL: or DOI:."
             )
          end
 
@@ -852,7 +855,10 @@ local function validate_footer_block(lines, footer_start, footer_end, errors)
    end
 
    if expecting_identifier then
-      add_error(errors, "final Theory-reference: is missing its URL: or DOI: line.")
+      add_error(
+         errors,
+         "final Theory-reference: is missing its URL: or DOI: line."
+      )
    end
 end
 
@@ -969,6 +975,26 @@ local function validate_structure(text, author_name, author_email)
          )
       end
 
+      local section_separators = {
+         { name = "Details", index = sections.Details },
+         { name = "Impact", index = sections.Impact },
+      }
+
+      for _, section in ipairs(section_separators) do
+         local index = section.index
+         local has_one_blank = index > 2
+            and lines[index - 1] == ""
+            and lines[index - 2] ~= ""
+
+         if not has_one_blank then
+            add_error(
+               errors,
+               section.name
+                  ..": must be preceded by exactly one blank line."
+            )
+         end
+      end
+
       for i = 3, sections.Impact - 1 do
          if is_recognized_footer_line(lines[i]) then
             add_error(
@@ -1071,7 +1097,10 @@ end
 -- @return boolean: true for HTTP 200.
 local function github_api_exists(repository, endpoint)
    if not command_exists("curl") then
-      fail("curl is required to verify GitHub issue, pull, and commit references.")
+      fail(
+         "curl is required to verify GitHub issue, pull, and commit "..
+            "references."
+      )
       return false
    end
 
@@ -1090,7 +1119,8 @@ local function github_api_exists(repository, endpoint)
    }
 
    if token and token ~= "" then
-      table.insert(parts, "--header "..shell_quote("Authorization: Bearer "..token))
+      local authorization = shell_quote("Authorization: Bearer "..token)
+      table.insert(parts, "--header "..authorization)
    end
 
    table.insert(
@@ -1188,7 +1218,10 @@ local function validate_remote_references(text)
    local remote = reference_remote()
 
    if not remote then
-      fail("repository references are present but no verification remote is configured.")
+      fail(
+         "repository references are present but no verification remote "..
+            "is configured."
+      )
       return false
    end
 
@@ -1262,7 +1295,8 @@ local function temporary_message_path(root)
       git_dir = root.."/"..git_dir
    end
 
-   local suffix = tostring(os.time()).."."..tostring(math.random(100000, 999999))
+   local random_suffix = tostring(math.random(100000, 999999))
+   local suffix = tostring(os.time()).."."..random_suffix
 
    return git_dir.."/coil-commit-message."..suffix..".md"
 end

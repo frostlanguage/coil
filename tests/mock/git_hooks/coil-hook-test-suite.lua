@@ -36,7 +36,9 @@ end
 local function read_file(path)
    local file, open_error = io.open(path, "rb")
    if not file then
-      error("could not open file for reading: "..path..": "..tostring(open_error))
+      local message =
+         "could not open file for reading: "..path..": "..tostring(open_error)
+      error(message)
    end
 
    local contents = file:read("*a")
@@ -67,8 +69,10 @@ end
 
 --- Execute a process directly through libuv without invoking a command shell.
 -- @param arguments table: Program followed by its argument vector.
--- @param options table|nil: cwd, env, stdin_path, stdout_to_null, stderr_to_null.
--- @return boolean, number, string, string|nil: Success, exit code, stdout, error.
+-- @param options table|nil: Process execution options, including cwd/env and
+-- stream routing.
+-- @return boolean, number, string, string|nil: Success, exit code, stdout,
+-- and process error.
 local function execute_process(arguments, options)
    options = options or {}
 
@@ -82,9 +86,16 @@ local function execute_process(arguments, options)
       process_arguments[#process_arguments + 1] = tostring(arguments[i])
    end
 
-   local stdin_contents = options.stdin_path and read_file(options.stdin_path) or nil
+   local stdin_contents
+   if options.stdin_path then
+      stdin_contents = read_file(options.stdin_path)
+   end
+
    local stdin_pipe = stdin_contents and uv.new_pipe(false) or nil
-   local stdout_pipe = (options.capture_stdout or options.stdout_to_null) and uv.new_pipe(false) or nil
+   local stdout_pipe
+   if options.capture_stdout or options.stdout_to_null then
+      stdout_pipe = uv.new_pipe(false)
+   end
    local stderr_pipe = options.stderr_to_null and uv.new_pipe(false) or nil
    local stdout_chunks = {}
    local process_error
@@ -199,7 +210,10 @@ local function capture_command(arguments, options)
    capture_options.capture_stdout = true
    capture_options.stdout_to_null = false
 
-   local success, exit_code, output = execute_process(arguments, capture_options)
+   local success, exit_code, output = execute_process(
+      arguments,
+      capture_options
+   )
    return output, success, exit_code
 end
 
@@ -267,7 +281,9 @@ end
 local function write_file(path, contents)
    local file, open_error = io.open(path, "wb")
    if not file then
-      error("could not open file for writing: "..path..": "..tostring(open_error))
+      local message =
+         "could not open file for writing: "..path..": "..tostring(open_error)
+      error(message)
    end
 
    local success, write_error = file:write(contents)
@@ -359,12 +375,21 @@ local function main()
       {"git", "ls-remote", remote, "refs/heads/main"},
       {cwd = repository_root, stderr_to_null = true}
    )
-   local remote_main_sha = remote_success and (remote_output:match("^([0-9a-fA-F]+)") or "") or ""
+   local remote_main_sha = ""
+   if remote_success then
+      remote_main_sha = remote_output:match("^([0-9a-fA-F]+)") or ""
+   end
+
+   local missing_url =
+      "https://raw.githubusercontent.com/frostlanguage/coil/main/"..
+      "__lychee_missing_test_9f371e__.md"
 
    local fixture_values = {
       NAME = user_name,
       EMAIL = user_email,
       REMOTE_MAIN_SHA = remote_main_sha,
+      LONG_DETAILS = string.rep("x", 72),
+      MISSING_URL = missing_url,
    }
 
    local fixtures = {
@@ -409,7 +434,8 @@ Impact: this change affects commit metadata validation.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["03-good-breaking.txt"] = [[feat(api)!: replace the legacy string interface
+      ["03-good-breaking.txt"] =
+         [[feat(api)!: replace the legacy string interface
 
 Motivation: coil needs one stable string interface for future releases.
 
@@ -421,7 +447,8 @@ BREAKING CHANGE: callers must use the replacement string interface.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["04-good-breaking-hyphen.txt"] = [[feat(api): replace a legacy entry point
+      ["04-good-breaking-hyphen.txt"] =
+         [[feat(api): replace a legacy entry point
 
 Motivation: coil needs one stable entry point for future releases.
 
@@ -433,7 +460,8 @@ BREAKING-CHANGE: callers must use the current entry point.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["05-good-remote-commit.txt"] = [[chore(policy): verify remote commit references
+      ["05-good-remote-commit.txt"] =
+         [[chore(policy): verify remote commit references
 
 Motivation: coil needs repository citations that resolve remotely.
 
@@ -468,7 +496,8 @@ Impact: this change affects commit metadata validation.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["11-extra-subject-blank.txt"] = [[ci(policy): reject extra subject separators
+      ["11-extra-subject-blank.txt"] =
+         [[ci(policy): reject extra subject separators
 
 
 Motivation: coil needs exactly one blank line after the subject.
@@ -479,7 +508,8 @@ Impact: this change affects commit metadata validation.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["12-number-uppercase.txt"] = [[ci(policy): validate the first alphabetic character
+      ["12-number-uppercase.txt"] =
+         [[ci(policy): validate the first alphabetic character
 
 Motivation: 2026 Coil needs deterministic lowercase validation.
 
@@ -513,7 +543,7 @@ Signed-off-by: {{NAME}} <{{EMAIL}}>
 
 Motivation: coil needs deterministic formatting for commit messages.
 
-Details: this line is intentionally made far too long so that the commit-message validator must reject it because it exceeds seventy-one characters.
+Details: {{LONG_DETAILS}}
 
 Impact: this change affects commit metadata validation.
 
@@ -543,7 +573,8 @@ Details: add repository-local commit validation.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["19-bad-theory-reference.txt"] = [[docs(policy): validate technical reference trailers
+      ["19-bad-theory-reference.txt"] =
+         [[docs(policy): validate technical reference trailers
 
 Motivation: coil needs deterministic reference metadata.
 
@@ -555,7 +586,8 @@ Theory-reference: Conventional Commits.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["20-orphan-url.txt"] = [[docs(policy): validate technical reference trailers
+      ["20-orphan-url.txt"] =
+         [[docs(policy): validate technical reference trailers
 
 Motivation: coil needs deterministic reference metadata.
 
@@ -641,7 +673,8 @@ BREAKING-CHANGE: callers must also migrate to the replacement interface.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["27-breaking-uppercase.txt"] = [[feat(api): validate breaking-change descriptions
+      ["27-breaking-uppercase.txt"] =
+         [[feat(api): validate breaking-change descriptions
 
 Motivation: coil needs deterministic lowercase footer descriptions.
 
@@ -653,7 +686,8 @@ BREAKING CHANGE: Callers must migrate to the replacement interface.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["28-bad-ref-syntax.txt"] = [[chore(policy): validate repository reference syntax
+      ["28-bad-ref-syntax.txt"] =
+         [[chore(policy): validate repository reference syntax
 
 Motivation: coil needs machine-readable repository references.
 
@@ -665,7 +699,8 @@ Refs: something somewhere
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["29-missing-branch.txt"] = [[chore(policy): reject missing remote branches
+      ["29-missing-branch.txt"] =
+         [[chore(policy): reject missing remote branches
 
 Motivation: coil needs repository citations that resolve remotely.
 
@@ -713,7 +748,8 @@ Refs: issue #99999999
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["33-missing-pull.txt"] = [[chore(policy): reject missing remote pull requests
+      ["33-missing-pull.txt"] =
+         [[chore(policy): reject missing remote pull requests
 
 Motivation: coil needs repository citations that resolve remotely.
 
@@ -737,7 +773,8 @@ Fixes: commit deadbeefdeadbeefdeadbeefdeadbeefdeadbeef
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["35-no-signoff-separator.txt"] = [[ci(policy): reject a missing DCO separator
+      ["35-no-signoff-separator.txt"] =
+         [[ci(policy): reject a missing DCO separator
 
 Motivation: coil needs a visually isolated final DCO trailer.
 
@@ -746,7 +783,8 @@ Details: reject a sign-off without its required blank separator.
 Impact: this change affects commit metadata validation.
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["36-extra-signoff-separator.txt"] = [[ci(policy): reject extra DCO separator lines
+      ["36-extra-signoff-separator.txt"] =
+         [[ci(policy): reject extra DCO separator lines
 
 Motivation: coil needs exactly one blank line before the DCO trailer.
 
@@ -766,6 +804,26 @@ Details: reject messages that contain more than one DCO trailer.
 Impact: this change affects commit metadata validation.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
+
+Signed-off-by: {{NAME}} <{{EMAIL}}>
+]],
+      ["38-no-details-separator.txt"] =
+         [[ci(policy): require section separators
+
+Motivation: coil needs visually separated commit sections.
+Details: reject a missing blank line before the details section.
+
+Impact: this change affects commit metadata validation.
+
+Signed-off-by: {{NAME}} <{{EMAIL}}>
+]],
+      ["39-no-impact-separator.txt"] =
+         [[ci(policy): require section separators
+
+Motivation: coil needs visually separated commit sections.
+
+Details: reject a missing blank line before the impact section.
+Impact: this change affects commit metadata validation.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
@@ -818,7 +876,31 @@ Details: add an unreachable documentation reference for this test.
 Impact: this change affects contribution policy.
 
 Theory-reference: Missing test resource.
-URL: https://raw.githubusercontent.com/frostlanguage/coil/main/__lychee_missing_test_9f371e__.md
+URL: {{MISSING_URL}}
+
+Signed-off-by: {{NAME}} <{{EMAIL}}>
+]],
+      ["45-extra-details-separator.txt"] =
+         [[ci(policy): reject extra section separators
+
+Motivation: coil needs exactly one blank line between sections.
+
+
+Details: reject extra blank lines before the details section.
+
+Impact: this change affects commit metadata validation.
+
+Signed-off-by: {{NAME}} <{{EMAIL}}>
+]],
+      ["46-extra-impact-separator.txt"] =
+         [[ci(policy): reject extra section separators
+
+Motivation: coil needs exactly one blank line between sections.
+
+Details: reject extra blank lines before the impact section.
+
+
+Impact: this change affects commit metadata validation.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
@@ -842,7 +924,10 @@ Signed-off-by: {{NAME}} <{{EMAIL}}>
 
    local function run_hook(file_name)
       local file_path = join_path(test_directory, file_name)
-      return run_command({lua_bin, hook_path, file_path}, {cwd = repository_root})
+      return run_command(
+         {lua_bin, hook_path, file_path},
+         {cwd = repository_root}
+      )
    end
 
    local function expect_pass(name, file_name)
@@ -888,14 +973,20 @@ Signed-off-by: {{NAME}} <{{EMAIL}}>
    expect_pass("existing remote ref and branch", "06-good-remote-ref.txt")
    expect_fail("unsupported commit type", "10-bad-type.txt")
    expect_fail("extra subject separator", "11-extra-subject-blank.txt")
-   expect_fail("first alphabetic character uppercase", "12-number-uppercase.txt")
+   expect_fail(
+      "first alphabetic character uppercase",
+      "12-number-uppercase.txt"
+   )
    expect_fail("missing scope", "13-no-scope.txt")
    expect_fail("uppercase subject", "14-uppercase-subject.txt")
    expect_fail("71-character limit", "15-long-line.txt")
    expect_fail("missing Motivation", "16-no-motivation.txt")
    expect_fail("missing Details", "17-no-details.txt")
    expect_fail("missing Impact", "18-no-impact.txt")
-   expect_fail("Theory-reference missing identifier", "19-bad-theory-reference.txt")
+   expect_fail(
+      "Theory-reference missing identifier",
+      "19-bad-theory-reference.txt"
+   )
    expect_fail("orphan URL", "20-orphan-url.txt")
    expect_fail("malformed DOI", "21-bad-doi.txt")
    expect_fail("DCO mismatch", "22-bad-dco.txt")
@@ -903,7 +994,10 @@ Signed-off-by: {{NAME}} <{{EMAIL}}>
    expect_fail("unsupported footer token", "24-unknown-footer.txt")
    expect_fail("malformed Reviewed-by", "25-bad-reviewed-by.txt")
    expect_fail("duplicate BREAKING CHANGE footer", "26-two-breaking.txt")
-   expect_fail("uppercase BREAKING CHANGE description", "27-breaking-uppercase.txt")
+   expect_fail(
+      "uppercase BREAKING CHANGE description",
+      "27-breaking-uppercase.txt"
+   )
    expect_fail("invalid repository reference syntax", "28-bad-ref-syntax.txt")
    expect_fail("missing remote branch", "29-missing-branch.txt")
    expect_fail("missing remote tag", "30-missing-tag.txt")
@@ -911,18 +1005,46 @@ Signed-off-by: {{NAME}} <{{EMAIL}}>
    expect_fail("missing remote issue", "32-missing-issue.txt")
    expect_fail("missing remote pull request", "33-missing-pull.txt")
    expect_fail("Fixes cannot cite a commit", "34-fixes-commit.txt")
-   expect_fail("missing blank line before Signed-off-by", "35-no-signoff-separator.txt")
-   expect_fail("extra blank lines before Signed-off-by", "36-extra-signoff-separator.txt")
+   expect_fail(
+      "missing blank line before Signed-off-by",
+      "35-no-signoff-separator.txt"
+   )
+   expect_fail(
+      "extra blank lines before Signed-off-by",
+      "36-extra-signoff-separator.txt"
+   )
    expect_fail("duplicate Signed-off-by trailer", "37-duplicate-signoff.txt")
+   expect_fail(
+      "missing blank line before Details",
+      "38-no-details-separator.txt"
+   )
+   expect_fail(
+      "missing blank line before Impact",
+      "39-no-impact-separator.txt"
+   )
    expect_fail("CSpell unknown word", "40-cspell.txt")
    expect_fail("codespell common misspelling", "41-codespell.txt")
    expect_fail("typos typographical error", "42-typos.txt")
    expect_fail("Vale passive voice", "43-vale.txt")
    expect_fail("Lychee unreachable URL", "44-lychee.txt")
+   expect_fail(
+      "extra blank lines before Details",
+      "45-extra-details-separator.txt"
+   )
+   expect_fail(
+      "extra blank lines before Impact",
+      "46-extra-impact-separator.txt"
+   )
 
    print("")
    print("================================================================")
-   print(string.format("SUMMARY: %d expected, %d unexpected, %d skipped", expected, unexpected, skipped))
+   local summary = string.format(
+      "SUMMARY: %d expected, %d unexpected, %d skipped",
+      expected,
+      unexpected,
+      skipped
+   )
+   print(summary)
    print("================================================================")
 
    remove_tree(test_directory)

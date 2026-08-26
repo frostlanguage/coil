@@ -113,9 +113,22 @@ jobs:
         run: |
           set -euo pipefail
 
+          mapfile -d '' workflows < <(
+            find .github/workflows \
+              -maxdepth 1 \
+              -type f \
+              \( -name '*.yml' -o -name '*.yaml' \) \
+              -print0 \
+              | sort -z
+          )
+
+          printf 'Auditing %d GitHub Actions workflow(s):\n' "${#workflows[@]}"
+          printf '  %s\n' "${workflows[@]}"
+
           "${RUNNER_TEMP}/actionlint" \
             -color \
-            -config-file tools/lint/code/actions/actionlint.yaml
+            -config-file tools/lint/code/actions/actionlint.yaml \
+            "${workflows[@]}"
 
   editorconfig:
     name: EditorConfig
@@ -459,9 +472,12 @@ jobs:
 
           selene_archive="${RUNNER_TEMP}/selene.zip"
 
+          selene_base="https://github.com/Kampfkarren/selene/releases/download"
+          selene_url="${selene_base}/${SELENE_VERSION}/selene-${SELENE_VERSION}-linux.zip"
+
           curl --fail --silent --show-error --location \
             --proto '=https' --tlsv1.2 \
-            "https://github.com/Kampfkarren/selene/releases/download/${SELENE_VERSION}/selene-${SELENE_VERSION}-linux.zip" \
+            "${selene_url}" \
             --output "${selene_archive}"
 
           printf '%s  %s\n' "${SELENE_SHA256}" "${selene_archive}" \
@@ -469,6 +485,7 @@ jobs:
 
           mkdir -p "${RUNNER_TEMP}/selene"
           unzip -q "${selene_archive}" -d "${RUNNER_TEMP}/selene"
+          chmod 0755 "${RUNNER_TEMP}/selene/selene"
 
           stylua_archive="${RUNNER_TEMP}/stylua.zip"
 
@@ -482,12 +499,17 @@ jobs:
 
           mkdir -p "${RUNNER_TEMP}/stylua"
           unzip -q "${stylua_archive}" -d "${RUNNER_TEMP}/stylua"
+          chmod 0755 "${RUNNER_TEMP}/stylua/stylua"
 
           luals_archive="${RUNNER_TEMP}/luals.tar.gz"
 
+          luals_base="https://github.com/LuaLS/lua-language-server/releases/download"
+          luals_name="lua-language-server-${LUALS_VERSION}-linux-x64.tar.gz"
+          luals_url="${luals_base}/${LUALS_VERSION}/${luals_name}"
+
           curl --fail --silent --show-error --location \
             --proto '=https' --tlsv1.2 \
-            "https://github.com/LuaLS/lua-language-server/releases/download/${LUALS_VERSION}/lua-language-server-${LUALS_VERSION}-linux-x64.tar.gz" \
+            "${luals_url}" \
             --output "${luals_archive}"
 
           printf '%s  %s\n' "${LUALS_SHA256}" "${luals_archive}" \
@@ -525,6 +547,10 @@ jobs:
           for file in "${files[@]}"; do
             "${RUNNER_TEMP}/lua-${LUA_VERSION}/src/luac" -p "${file}"
           done
+
+          "${RUNNER_TEMP}/lua-${LUA_VERSION}/src/lua" \
+            tools/lint/spell/dictionary/generate.lua \
+            --check
 
           "${RUNNER_TEMP}/selene/selene" \
             --config tools/lint/code/lua/selene.toml \
@@ -725,9 +751,13 @@ jobs:
 
           shellcheck_archive="${RUNNER_TEMP}/shellcheck.tar.xz"
 
+          shellcheck_base="https://github.com/koalaman/shellcheck/releases/download"
+          shellcheck_name="shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz"
+          shellcheck_url="${shellcheck_base}/v${SHELLCHECK_VERSION}/${shellcheck_name}"
+
           curl --fail --silent --show-error --location \
             --proto '=https' --tlsv1.2 \
-            "https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz" \
+            "${shellcheck_url}" \
             --output "${shellcheck_archive}"
 
           printf '%s  %s\n' "${SHELLCHECK_SHA256}" "${shellcheck_archive}" \
@@ -869,9 +899,13 @@ jobs:
 
           pwsh_archive="${RUNNER_TEMP}/powershell.tar.gz"
 
+          pwsh_base="https://github.com/PowerShell/PowerShell/releases/download"
+          pwsh_name="powershell-${POWERSHELL_VERSION}-linux-x64.tar.gz"
+          pwsh_url="${pwsh_base}/v${POWERSHELL_VERSION}/${pwsh_name}"
+
           curl --fail --silent --show-error --location \
             --proto '=https' --tlsv1.2 \
-            "https://github.com/PowerShell/PowerShell/releases/download/v${POWERSHELL_VERSION}/powershell-${POWERSHELL_VERSION}-linux-x64.tar.gz" \
+            "${pwsh_url}" \
             --output "${pwsh_archive}"
 
           printf '%s  %s\n' "${POWERSHELL_SHA256}" "${pwsh_archive}" \
@@ -883,9 +917,13 @@ jobs:
 
           analyzer_package="${RUNNER_TEMP}/PSScriptAnalyzer.nupkg"
 
+          analyzer_base="https://github.com/PowerShell/PSScriptAnalyzer/releases/download"
+          analyzer_name="PSScriptAnalyzer.${PSSCRIPTANALYZER_VERSION}.nupkg"
+          analyzer_url="${analyzer_base}/${PSSCRIPTANALYZER_VERSION}/${analyzer_name}"
+
           curl --fail --silent --show-error --location \
             --proto '=https' --tlsv1.2 \
-            "https://github.com/PowerShell/PSScriptAnalyzer/releases/download/${PSSCRIPTANALYZER_VERSION}/PSScriptAnalyzer.${PSSCRIPTANALYZER_VERSION}.nupkg" \
+            "${analyzer_url}" \
             --output "${analyzer_package}"
 
           printf '%s  %s\n' \
@@ -893,7 +931,8 @@ jobs:
             "${analyzer_package}" \
             | sha256sum --check --strict
 
-          module_dir="${RUNNER_TEMP}/modules/PSScriptAnalyzer/${PSSCRIPTANALYZER_VERSION}"
+          module_root="${RUNNER_TEMP}/modules/PSScriptAnalyzer"
+          module_dir="${module_root}/${PSSCRIPTANALYZER_VERSION}"
           mkdir -p "${module_dir}"
           unzip -q "${analyzer_package}" -d "${module_dir}"
 
@@ -930,6 +969,8 @@ jobs:
           printf 'Checking %d PowerShell source file(s).\n' "${#files[@]}"
 
           for file in "${files[@]}"; do
+            # PowerShell expands variables inside this single-quoted payload.
+            # shellcheck disable=SC2016
             "${pwsh}" -NoLogo -NoProfile -NonInteractive -Command '
               param([string] $Path)
               $tokens = $null
@@ -948,6 +989,8 @@ jobs:
             ' "${file}"
           done
 
+          # PowerShell expands variables inside this single-quoted payload.
+          # shellcheck disable=SC2016
           "${pwsh}" -NoLogo -NoProfile -NonInteractive -Command '
             param(
                 [string] $Module,
@@ -1016,9 +1059,13 @@ jobs:
 
           nu_archive="${RUNNER_TEMP}/nushell.tar.gz"
 
+          nu_base="https://github.com/nushell/nushell/releases/download"
+          nu_name="nu-${NUSHELL_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+          nu_url="${nu_base}/${NUSHELL_VERSION}/${nu_name}"
+
           curl --fail --silent --show-error --location \
             --proto '=https' --tlsv1.2 \
-            "https://github.com/nushell/nushell/releases/download/${NUSHELL_VERSION}/nu-${NUSHELL_VERSION}-x86_64-unknown-linux-gnu.tar.gz" \
+            "${nu_url}" \
             --output "${nu_archive}"
 
           printf '%s  %s\n' "${NUSHELL_SHA256}" "${nu_archive}" \

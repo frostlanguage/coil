@@ -39,7 +39,9 @@ end
 local function read_file(path)
    local file, open_error = io.open(path, "rb")
    if not file then
-      error("could not open file for reading: "..path..": "..tostring(open_error))
+      local message =
+         "could not open file for reading: "..path..": "..tostring(open_error)
+      error(message)
    end
 
    local contents = file:read("*a")
@@ -70,8 +72,10 @@ end
 
 --- Execute a process directly through libuv without invoking a command shell.
 -- @param arguments table: Program followed by its argument vector.
--- @param options table|nil: cwd, env, stdin_path, stdout_to_null, stderr_to_null.
--- @return boolean, number, string, string|nil: Success, exit code, stdout, error.
+-- @param options table|nil: Process execution options, including cwd/env and
+-- stream routing.
+-- @return boolean, number, string, string|nil: Success, exit code, stdout,
+-- and process error.
 local function execute_process(arguments, options)
    options = options or {}
 
@@ -85,9 +89,16 @@ local function execute_process(arguments, options)
       process_arguments[#process_arguments + 1] = tostring(arguments[i])
    end
 
-   local stdin_contents = options.stdin_path and read_file(options.stdin_path) or nil
+   local stdin_contents
+   if options.stdin_path then
+      stdin_contents = read_file(options.stdin_path)
+   end
+
    local stdin_pipe = stdin_contents and uv.new_pipe(false) or nil
-   local stdout_pipe = (options.capture_stdout or options.stdout_to_null) and uv.new_pipe(false) or nil
+   local stdout_pipe
+   if options.capture_stdout or options.stdout_to_null then
+      stdout_pipe = uv.new_pipe(false)
+   end
    local stderr_pipe = options.stderr_to_null and uv.new_pipe(false) or nil
    local stdout_chunks = {}
    local process_error
@@ -194,13 +205,19 @@ end
 -- @param arguments table: Program followed by its arguments.
 -- @param options table|nil: Process execution options.
 local function require_command(arguments, options)
-   local success, exit_code, _, process_error = execute_process(arguments, options)
+   local success, exit_code, _, process_error = execute_process(
+      arguments,
+      options
+   )
    if success then
       return
    end
 
    local detail = process_error and ": "..process_error or ""
-   error("command failed with exit code "..tostring(exit_code)..": "..table.concat(arguments, " ")..detail)
+   local message =
+      "command failed with exit code "..tostring(exit_code)..": "..
+      table.concat(arguments, " ")..detail
+   error(message)
 end
 
 --- Capture standard output from an external program.
@@ -215,7 +232,10 @@ local function capture_command(arguments, options)
    capture_options.capture_stdout = true
    capture_options.stdout_to_null = false
 
-   local success, exit_code, output = execute_process(arguments, capture_options)
+   local success, exit_code, output = execute_process(
+      arguments,
+      capture_options
+   )
    return output, success, exit_code
 end
 
@@ -231,10 +251,16 @@ local function require_capture(arguments, options)
    capture_options.capture_stdout = true
    capture_options.stdout_to_null = false
 
-   local success, exit_code, output, process_error = execute_process(arguments, capture_options)
+   local success, exit_code, output, process_error = execute_process(
+      arguments,
+      capture_options
+   )
    if not success then
       local detail = process_error and ": "..process_error or ""
-      error("command failed with exit code "..tostring(exit_code)..": "..table.concat(arguments, " ")..detail)
+      local message =
+      "command failed with exit code "..tostring(exit_code)..": "..
+      table.concat(arguments, " ")..detail
+   error(message)
    end
 
    return output
@@ -318,7 +344,10 @@ end
 local function copy_file(source_path, destination_path)
    local source, source_error = io.open(source_path, "rb")
    if not source then
-      error("could not open source file: "..source_path..": "..tostring(source_error))
+      local message =
+         "could not open source file: "..source_path..": "..
+         tostring(source_error)
+      error(message)
    end
 
    local contents = source:read("*a")
@@ -326,14 +355,20 @@ local function copy_file(source_path, destination_path)
 
    local destination, destination_error = io.open(destination_path, "wb")
    if not destination then
-      error("could not open destination file: "..destination_path..": "..tostring(destination_error))
+      local message =
+         "could not open destination file: "..destination_path..": "..
+         tostring(destination_error)
+      error(message)
    end
 
    local success, write_error = destination:write(contents)
    destination:close()
 
    if not success then
-      error("could not copy file to: "..destination_path..": "..tostring(write_error))
+      local message =
+         "could not copy file to: "..destination_path..": "..
+         tostring(write_error)
+      error(message)
    end
 end
 
@@ -343,7 +378,9 @@ end
 local function write_file(path, contents)
    local file, open_error = io.open(path, "wb")
    if not file then
-      error("could not open file for writing: "..path..": "..tostring(open_error))
+      local message =
+         "could not open file for writing: "..path..": "..tostring(open_error)
+      error(message)
    end
 
    local success, write_error = file:write(contents)
@@ -428,7 +465,10 @@ local function run_test_suite(repository_root, temporary_root)
    end
 
    require_command({"git", "init", "--bare", remote}, {stdout_to_null = true})
-   require_command({"git", "init", "-b", "main", repository}, {stdout_to_null = true})
+   require_command(
+      {"git", "init", "-b", "main", repository},
+      {stdout_to_null = true}
+   )
 
    make_directory(join_path(repository, ".githooks"))
    make_directory(join_path(repository, "tools"))
@@ -556,7 +596,12 @@ local function run_test_suite(repository_root, temporary_root)
    local function run_pre_push(input)
       write_file(pre_push_input, input.."\n")
       return run_command(
-         {lua_bin, join_path(repository, ".githooks", "pre-push"), "origin", remote},
+         {
+            lua_bin,
+            join_path(repository, ".githooks", "pre-push"),
+            "origin",
+            remote,
+         },
          {
             cwd = repository,
             env = environment,
@@ -578,6 +623,10 @@ local function run_test_suite(repository_root, temporary_root)
       expect_pass(name, function()
          return run_pre_push(input)
       end)
+   end
+
+   local function update_line(local_ref, local_sha, remote_ref, remote_sha)
+      return local_ref.." "..local_sha.." "..remote_ref.." "..remote_sha
    end
 
    local function expect_pre_push_fail(name, input)
@@ -638,15 +687,30 @@ local function run_test_suite(repository_root, temporary_root)
 
    expect_pre_push_pass(
       "pre-push valid feature branch",
-      "refs/heads/main "..signed_commit.." refs/heads/feature/add-bounded-parsing "..remote_main
+      update_line(
+         "refs/heads/main",
+         signed_commit,
+         "refs/heads/feature/add-bounded-parsing",
+         remote_main
+      )
    )
    expect_pre_push_pass(
       "pre-push valid release branch",
-      "refs/heads/main "..signed_commit.." refs/heads/release/1.2.0 "..remote_main
+      update_line(
+         "refs/heads/main",
+         signed_commit,
+         "refs/heads/release/1.2.0",
+         remote_main
+      )
    )
    expect_pre_push_fail(
       "pre-push invalid old-style branch",
-      "refs/heads/main "..signed_commit.." refs/heads/feat/parser/add-bounded-parsing "..remote_main
+      update_line(
+         "refs/heads/main",
+         signed_commit,
+         "refs/heads/feat/parser/add-bounded-parsing",
+         remote_main
+      )
    )
 
    expect_pre_push_pass(
@@ -655,7 +719,12 @@ local function run_test_suite(repository_root, temporary_root)
    )
    expect_pre_push_pass(
       "SemVer pre-release and build tag",
-      "refs/tags/1.2.3-rc.1+build.7 "..signed_commit.." refs/tags/1.2.3-rc.1+build.7 "..zero
+      update_line(
+         "refs/tags/1.2.3-rc.1+build.7",
+         signed_commit,
+         "refs/tags/1.2.3-rc.1+build.7",
+         zero
+      )
    )
    expect_pre_push_pass(
       "SemVer zero major tag",
@@ -683,11 +752,21 @@ local function run_test_suite(repository_root, temporary_root)
    )
    expect_pre_push_fail(
       "empty pre-release identifier",
-      "refs/tags/1.2.3-alpha..1 "..signed_commit.." refs/tags/1.2.3-alpha..1 "..zero
+      update_line(
+         "refs/tags/1.2.3-alpha..1",
+         signed_commit,
+         "refs/tags/1.2.3-alpha..1",
+         zero
+      )
    )
    expect_pre_push_fail(
       "invalid pre-release character",
-      "refs/tags/1.2.3-alpha_1 "..signed_commit.." refs/tags/1.2.3-alpha_1 "..zero
+      update_line(
+         "refs/tags/1.2.3-alpha_1",
+         signed_commit,
+         "refs/tags/1.2.3-alpha_1",
+         zero
+      )
    )
 
    local other_object_path = join_path(temporary_root, "other-object.txt")

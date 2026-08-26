@@ -57,7 +57,13 @@ indent_size = 2
 tab_width = 2
 max_line_length = 120
 
-[tools/lint/code/c/{.clang-tidy,.clangd}]
+[tools/lint/code/c/.clang-tidy]
+indent_style = space
+indent_size = 2
+tab_width = 2
+max_line_length = 120
+
+[tools/lint/code/c/.clangd]
 indent_style = space
 indent_size = 2
 tab_width = 2

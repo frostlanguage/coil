@@ -1,0 +1,12 @@
+Allman
+Böhm
+Ferrante
+Forgejo
+Frama
+Jacopini
+Jacopini's
+Kernighan
+Klocwork
+Ottenstein
+Ritchie
+Volkmer

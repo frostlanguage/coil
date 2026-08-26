@@ -308,7 +308,10 @@ end
 -- Missing Gitleaks is intentionally non-fatal for local development.
 local function scan_staged_secrets()
    if not command_exists("gitleaks") then
-      warn("optional tool 'gitleaks' is not installed; bypassing local secret scan.")
+      warn(
+         "optional tool 'gitleaks' is not installed; bypassing local "..
+            "secret scan."
+      )
       return
    end
 
@@ -322,7 +325,10 @@ local function scan_staged_secrets()
    local config = root.."/"..relative_config
 
    if not file_exists(config) then
-      fail("Gitleaks is installed but its configuration is missing: "..relative_config)
+      fail(
+         "Gitleaks is installed but its configuration is missing: "..
+            relative_config
+      )
    end
 
    local command = table.concat({

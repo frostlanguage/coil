@@ -556,11 +556,12 @@ jobs:
               --header 'X-GitHub-Api-Version: 2022-11-28' \
               "https://api.github.com/repos/${GITHUB_REPOSITORY}/commits/${sha}")"
 
-            jq --exit-status \
-              '.commit.verification.verified == true and
-               (.commit.verification.signature != null) and
-               (.commit.verification.signature |
-                startswith("-----BEGIN PGP SIGNATURE-----"))' \
+            verification_filter='.commit.verification.verified == true and '
+            verification_filter+='(.commit.verification.signature != null) and '
+            verification_filter+='(.commit.verification.signature | '
+            verification_filter+='startswith("-----BEGIN PGP SIGNATURE-----"))'
+
+            jq --exit-status "${verification_filter}" \
               <<< "${response}" \
               >/dev/null || {
                 printf 'Commit %s does not have a GitHub-verified OpenPGP signature.\n' \

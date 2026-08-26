@@ -21,7 +21,7 @@
   "dictionaryDefinitions": [
     {
       "name": "coil",
-      "path": "./cspell-words.txt",
+      "path": "../dictionary/coil-words.txt",
       "addWords": true
     }
   ],

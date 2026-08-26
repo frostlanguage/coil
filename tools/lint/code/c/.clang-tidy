@@ -19,13 +19,13 @@ Checks:
   # Compiler diagnostics enabled through ExtraArgs below.
   - 'clang-diagnostic-*'
 
-  # Static analyzer: memory, lifetime, UB, taint, libc, security, Unix APIs.
+  # CSTYLE-076..108: memory, lifetime, UB, taint, libc, concurrency and Unix APIs.
   - 'clang-analyzer-*'
   - '-clang-analyzer-cplusplus.*'
   - '-clang-analyzer-osx.*'
   - '-clang-analyzer-webkit.*'
 
-  # Generic C-relevant clang-tidy families.
+  # Supporting diagnostics for CSTYLE-053..108; explicit conflicts are removed below.
   - 'bugprone-*'
   - 'cert-*'
   - 'concurrency-*'
@@ -54,6 +54,9 @@ Checks:
   # CSTYLE-021 intentionally uses explicit parentheses for reviewability.
   - '-readability-redundant-parentheses'
 
+  # CSTYLE-002 defines identifier case and unit suffixes, but no minimum length.
+  - '-readability-identifier-length'
+
   # CSTYLE-078 requires an explicit cast for functions returning void *.
   # CSTYLE-096 also permits justified explicit casts after validation.
   - '-readability-redundant-casting'
@@ -81,8 +84,7 @@ Checks:
   # representation/ABI decisions. CSTYLE-035..041 own that policy instead.
   - '-performance-enum-size'
 
-WarningsAsErrors:
-  - '*'
+WarningsAsErrors: '*'
 
 HeaderFilterRegex: '.*'
 ExcludeHeaderFilterRegex: '(^|/)(third_party|vendor|external|generated|build[^/]*)(/|$)'
@@ -91,7 +93,8 @@ FormatStyle: file
 HeaderFileExtensions: ['h']
 ImplementationFileExtensions: ['c']
 
-# Keep the translation mode deterministic and surface strict C diagnostics.
+# CSTYLE-052/096/097/099/100: keep the translation mode deterministic and
+# surface strict portability, conversion and undefined-behavior diagnostics.
 # The compilation database remains authoritative for include paths, defines,
 # target, ABI and other project-specific compiler arguments.
 ExtraArgs:
@@ -126,7 +129,7 @@ ExtraArgs:
 
 CheckOptions:
   # -------------------------------------------------------------------------
-  # CSTYLE naming rules that clang-tidy can represent directly.
+  # CSTYLE-002..010/088 naming rules that clang-tidy can represent directly.
   # Function names are composite MODULE_lowerCamelCase and are enforced by a
   # CustomCheck below because readability-identifier-naming cannot express that
   # composition with a single Case/Prefix/Suffix setting.
@@ -150,22 +153,15 @@ CheckOptions:
   readability-identifier-naming.UnionCase: 'CamelCase'
   readability-identifier-naming.EnumConstantCase: 'UPPER_CASE'
   readability-identifier-naming.MacroDefinitionCase: 'UPPER_CASE'
-  readability-identifier-naming.LabelCase: 'lower_case'
 
-  # CSTYLE-054..057. clang-tidy has no exact cyclomatic-complexity check, so
-  # BranchThreshold is an additional conservative structural gate; cognitive
-  # complexity and parameter count map directly to documented project limits.
+  # CSTYLE-054..057. Cognitive complexity and parameter count map directly to
+  # documented limits. Branch count is not cyclomatic complexity, so CSTYLE-055
+  # remains a separate review/metric check instead of being approximated here.
   readability-function-cognitive-complexity.Threshold: '15'
   readability-function-cognitive-complexity.DescribeBasicIncrements: 'true'
   readability-function-cognitive-complexity.IgnoreMacros: 'false'
 
-  readability-function-size.LineThreshold: '100'
-  readability-function-size.StatementThreshold: '50'
-  readability-function-size.BranchThreshold: '10'
   readability-function-size.ParameterThreshold: '5'
-  readability-function-size.NestingThreshold: '4'
-  readability-function-size.VariableThreshold: '20'
-  readability-function-size.IgnoreMacros: 'false'
 
   # CSTYLE-046: only neutral 0/1 literals are exempt from magic-number policy.
   # clang-tidy always exempts 0; explicitly reduce its default integer allowlist
@@ -177,9 +173,8 @@ CheckOptions:
   readability-magic-numbers.IgnoreBitFieldsWidths: 'false'
   readability-magic-numbers.IgnoreTypeAliases: 'false'
 
-  # CSTYLE permits idiomatic integer truth tests in examples, but pointer
-  # nullability must remain explicit. Keep integer conditions, reject implicit
-  # pointer-to-bool conversion.
+  # CSTYLE-058/072/073 permit idiomatic truth tests, while pointer nullability
+  # must remain explicit. Keep integer conditions, reject pointer-to-bool.
   readability-implicit-bool-conversion.AllowIntegerConditions: 'true'
   readability-implicit-bool-conversion.AllowPointerConditions: 'false'
 
@@ -191,12 +186,11 @@ CheckOptions:
   bugprone-narrowing-conversions.PedanticMode: 'true'
   bugprone-narrowing-conversions.IgnoreConversionFromTypes: ''
 
-  # Strict call-site review: adjacent same/convertible parameters are suspicious.
+  # CSTYLE-057/069: supplementary call-site review for ambiguous parameters.
   bugprone-easily-swappable-parameters.MinimumLength: '2'
   bugprone-easily-swappable-parameters.IgnoredParameterNames: ''
 
-  # Argument comments, when used, must match exactly; boolean literals receive
-  # explicit argument-name comments when clang-tidy can safely add them.
+  # CSTYLE-069/071: argument comments must match the declared contract exactly.
   bugprone-argument-comment.StrictMode: 'true'
   bugprone-argument-comment.CommentBoolLiterals: 'true'
   bugprone-argument-comment.IgnoreSingleArgument: 'false'
@@ -213,16 +207,20 @@ CheckOptions:
   # snprintf/memcpy). Only project bans/reviews are encoded here.
   bugprone-unsafe-functions.ReportDefaultFunctions: 'false'
   bugprone-unsafe-functions.ReportMoreUnsafeFunctions: 'false'
-  bugprone-unsafe-functions.CustomFunctions: >-
-    ^(gets|_getts|strcpy|wcscpy|_tcscpy|_mbscpy|lstrcpy|StrCpy|strcat|wcscat|_tcscat|_mbscat|lstrcat|StrCat|sprintf|vsprintf|wsprintf|wvsprintf|scanf|vscanf|atoi|atol|atoll|atof|strtok|bcopy|bcmp|alloca|_alloca|system|tmpnam|tempnam|mktemp|_mktemp|asctime|ctime|IsBadReadPtr|IsBadWritePtr)$,,> CSTYLE-085 CBAN direct-call ban: this API is forbidden by project policy;
-    ^(strncpy|wcsncpy|_tcsncpy|_mbsncpy|strncat|wcsncat|fscanf|vfscanf|sscanf|vsscanf|itoa|_itoa|ltoa|_ltoa|ultoa|_ultoa|strtok_r|strsep|bzero|realloc|popen|execlp|execvp|putenv|signal|pthread_cancel|crypt|strerror|localtime|gmtime|_splitpath|_makepath|_fullpath)$,,> CSTYLE-085 CBAN review: use requires an approved documented review or deviation
+  bugprone-unsafe-functions.CustomFunctions: "^(gets|_getts|strcpy|wcscpy|_tcscpy|_mbscpy|lstrcpy|StrCpy|strcat|wcsca\
+    t|_tcscat|_mbscat|lstrcat|StrCat|sprintf|vsprintf|wsprintf|wvsprintf|scanf|vscanf|atoi|atol|atoll|atof|strtok|bco\
+    py|bcmp|alloca|_alloca|system|tmpnam|tempnam|mktemp|_mktemp|asctime|ctime|IsBadReadPtr|IsBadWritePtr)$,,> CSTYLE-\
+    085 CBAN direct-call ban: this API is forbidden by project policy; ^(strncpy|wcsncpy|_tcsncpy|_mbsncpy|strncat|wc\
+    sncat|fscanf|vfscanf|sscanf|vsscanf|itoa|_itoa|ltoa|_ltoa|ultoa|_ultoa|strtok_r|strsep|bzero|realloc|popen|execlp\
+    |execvp|putenv|signal|pthread_cancel|crypt|strerror|localtime|gmtime|_splitpath|_makepath|_fullpath)$,,> CSTYLE-0\
+    85 CBAN review: use requires an approved documented review or deviation"
 
   # CSTYLE-066: discarded non-void return values are forbidden by default.
   # This intentionally checks all functions; functions whose contracts prove an
   # ignorable return require an explicit local deviation/suppression.
   bugprone-unused-return-value.CheckedFunctions: '.*'
 
-  # Enum check should never discourage the project's explicit sequential form.
+  # CSTYLE-007: preserve the project's explicit sequential enum form.
   readability-enum-initial-value.AllowExplicitZeroFirstInitialValue: 'true'
   readability-enum-initial-value.AllowExplicitSequentialInitialValues: 'true'
 
@@ -230,6 +228,20 @@ CheckOptions:
   bugprone-chained-comparison.IgnoreMacros: 'false'
 
 CustomChecks:
+  # CSTYLE-008: label declarations use snake_case. clang-tidy 22 does not yet
+  # expose LabelCase through readability-identifier-naming.
+  - Name: 'label-name'
+    Query: |
+      match labelStmt(
+        hasDeclaration(
+          labelDecl(unless(matchesName("^[a-z][a-z0-9_]*$"))).bind("label")
+        )
+      )
+    Diagnostic:
+      - BindName: 'label'
+        Message: 'CSTYLE-008: label name must use snake_case'
+        Level: Warning
+
   # CSTYLE-003: functions use MODULE_lowerCamelCase. `main` is the only generic
   # language entry-point exception encoded here. Platform/ABI callbacks that
   # require foreign names need a documented NOLINT/custom-function-name.
