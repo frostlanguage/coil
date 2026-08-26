@@ -157,12 +157,19 @@ jobs:
             "${destination}" \
             | sha256sum --check --strict
 
+          extraction_directory="${RUNNER_TEMP}/typos-release"
+          mkdir --parents "${extraction_directory}"
+
           tar \
             --extract \
             --gzip \
             --file="${destination}" \
-            --directory="${RUNNER_TEMP}" \
-            typos
+            --directory="${extraction_directory}"
+
+          install \
+            --mode=0755 \
+            "${extraction_directory}/typos" \
+            "${RUNNER_TEMP}/typos"
 
       - name: Check spelling
         run: |
@@ -208,12 +215,19 @@ jobs:
             "${destination}" \
             | sha256sum --check --strict
 
+          extraction_directory="${RUNNER_TEMP}/lychee-release"
+          mkdir --parents "${extraction_directory}"
+
           tar \
             --extract \
             --gzip \
             --file="${destination}" \
-            --directory="${RUNNER_TEMP}" \
-            lychee
+            --directory="${extraction_directory}"
+
+          install \
+            --mode=0755 \
+            "${extraction_directory}/lychee-x86_64-unknown-linux-gnu/lychee" \
+            "${RUNNER_TEMP}/lychee"
 
       - name: Check documentation links
         env:
