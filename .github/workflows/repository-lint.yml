@@ -36,11 +36,15 @@ defaults:
 env:
   ACTIONLINT_VERSION: "1.7.12"
   ACTIONLINT_SHA256: "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8"
+  BIOME_VERSION: "2.5.10"
+  BIOME_SHA256: "511592536991d4b07179d063b93ff0c092ccedba556a4b1ea70d12d46ea0785a"
   EDITORCONFIG_CHECKER_VERSION: "3.11.2"
   EDITORCONFIG_CHECKER_SHA256: "bc815e5b3b1891a0ee9e1242fe3475312655f8b0f4c4a79510be0a009294571a"
   YAMLLINT_VERSION: "1.38.0"
   TAPLO_VERSION: "0.10.0"
   MARKDOWNLINT_VERSION: "0.23.2"
+  ZIZMOR_VERSION: "1.29.0"
+  ZIZMOR_SHA256: "dd96df044a6e8538d5f423790f453bdd03d49e5b2bcc38214acc41a2f1297839"
 
 jobs:
   actionlint:
@@ -90,7 +94,64 @@ jobs:
 
           "${RUNNER_TEMP}/actionlint" \
             -color \
-            -config-file tools/actionlint.yaml
+            -config-file tools/lint/code/actions/actionlint.yaml
+
+  zizmor:
+    name: GitHub Actions security
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install zizmor
+        run: |
+          set -euo pipefail
+
+          archive="zizmor-x86_64-unknown-linux-gnu.tar.gz"
+          destination="${RUNNER_TEMP}/${archive}"
+          base_url="https://github.com/zizmorcore/zizmor/releases/download"
+          url="${base_url}/v${ZIZMOR_VERSION}/${archive}"
+
+          curl \
+            --fail \
+            --silent \
+            --show-error \
+            --location \
+            --proto '=https' \
+            --tlsv1.2 \
+            "${url}" \
+            --output "${destination}"
+
+          printf '%s  %s\n' \
+            "${ZIZMOR_SHA256}" \
+            "${destination}" \
+            | sha256sum --check --strict
+
+          tar \
+            --extract \
+            --gzip \
+            --file="${destination}" \
+            --directory="${RUNNER_TEMP}" \
+            zizmor
+
+      - name: Audit GitHub Actions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          "${RUNNER_TEMP}/zizmor" \
+            --config tools/lint/code/actions/zizmor.yml \
+            --format github \
+            --pedantic \
+            --strict-collection \
+            .github/workflows
+
   editorconfig:
     name: EditorConfig
     runs-on: ubuntu-24.04
@@ -161,6 +222,66 @@ jobs:
 
           "${RUNNER_TEMP}/ec"
 
+  json:
+    name: JSON and JSONC
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Biome
+        run: |
+          set -euo pipefail
+
+          destination="${RUNNER_TEMP}/biome"
+          base_url="https://github.com/biomejs/biome/releases/download"
+          release="%40biomejs/biome%40${BIOME_VERSION}"
+          url="${base_url}/${release}/biome-linux-x64"
+
+          curl \
+            --fail \
+            --silent \
+            --show-error \
+            --location \
+            --proto '=https' \
+            --tlsv1.2 \
+            "${url}" \
+            --output "${destination}"
+
+          printf '%s  %s\n' \
+            "${BIOME_SHA256}" \
+            "${destination}" \
+            | sha256sum --check --strict
+
+          chmod 0755 "${destination}"
+
+      - name: Find and lint all JSON files
+        run: |
+          set -euo pipefail
+
+          mapfile -d '' files < <(
+            git ls-files -z -- '*.json' '*.jsonc'
+          )
+
+          if (( ${#files[@]} == 0 )); then
+            echo "No tracked JSON or JSONC files found."
+            exit 0
+          fi
+
+          printf 'Linting %d JSON or JSONC file(s).\n' "${#files[@]}"
+
+          "${RUNNER_TEMP}/biome" \
+            lint \
+            --config-path tools/lint/code/json/biome-config.json \
+            --error-on-warnings \
+            --reporter github \
+            "${files[@]}"
+
   yamllint:
     name: YAML
     runs-on: ubuntu-24.04
@@ -202,7 +323,7 @@ jobs:
           printf 'Linting %d YAML file(s).\n' "${#files[@]}"
 
           "${RUNNER_TEMP}/yamllint/bin/yamllint" \
-            --config-file tools/yamllint.yml \
+            --config-file tools/lint/code/yaml/yamllint.yml \
             --format github \
             "${files[@]}"
 
@@ -244,7 +365,7 @@ jobs:
 
           taplo \
             lint \
-            --config tools/taplo.toml \
+            --config tools/lint/code/taplo/taplo.toml \
             "${files[@]}"
 
       - name: Check TOML formatting
@@ -261,7 +382,7 @@ jobs:
 
           taplo \
             fmt \
-            --config tools/taplo.toml \
+            --config tools/lint/code/taplo/taplo.toml \
             --check \
             "${files[@]}"
 
@@ -307,7 +428,7 @@ jobs:
           npx \
             --yes \
             "markdownlint-cli2@${MARKDOWNLINT_VERSION}" \
-            --config tools/markdownlint-cli2.jsonc \
+            --config tools/lint/code/md/markdownlint-cli2.jsonc \
             "${args[@]}"
 
 # EOF

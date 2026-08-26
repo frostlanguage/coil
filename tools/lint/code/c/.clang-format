@@ -1,0 +1,203 @@
+# SPDX-FileCopyrightText: © 2026 Rafael V. Volkmer <rafael.v.volkmer@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-only
+
+# clang-format - Coil C Formatting Configuration
+# Target: clang-format 22.1.x
+
+---
+
+# =============================
+# 1. Base Style
+# =============================
+BasedOnStyle:                               Mozilla         # inherit Mozilla defaults only for unspecified options
+Language:                                   c               # clang-format uses Cpp for C and C++
+IndentWidth:                                8               # use Linux kernel-style 8-column indentation
+ContinuationIndentWidth:                    8               # use 8 columns for continuation indentation
+TabWidth:                                   8               # interpret tabs using Linux kernel 8-column stops
+UseTab:                                     ForIndentation  # use tabs for indentation and spaces for alignment
+ColumnLimit:                                80              # follow the Linux kernel preferred line length
+BreakBeforeBraces:                          Custom          # use the explicit Allman-style rules defined below
+ReflowComments:                             true            # reflow comments when required by the column limit
+InsertNewlineAtEOF:                         true            # always terminate source files with a newline
+
+# =============================
+# 2. Brace Wrapping
+# =============================
+BraceWrapping:
+  AfterCaseLabel:                           true        # place case-local block braces on a new line
+  AfterControlStatement:                    Always      # place braces below if/for/while/switch statements
+  AfterEnum:                                true        # place opening enum braces on a new line
+  AfterFunction:                            true        # place opening function braces on a new line
+  AfterStruct:                              true        # place opening struct braces on a new line
+  AfterUnion:                               true        # place opening union braces on a new line
+  BeforeElse:                               true        # place else below the preceding closing brace
+  BeforeWhile:                              true        # place while below the closing brace of do blocks
+  IndentBraces:                             false       # align braces with the owning declaration or statement
+  SplitEmptyFunction:                       true        # keep empty function bodies vertically expanded
+  SplitEmptyRecord:                         true        # keep empty struct and union bodies vertically expanded
+
+# =============================
+# 3. Alignment Rules
+# =============================
+AlignAfterOpenBracket:                      true        # align wrapped expressions after their opening bracket
+BracedInitializerIndentWidth:               2           # indent initializer contents by 2 spaces
+AlignArrayOfStructures:                     Right       # align tabular arrays of structures by their right edge
+
+AlignConsecutiveAssignments:                            # configure alignment of adjacent assignments
+  Enabled:                                  true        # align consecutive assignment operators
+  AcrossEmptyLines:                         false       # stop assignment alignment at empty lines
+  AcrossComments:                           false       # stop assignment alignment at comment boundaries
+  AlignCompound:                            true        # align compound operators such as += and &=
+  PadOperators:                             true        # pad shorter operators to preserve visual alignment
+
+AlignConsecutiveBitFields:                              # configure alignment of adjacent bit-field declarations
+  Enabled:                                  true        # align consecutive bit-field declarations
+  AcrossEmptyLines:                         false       # stop bit-field alignment at empty lines
+  AcrossComments:                           false       # stop bit-field alignment at comment boundaries
+
+AlignConsecutiveDeclarations:                           # configure alignment of adjacent declarations
+  Enabled:                                  true        # align consecutive variable declarations
+  AcrossEmptyLines:                         false       # stop declaration alignment at empty lines
+  AcrossComments:                           false       # stop declaration alignment at comment boundaries
+
+AlignConsecutiveMacros:                                 # configure alignment of adjacent macro definitions
+  Enabled:                                  true        # align consecutive #define declarations
+  AcrossEmptyLines:                         false       # stop macro alignment at empty lines
+  AcrossComments:                           false       # stop macro alignment at comment boundaries
+
+AlignConsecutiveShortCaseStatements:                    # configure alignment of short case statements
+  Enabled:                                  false       # disable compact aligned case statements
+  AcrossEmptyLines:                         false       # never align cases across empty lines
+  AcrossComments:                           false       # never align cases across comments
+  AlignCaseColons:                          false       # keep each case colon attached to its expression
+
+AlignEscapedNewlines:                       Left        # align macro continuation backslashes to the left
+AlignOperands:                              Align       # align operands when expressions wrap
+
+AlignTrailingComments:                                  # configure alignment of trailing line comments
+  Kind:                                     Always      # align consecutive trailing comments
+  OverEmptyLines:                           0           # never align comments across an empty line
+
+# =============================
+# 4. Bin Packing & Wrapping
+# =============================
+AllowAllArgumentsOnNextLine:                true        # allow compact argument groups on a continuation line
+AllowAllParametersOfDeclarationOnNextLine:  true        # allow compact parameter groups on a continuation line
+AllowShortBlocksOnASingleLine:              Never       # never collapse statement blocks onto one line
+AllowShortCaseLabelsOnASingleLine:          false       # never place case statements beside their labels
+AllowShortEnumsOnASingleLine:               false       # never collapse enum definitions onto one line
+AllowShortIfStatementsOnASingleLine:        Never       # never collapse if statements onto one line
+AllowShortLoopsOnASingleLine:               false       # never collapse loops onto one line
+AllowShortFunctionsOnASingleLine:           None        # never collapse complete functions onto one line
+
+BreakAfterReturnType:                       Automatic   # keep return type with function name whenever possible
+BreakFunctionDefinitionParameters:          false       # never force parameters below the function name
+AlwaysBreakBeforeMultilineStrings:          false       # do not introduce unnecessary breaks before strings
+BinPackArguments:                           true        # pack as many call arguments as possible on each line
+BinPackParameters:                          BinPack     # pack as many function parameters as possible per line
+BitFieldColonSpacing:                       Both        # format bit fields as `field : width`
+
+BreakAdjacentStringLiterals:                true        # permit adjacent string literals to wrap independently
+BreakAfterAttributes:                       Never       # keep attributes attached whenever they naturally fit
+BreakBeforeBinaryOperators:                 All         # put wrapped binary operators at the next line beginning
+BreakBeforeInlineASMColon:                  OnlyMultiline # split inline assembly operands only when necessary
+BreakBeforeTernaryOperators:                true        # put wrapped ternary operators before their operands
+BreakStringLiterals:                        true        # split string literals when required by the column limit
+
+# =============================
+# 5. Pointer & Qualifier Style
+# =============================
+DerivePointerAlignment:                     false       # never infer pointer placement from existing source
+PointerAlignment:                           Right       # format pointers as `type *name`
+QualifierAlignment:                         Leave       # preserve const/volatile ordering exactly as written
+SpaceAroundPointerQualifiers:               Default     # use standard spacing around pointer qualifiers
+
+# =============================
+# 6. Includes & Miscellaneous
+# =============================
+SortIncludes:                               true        # sort include directives deterministically
+IncludeBlocks:                              Regroup     # regroup related include directives by category
+MainIncludeChar:                            Quote       # identify project main headers through quoted includes
+
+IncludeCategories:                                      # define deterministic project/system include ordering
+  - Regex:                                  '^"'        # match project headers written with double quotes
+    Priority:                               1           # place project headers before system headers
+  - Regex:                                  '^<'        # match system headers written with angle brackets
+    Priority:                               2           # place system headers after project headers
+
+RemoveParentheses:                          Leave       # preserve explicitly written parentheses
+RemoveSemicolon:                            false       # preserve explicitly written semicolons
+EnumTrailingComma:                          Leave       # never insert or remove enum trailing commas
+DisableFormat:                              false       # keep clang-format enabled globally
+
+# =============================
+# 7. Indentation & Directives
+# =============================
+IndentCaseBlocks:                           false       # do not add another level inside explicit case blocks
+IndentCaseLabels:                           true        # indent case and default labels inside switch statements
+IndentGotoLabels:                           false       # keep goto labels aligned with their containing scope
+IndentPPDirectives:                         BeforeHash  # indent nested preprocessor directives before the '#'
+PPIndentWidth:                              2           # indent nested preprocessor directives by 2 spaces
+IndentWrappedFunctionNames:                 false       # do not indent wrapped function names beneath return types
+InsertBraces:                               false       # never modify control-flow semantics by inserting braces
+
+# =============================
+# 8. Parentheses & Spacing
+# =============================
+SpaceBeforeParens:                          Custom      # explicitly define spacing before parentheses
+
+SpaceBeforeParensOptions:                               # configure C function and control-statement parentheses
+  AfterControlStatements:                   true        # format control flow as `if (condition)`
+  AfterFunctionDefinitionName:              false       # format definitions as `function(...)`
+  AfterFunctionDeclarationName:             false       # format declarations as `function(...)`
+
+SpaceInEmptyBraces:                         Never       # represent empty braces without internal whitespace
+SpacesInParens:                             Never       # never insert spaces immediately inside parentheses
+SpacesInSquareBrackets:                     false       # format indexing as `array[index]`
+SpaceBeforeSquareBrackets:                  false       # never insert whitespace before array brackets
+
+SpaceAfterCStyleCast:                       false       # format casts as `(type)value`
+SpaceAfterLogicalNot:                       false       # format logical negation as `!value`
+SpaceBeforeAssignmentOperators:             true        # format assignments as `lhs = rhs`
+SpaceBeforeCaseColon:                       false       # format labels as `case VALUE:`
+
+SpacesBeforeTrailingComments:               1           # require one separator before trailing comments
+
+SpacesInLineCommentPrefix:                              # normalize whitespace following `//`
+  Minimum:                                  1           # require at least one space following `//`
+  Maximum:                                  1           # allow exactly one space following `//`
+
+# =============================
+# 9. Numeric Literals & Line Endings
+# =============================
+IntegerLiteralSeparator:                                # normalize separators without introducing C++ syntax
+  Binary:                                   -1          # remove separators from binary integer literals
+  Decimal:                                  -1          # remove separators from decimal integer literals
+  Hex:                                      -1          # remove separators from hexadecimal integer literals
+
+NumericLiteralCase:                                     # normalize capitalization of numeric literals
+  ExponentLetter:                           Lower       # use lowercase `e` for floating-point exponents
+  HexDigit:                                 Upper       # use uppercase hexadecimal digits `A` through `F`
+  Prefix:                                   Lower       # use lowercase prefixes such as `0x`
+  Suffix:                                   Upper       # use uppercase C integer and floating-point suffixes
+
+LineEnding:                                 LF          # always emit Unix LF line endings
+MaxEmptyLinesToKeep:                        1           # retain at most one consecutive empty line
+
+KeepEmptyLines:                                         # explicitly control preserved empty lines
+  AtEndOfFile:                              false       # remove extra empty lines from the end of files
+  AtStartOfBlock:                           false       # remove empty lines immediately after opening braces
+  AtStartOfFile:                            false       # remove empty lines before the first source line
+
+# =============================
+# 10. Formatting Penalties
+# =============================
+PenaltyReturnTypeOnItsOwnLine:              1000000     # strongly keep return type and function name together
+PenaltyBreakComment:                        300         # prefer comment wrapping over exceeding ColumnLimit
+PenaltyBreakOpenParenthesis:                10000       # strongly avoid breaking immediately after `(`
+PenaltyBreakBeforeFirstCallParameter:       1000        # prefer keeping first call arguments beside the function
+PenaltyExcessCharacter:                     10000       # strongly discourage lines beyond ColumnLimit
+PenaltyIndentedWhitespace:                  0           # do not penalize whitespace used solely for alignment
+PenaltyBreakString:                         1000        # avoid splitting string literals unless necessary
+
+# EOF

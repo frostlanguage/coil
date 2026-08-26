@@ -51,13 +51,13 @@ max_line_length = 80
 # clang Tooling Configuration
 # ==============================================================================
 
-[tools/c-code/.clang-format]
+[tools/lint/code/c/.clang-format]
 indent_style = space
 indent_size = 2
 tab_width = 2
 max_line_length = 120
 
-[tools/c-code/{.clang-tidy,.clangd}]
+[tools/lint/code/c/{.clang-tidy,.clangd}]
 indent_style = space
 indent_size = 2
 tab_width = 2
