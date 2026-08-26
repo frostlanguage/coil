@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: 2026 Rafael V. Volkmer
+# SPDX-License-Identifier: GPL-3.0-only
+
+---
+self-hosted-runner:
+  labels: []
+
+paths: {}
+
+# EOF

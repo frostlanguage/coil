@@ -1,0 +1,253 @@
+# SPDX-FileCopyrightText: 2026 Rafael V. Volkmer
+# SPDX-License-Identifier: GPL-3.0-only
+
+---
+name: Repository Lint
+
+on:
+  push:
+    branches:
+      - "**"
+    tags:
+      - "**"
+
+  pull_request:
+    branches:
+      - "**"
+
+  merge_group: {}
+
+  release:
+    types:
+      - published
+      - prereleased
+      - released
+
+  workflow_dispatch: {}
+
+permissions: {}
+
+concurrency:
+  group: >-
+    ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  ACTIONLINT_VERSION: "1.7.12"
+  ACTIONLINT_SHA256: "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8"
+  YAMLLINT_VERSION: "1.38.0"
+  TAPLO_VERSION: "0.10.0"
+  MARKDOWNLINT_VERSION: "0.23.2"
+
+jobs:
+  actionlint:
+    name: GitHub Actions
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install actionlint
+        run: |
+          set -euo pipefail
+
+          archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          destination="${RUNNER_TEMP}/${archive}"
+
+          curl \
+            --fail \
+            --silent \
+            --show-error \
+            --location \
+            --proto '=https' \
+            --tlsv1.2 \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/${archive}" \
+            --output "${destination}"
+
+          printf '%s  %s\n' \
+            "${ACTIONLINT_SHA256}" \
+            "${destination}" \
+            | sha256sum --check --strict
+
+          tar \
+            --extract \
+            --gzip \
+            --file="${destination}" \
+            --directory="${RUNNER_TEMP}" \
+            actionlint
+
+      - name: Run actionlint
+        run: |
+          set -euo pipefail
+
+          "${RUNNER_TEMP}/actionlint" \
+            -color \
+            -config-file tools/actionlint.yaml
+
+  yamllint:
+    name: YAML
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install yamllint
+        run: |
+          set -euo pipefail
+
+          python3 -m venv "${RUNNER_TEMP}/yamllint"
+
+          "${RUNNER_TEMP}/yamllint/bin/python" \
+            -m pip \
+            install \
+            --disable-pip-version-check \
+            --no-input \
+            "yamllint==${YAMLLINT_VERSION}"
+
+      - name: Find and lint all YAML files
+        run: |
+          set -euo pipefail
+
+          mapfile -d '' files < <(
+            git ls-files -z -- '*.yml' '*.yaml'
+          )
+
+          if (( ${#files[@]} == 0 )); then
+            echo "No tracked YAML files found."
+            exit 0
+          fi
+
+          printf 'Linting %d YAML file(s).\n' "${#files[@]}"
+
+          "${RUNNER_TEMP}/yamllint/bin/yamllint" \
+            --config-file tools/yamllint.yml \
+            --format github \
+            "${files[@]}"
+
+  taplo:
+    name: TOML
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Taplo
+        run: |
+          set -euo pipefail
+
+          cargo install \
+            taplo-cli \
+            --version "${TAPLO_VERSION}" \
+            --locked
+
+      - name: Find and validate all TOML files
+        run: |
+          set -euo pipefail
+
+          mapfile -d '' files < <(
+            git ls-files -z -- '*.toml'
+          )
+
+          if (( ${#files[@]} == 0 )); then
+            echo "No tracked TOML files found."
+            exit 0
+          fi
+
+          printf 'Linting %d TOML file(s).\n' "${#files[@]}"
+
+          taplo \
+            lint \
+            --config tools/taplo.toml \
+            "${files[@]}"
+
+      - name: Check TOML formatting
+        run: |
+          set -euo pipefail
+
+          mapfile -d '' files < <(
+            git ls-files -z -- '*.toml'
+          )
+
+          if (( ${#files[@]} == 0 )); then
+            exit 0
+          fi
+
+          taplo \
+            fmt \
+            --config tools/taplo.toml \
+            --check \
+            "${files[@]}"
+
+  markdownlint:
+    name: Markdown
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Find and lint all Markdown files
+        run: |
+          set -euo pipefail
+
+          mapfile -d '' files < <(
+            git ls-files -z -- '*.md' '*.markdown'
+          )
+
+          if (( ${#files[@]} == 0 )); then
+            echo "No tracked Markdown files found."
+            exit 0
+          fi
+
+          printf 'Linting %d Markdown file(s).\n' "${#files[@]}"
+
+          args=()
+
+          for file in "${files[@]}"; do
+            args+=(":${file}")
+          done
+
+          npx \
+            --yes \
+            "markdownlint-cli2@${MARKDOWNLINT_VERSION}" \
+            --config tools/markdownlint-cli2.jsonc \
+            "${args[@]}"
+
+# EOF
