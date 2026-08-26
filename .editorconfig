@@ -1,0 +1,237 @@
+# SPDX-FileCopyrightText: © 2026 Rafael V. Volkmer <rafael.v.volkmer@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-only
+
+# EditorConfig - Coil Repository Editor Policy
+
+root = true
+
+# ==============================================================================
+# Default Repository Policy
+# ==============================================================================
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# ==============================================================================
+# C Sources and Headers
+# ==============================================================================
+
+[*.{c,h,i,cpp,hpp}]
+indent_style = tab
+indent_size = 8
+tab_width = 8
+max_line_length = 80
+
+# ==============================================================================
+# Assembly, Linker and Low-Level Sources
+# ==============================================================================
+
+[*.{s,S,asm,inc}]
+indent_style = tab
+indent_size = 8
+tab_width = 8
+max_line_length = 80
+
+[*.{ld,lds,ldscript}]
+indent_style = tab
+indent_size = 8
+tab_width = 8
+max_line_length = 80
+
+[*.{dts,dtsi}]
+indent_style = tab
+indent_size = 8
+tab_width = 8
+max_line_length = 80
+
+# ==============================================================================
+# clang Tooling Configuration
+# ==============================================================================
+
+[tools/c-code/.clang-format]
+indent_style = space
+indent_size = 2
+tab_width = 2
+max_line_length = 120
+
+[tools/c-code/{.clang-tidy,.clangd}]
+indent_style = space
+indent_size = 2
+tab_width = 2
+max_line_length = 120
+
+# ==============================================================================
+# YAML
+# ==============================================================================
+
+[*.{yaml,yml}]
+indent_style = space
+indent_size = 2
+tab_width = 2
+max_line_length = 120
+
+# ==============================================================================
+# TOML
+# ==============================================================================
+
+[*.toml]
+indent_style = space
+indent_size = 2
+tab_width = 2
+max_line_length = 100
+
+# ==============================================================================
+# JSON and JSON with Comments
+# ==============================================================================
+
+[*.{json,jsonc}]
+indent_style = space
+indent_size = 2
+tab_width = 2
+max_line_length = 120
+
+# ==============================================================================
+# Markdown and Documentation
+# ==============================================================================
+
+[*.{md,mdx,markdown}]
+indent_style = space
+indent_size = 2
+tab_width = 2
+max_line_length = 120
+trim_trailing_whitespace = false
+
+[*.{rst,adoc}]
+indent_style = space
+indent_size = 2
+tab_width = 2
+max_line_length = 120
+
+# ==============================================================================
+# CMake
+# ==============================================================================
+
+[CMakeLists.txt]
+indent_style = space
+indent_size = 2
+tab_width = 2
+max_line_length = 100
+
+[*.cmake]
+indent_style = space
+indent_size = 2
+tab_width = 2
+max_line_length = 100
+
+# ==============================================================================
+# Make and Kernel-Style Build Files
+# ==============================================================================
+
+[{Makefile,makefile,Kbuild}]
+indent_style = tab
+indent_size = 8
+tab_width = 8
+
+[Makefile.*]
+indent_style = tab
+indent_size = 8
+tab_width = 8
+
+[*.mk]
+indent_style = tab
+indent_size = 8
+tab_width = 8
+
+# ==============================================================================
+# Shell Scripts
+# ==============================================================================
+
+[*.{sh,bash,zsh,ksh}]
+indent_style = space
+indent_size = 2
+tab_width = 2
+max_line_length = 100
+
+# ==============================================================================
+# Windows Scripts
+# ==============================================================================
+
+[*.{bat,cmd}]
+end_of_line = crlf
+indent_style = space
+indent_size = 2
+tab_width = 2
+max_line_length = 120
+
+[*.{ps1,psm1,psd1}]
+end_of_line = crlf
+indent_style = space
+indent_size = 4
+tab_width = 4
+max_line_length = 120
+
+# ==============================================================================
+# Python
+# ==============================================================================
+
+[*.py]
+indent_style = space
+indent_size = 4
+tab_width = 4
+max_line_length = 88
+
+# ==============================================================================
+# Web and Scripting Languages
+# ==============================================================================
+
+[*.{js,jsx,ts,tsx}]
+indent_style = space
+indent_size = 2
+tab_width = 2
+max_line_length = 100
+
+[*.{css,scss,html,htm,xhtml}]
+indent_style = space
+indent_size = 2
+tab_width = 2
+max_line_length = 100
+
+# ==============================================================================
+# XML
+# ==============================================================================
+
+[*.{xml,xsd,plist}]
+indent_style = space
+indent_size = 2
+tab_width = 2
+max_line_length = 120
+
+# ==============================================================================
+# INI and Generic Configuration
+# ==============================================================================
+
+[*.{ini,cfg,conf,config,cnf}]
+indent_style = space
+indent_size = 2
+tab_width = 2
+max_line_length = 120
+
+# ==============================================================================
+# Plain Text and License Files
+# ==============================================================================
+
+[*.txt]
+max_line_length = 120
+
+[LICENSE]
+max_line_length = off
+trim_trailing_whitespace = false
+
+[LICENSES/**]
+max_line_length = off
+trim_trailing_whitespace = false
+
+# EOF

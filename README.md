@@ -35,6 +35,8 @@ SPDX-License-Identifier: GPL-3.0-only
 
 ---
 
+<!-- editorconfig-checker-disable -->
+
 <!-- BADGE LINKS -->
 
 [contributors-shield]: https://img.shields.io/github/contributors/frostlanguage/coil.svg?style=flat-square&logo=changedetection&logoColor=white&label=Contributors&labelColor=1F2328&color=2F81F7

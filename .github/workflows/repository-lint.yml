@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 ---
+
 name: Repository Lint
 
 on:
@@ -10,19 +11,15 @@ on:
       - "**"
     tags:
       - "**"
-
   pull_request:
     branches:
       - "**"
-
   merge_group: {}
-
   release:
     types:
       - published
       - prereleased
       - released
-
   workflow_dispatch: {}
 
 permissions: {}
@@ -39,6 +36,8 @@ defaults:
 env:
   ACTIONLINT_VERSION: "1.7.12"
   ACTIONLINT_SHA256: "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8"
+  EDITORCONFIG_CHECKER_VERSION: "3.11.2"
+  EDITORCONFIG_CHECKER_SHA256: "bc815e5b3b1891a0ee9e1242fe3475312655f8b0f4c4a79510be0a009294571a"
   YAMLLINT_VERSION: "1.38.0"
   TAPLO_VERSION: "0.10.0"
   MARKDOWNLINT_VERSION: "0.23.2"
@@ -48,10 +47,8 @@ jobs:
     name: GitHub Actions
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-
     permissions:
       contents: read
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -95,14 +92,61 @@ jobs:
             -color \
             -config-file tools/actionlint.yaml
 
+  editorconfig:
+    name: EditorConfig
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install EditorConfig Checker
+        run: |
+          set -euo pipefail
+
+          archive="ec-linux-amd64.tar.gz"
+          destination="${RUNNER_TEMP}/${archive}"
+          base_url="https://github.com/editorconfig-checker/editorconfig-checker/releases/download"
+          url="${base_url}/v${EDITORCONFIG_CHECKER_VERSION}/${archive}"
+
+          curl \
+            --fail \
+            --silent \
+            --show-error \
+            --location \
+            --proto '=https' \
+            --tlsv1.2 \
+            "${url}" \
+            --output "${destination}"
+
+          printf '%s  %s\n' \
+            "${EDITORCONFIG_CHECKER_SHA256}" \
+            "${destination}" \
+            | sha256sum --check --strict
+
+          tar \
+            --extract \
+            --gzip \
+            --file="${destination}" \
+            --directory="${RUNNER_TEMP}" \
+            ec
+
+      - name: Run EditorConfig Checker
+        run: |
+          set -euo pipefail
+
+          "${RUNNER_TEMP}/ec"
+
   yamllint:
     name: YAML
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-
     permissions:
       contents: read
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -146,10 +190,8 @@ jobs:
     name: TOML
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-
     permissions:
       contents: read
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -207,10 +249,8 @@ jobs:
     name: Markdown
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-
     permissions:
       contents: read
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
