@@ -126,41 +126,39 @@ local optional_tools = {
    },
 }
 
+local function hook_directory(path)
+   return path:match("^(.*)[/\\][^/\\]+$") or ".githooks"
+end
+
+local platform = dofile(
+   hook_directory(arg[0] or "").."/lib/platform.lua"
+)
+
+
 local function shell_quote(value)
-   return "'"..value:gsub("'", "'\\''").."'"
+   return platform.shell_quote(value)
 end
 
 --- Run a command and report whether it completed successfully.
 -- @param command string: shell command to execute.
 -- @return boolean: true when the command exits with status zero.
 local function command_succeeded(command)
-   local first, _, code = os.execute(command)
-
-   if type(first) == "number" then
-      return first == 0
-   end
-
-   if first == true then
-      return true
-   end
-
-   return code == 0
+   return platform.command_succeeded(command)
 end
 
 --- Capture stdout from a command.
 -- @param command string: shell command to execute.
 -- @return string|nil: stdout, or nil when the command could not start.
 local function command_output(command)
-   local handle = io.popen(command, "r")
+   return platform.command_output(command)
+end
 
-   if not handle then
-      return nil
-   end
+local function silence_stderr(command)
+   return platform.silence_stderr(command)
+end
 
-   local output = handle:read("*a")
-   handle:close()
-
-   return output
+local function silence_all(command)
+   return platform.silence_all(command)
 end
 
 --- Print a fatal commit-message diagnostic.
@@ -233,15 +231,14 @@ end
 -- @param name string: executable name.
 -- @return boolean: true when the executable can be resolved.
 local function command_exists(name)
-   local command = "command -v "..shell_quote(name).." >/dev/null 2>&1"
-   return command_succeeded(command)
+   return platform.command_exists(name)
 end
 
 --- Return the repository root.
 -- @return string|nil: absolute repository root.
 local function repository_root()
    local output = command_output(
-      "git rev-parse --show-toplevel 2>/dev/null"
+      silence_stderr("git rev-parse --show-toplevel")
    )
 
    if not output then
@@ -261,7 +258,9 @@ end
 -- @param key string: Git configuration key.
 -- @return string|nil: configured value, or nil when absent.
 local function git_config(key)
-   local command = "git config --get "..shell_quote(key).." 2>/dev/null"
+   local command = silence_stderr(
+      "git config --get "..shell_quote(key)
+   )
    local output = command_output(command)
 
    if not output then
@@ -395,7 +394,19 @@ end
 -- @param line string: trailer line.
 -- @return string|nil, string|nil: name and email.
 local function parse_signoff(line)
-   return line:match("^Signed%-off%-by: (.+) <([^<>@%s]+@[^<>%s]+)>$")
+   local name, email = line:match(
+      "^Signed%-off%-by: (.+) <([^<>]+)>$"
+   )
+
+   if not name or not email then
+      return nil, nil
+   end
+
+   if email:find("%s") or not email:match("^[^@]+@[^@]+$") then
+      return nil, nil
+   end
+
+   return name, email
 end
 
 --- Check whether a line is an HTTPS URL trailer.
@@ -426,7 +437,7 @@ local function commit_author(commit)
    local command = table.concat({
       "git show -s --format=%an%x00%ae",
       shell_quote(commit),
-      "2>/dev/null",
+      platform.stderr_redirect(),
    }, " ")
 
    local output = command_output(command)
@@ -449,7 +460,7 @@ local function stored_message(commit)
    local command = table.concat({
       "git show -s --format=%B",
       shell_quote(commit),
-      "2>/dev/null",
+      platform.stderr_redirect(),
    }, " ")
 
    return command_output(command)
@@ -1030,7 +1041,7 @@ local function reference_remote()
    end
 
    local branch = command_output(
-      "git symbolic-ref --quiet --short HEAD 2>/dev/null"
+      silence_stderr("git symbolic-ref --quiet --short HEAD")
    )
 
    if branch then
@@ -1042,7 +1053,9 @@ local function reference_remote()
       end
    end
 
-   if command_succeeded("git remote get-url origin >/dev/null 2>&1") then
+   if command_succeeded(
+      silence_all("git remote get-url origin")
+   ) then
       return "origin"
    end
 
@@ -1054,7 +1067,7 @@ end
 -- @return string|nil: configured URL.
 local function remote_url(remote)
    local output = command_output(
-      "git remote get-url "..shell_quote(remote).." 2>/dev/null"
+      silence_stderr("git remote get-url "..shell_quote(remote))
    )
 
    if not output then
@@ -1090,12 +1103,15 @@ local function github_repository_from_url(url)
    return nil
 end
 
---- Query one GitHub API endpoint and require HTTP 200.
+--- Query one GitHub API endpoint and verify its object kind.
+-- The GitHub issues endpoint returns both issues and pull requests.
+-- A real issue must not contain the top-level pull_request marker.
 -- GITHUB_TOKEN or GH_TOKEN is used when available.
 -- @param repository string: owner/repository.
 -- @param endpoint string: repository-relative API endpoint.
--- @return boolean: true for HTTP 200.
-local function github_api_exists(repository, endpoint)
+-- @param expected_kind string: issue, pull, or commit.
+-- @return boolean: true when the remote object exists with the right kind.
+local function github_api_matches_kind(repository, endpoint, expected_kind)
    if not command_exists("curl") then
       fail(
          "curl is required to verify GitHub issue, pull, and commit "..
@@ -1104,18 +1120,19 @@ local function github_api_exists(repository, endpoint)
       return false
    end
 
+   local response_path = os.tmpname()
    local token = os.getenv("GITHUB_TOKEN") or os.getenv("GH_TOKEN")
    local parts = {
       "curl",
       "--silent",
       "--show-error",
       "--location",
-      "--output /dev/null",
-      "--write-out '%{http_code}'",
-      "--proto '=https'",
+      "--output "..shell_quote(response_path),
+      "--write-out "..shell_quote("%{http_code}"),
+      "--proto "..shell_quote("=https"),
       "--tlsv1.2",
-      "--header 'Accept: application/vnd.github+json'",
-      "--header 'X-GitHub-Api-Version: 2022-11-28'",
+      "--header "..shell_quote("Accept: application/vnd.github+json"),
+      "--header "..shell_quote("X-GitHub-Api-Version: 2022-11-28"),
    }
 
    if token and token ~= "" then
@@ -1129,16 +1146,31 @@ local function github_api_exists(repository, endpoint)
          "https://api.github.com/repos/"..repository.."/"..endpoint
       )
    )
-   table.insert(parts, "2>/dev/null")
+   table.insert(parts, platform.stderr_redirect())
 
    local output = command_output(table.concat(parts, " "))
 
    if not output then
+      os.remove(response_path)
       return false
    end
 
    output = output:gsub("%s+$", "")
-   return output == "200"
+
+   if output ~= "200" then
+      os.remove(response_path)
+      return false
+   end
+
+   if expected_kind ~= "issue" then
+      os.remove(response_path)
+      return true
+   end
+
+   local body = read_file(response_path) or ""
+   os.remove(response_path)
+
+   return body:find('"pull_request"%s*:', 1) == nil
 end
 
 --- Validate one branch, tag, or full ref with git ls-remote.
@@ -1151,7 +1183,7 @@ local function git_remote_reference_exists(remote, target)
    if target.kind == "branch" then
       if not command_succeeded(
          "git check-ref-format --branch "..shell_quote(target.value)
-            .." >/dev/null 2>&1"
+            .." "..platform.all_redirect()
       ) then
          return false
       end
@@ -1161,7 +1193,7 @@ local function git_remote_reference_exists(remote, target)
       pattern = "refs/tags/"..target.value
 
       if not command_succeeded(
-         "git check-ref-format "..shell_quote(pattern).." >/dev/null 2>&1"
+         silence_all("git check-ref-format "..shell_quote(pattern))
       ) then
          return false
       end
@@ -1169,7 +1201,7 @@ local function git_remote_reference_exists(remote, target)
       pattern = target.value
 
       if not command_succeeded(
-         "git check-ref-format "..shell_quote(pattern).." >/dev/null 2>&1"
+         silence_all("git check-ref-format "..shell_quote(pattern))
       ) then
          return false
       end
@@ -1177,7 +1209,7 @@ local function git_remote_reference_exists(remote, target)
 
    return command_succeeded(
       "git ls-remote --exit-code "..shell_quote(remote).." "
-         ..shell_quote(pattern).." >/dev/null 2>&1"
+         ..shell_quote(pattern).." "..platform.all_redirect()
    )
 end
 
@@ -1261,14 +1293,17 @@ local function validate_remote_references(text)
                endpoint = "commits/"..target.value
             end
 
-            exists = github_api_exists(github_repository, endpoint)
+            exists = github_api_matches_kind(
+               github_repository, endpoint, target.kind
+            )
          end
       end
 
       if not exists then
          fail(
             target.footer..": referenced "..target.display
-               .." does not exist on remote '"..remote.."'."
+               .." does not exist with that object kind on remote '"
+               ..remote.."'."
          )
          ok = false
       end
@@ -1282,7 +1317,9 @@ end
 -- @return string: temporary file path.
 local function temporary_message_path(root)
    local git_dir = command_output(
-      "git -C "..shell_quote(root).." rev-parse --git-dir 2>/dev/null"
+      silence_stderr(
+         "git -C "..shell_quote(root).." rev-parse --git-dir"
+      )
    )
 
    if not git_dir then
@@ -1291,7 +1328,7 @@ local function temporary_message_path(root)
 
    git_dir = git_dir:gsub("%s+$", "")
 
-   if git_dir:sub(1, 1) ~= "/" then
+   if not platform.is_absolute_path(git_dir) then
       git_dir = root.."/"..git_dir
    end
 

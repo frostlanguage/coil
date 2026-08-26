@@ -43,6 +43,10 @@ env:
   YAMLLINT_VERSION: "1.38.0"
   TAPLO_VERSION: "0.10.0"
   MARKDOWNLINT_VERSION: "0.23.2"
+  CLANG_FORMAT_VERSION: "22.1.8"
+  CLANG_FORMAT_SHA256: "b00cff6bfd1f1686f073a4fdf1cb937dbd58bf7510c659477805c03afdea0816"
+  CLANG_TIDY_VERSION: "22.1.8"
+  CLANG_TIDY_SHA256: "1a3de07ba82d4403d8b692ae63a5520d4db5c606014c92c24bbcef9259057bf1"
   LUA_VERSION: "5.5.1"
   LUA_SHA256: "1c4b4068d67061f2a2231ad2b5422e77acea1487ea9890f6320af614f4373dce"
   SELENE_VERSION: "0.31.0"
@@ -54,6 +58,7 @@ env:
   RUFF_VERSION: "0.16.4"
   RUFF_SHA256: "9cb1234804ddb0f7f57cef3f81623ce5acb990e40af7cce08dc7778c9d7ee96c"
   PYRIGHT_VERSION: "1.1.411"
+  PYRIGHT_SHA256: "bd5c488fc20fa237a944279bf32cae2f986cf10d5d5d9e8705819859daeb2f4a"
   BANDIT_VERSION: "1.9.4"
   SHELLCHECK_VERSION: "0.11.0"
   SHELLCHECK_SHA256: "8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198"
@@ -68,9 +73,36 @@ env:
   NUFMT_REVISION: "7cfd3b7eacf5a9feb22777230e3076038f2e9e8d"
 
 jobs:
+  cache-plane:
+    name: CI cache plane
+    runs-on: >-
+      ${{
+        github.event_name == 'pull_request' &&
+        'ubuntu-24.04' ||
+        vars.COIL_CI_RUNNER ||
+        'ubuntu-24.04'
+      }}
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate runner-near cache plane
+        uses: ./.github/actions/cache-plane
+
   actionlint:
     name: GitHub Actions
-    runs-on: ubuntu-24.04
+    runs-on: >-
+      ${{
+        github.event_name == 'pull_request' &&
+        'ubuntu-24.04' ||
+        vars.COIL_CI_RUNNER ||
+        'ubuntu-24.04'
+      }}
     timeout-minutes: 10
     permissions:
       contents: read
@@ -80,27 +112,22 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Restore actionlint archive
+        id: actionlint_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: actionlint
+          version: ${{ env.ACTIONLINT_VERSION }}
+          filename: actionlint_${{ env.ACTIONLINT_VERSION }}_linux_amd64.tar.gz
+          sha256: ${{ env.ACTIONLINT_SHA256 }}
+          origin: https://github.com
+          directory: rhysd/actionlint/releases/download/v${{ env.ACTIONLINT_VERSION }}
+
       - name: Install actionlint
         run: |
           set -euo pipefail
 
-          archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
-          destination="${RUNNER_TEMP}/${archive}"
-
-          curl \
-            --fail \
-            --silent \
-            --show-error \
-            --location \
-            --proto '=https' \
-            --tlsv1.2 \
-            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/${archive}" \
-            --output "${destination}"
-
-          printf '%s  %s\n' \
-            "${ACTIONLINT_SHA256}" \
-            "${destination}" \
-            | sha256sum --check --strict
+          destination="${{ steps.actionlint_download.outputs.path }}"
 
           tar \
             --extract \
@@ -132,7 +159,13 @@ jobs:
 
   editorconfig:
     name: EditorConfig
-    runs-on: ubuntu-24.04
+    runs-on: >-
+      ${{
+        github.event_name == 'pull_request' &&
+        'ubuntu-24.04' ||
+        vars.COIL_CI_RUNNER ||
+        'ubuntu-24.04'
+      }}
     timeout-minutes: 10
     permissions:
       contents: read
@@ -143,31 +176,25 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Restore EditorConfig Checker archive
+        id: editorconfig_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: editorconfig-checker
+          version: ${{ env.EDITORCONFIG_CHECKER_VERSION }}
+          filename: ec-linux-amd64.tar.gz
+          sha256: ${{ env.EDITORCONFIG_CHECKER_SHA256 }}
+          origin: https://github.com
+          directory: >-
+            editorconfig-checker/editorconfig-checker/releases/download/v${{ env.EDITORCONFIG_CHECKER_VERSION }}
+
       - name: Install EditorConfig Checker
         run: |
           set -euo pipefail
 
-          archive="ec-linux-amd64.tar.gz"
-          destination="${RUNNER_TEMP}/${archive}"
+          destination="${{ steps.editorconfig_download.outputs.path }}"
           extract_dir="${RUNNER_TEMP}/editorconfig-checker"
           binary="${extract_dir}/bin/ec-linux-amd64"
-          base_url="https://github.com/editorconfig-checker/editorconfig-checker/releases/download"
-          url="${base_url}/v${EDITORCONFIG_CHECKER_VERSION}/${archive}"
-
-          curl \
-            --fail \
-            --silent \
-            --show-error \
-            --location \
-            --proto '=https' \
-            --tlsv1.2 \
-            "${url}" \
-            --output "${destination}"
-
-          printf '%s  %s\n' \
-            "${EDITORCONFIG_CHECKER_SHA256}" \
-            "${destination}" \
-            | sha256sum --check --strict
 
           rm -rf "${extract_dir}"
           mkdir -p "${extract_dir}"
@@ -202,7 +229,13 @@ jobs:
 
   json:
     name: JSON and JSONC
-    runs-on: ubuntu-24.04
+    runs-on: >-
+      ${{
+        github.event_name == 'pull_request' &&
+        'ubuntu-24.04' ||
+        vars.COIL_CI_RUNNER ||
+        'ubuntu-24.04'
+      }}
     timeout-minutes: 10
     permissions:
       contents: read
@@ -212,31 +245,26 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Restore Biome binary
+        id: biome_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: biome
+          version: ${{ env.BIOME_VERSION }}
+          filename: biome-linux-x64
+          sha256: ${{ env.BIOME_SHA256 }}
+          origin: https://github.com
+          directory: >-
+            biomejs/biome/releases/download/%40biomejs/biome%40${{ env.BIOME_VERSION }}
+
       - name: Install Biome
         run: |
           set -euo pipefail
 
-          destination="${RUNNER_TEMP}/biome"
-          base_url="https://github.com/biomejs/biome/releases/download"
-          release="%40biomejs/biome%40${BIOME_VERSION}"
-          url="${base_url}/${release}/biome-linux-x64"
-
-          curl \
-            --fail \
-            --silent \
-            --show-error \
-            --location \
-            --proto '=https' \
-            --tlsv1.2 \
-            "${url}" \
-            --output "${destination}"
-
-          printf '%s  %s\n' \
-            "${BIOME_SHA256}" \
-            "${destination}" \
-            | sha256sum --check --strict
-
-          chmod 0755 "${destination}"
+          install \
+            --mode=0755 \
+            "${{ steps.biome_download.outputs.path }}" \
+            "${RUNNER_TEMP}/biome"
 
       - name: Find and lint all JSON files
         run: |
@@ -262,7 +290,13 @@ jobs:
 
   yamllint:
     name: YAML
-    runs-on: ubuntu-24.04
+    runs-on: >-
+      ${{
+        github.event_name == 'pull_request' &&
+        'ubuntu-24.04' ||
+        vars.COIL_CI_RUNNER ||
+        'ubuntu-24.04'
+      }}
     timeout-minutes: 10
     permissions:
       contents: read
@@ -307,7 +341,13 @@ jobs:
 
   taplo:
     name: TOML
-    runs-on: ubuntu-24.04
+    runs-on: >-
+      ${{
+        github.event_name == 'pull_request' &&
+        'ubuntu-24.04' ||
+        vars.COIL_CI_RUNNER ||
+        'ubuntu-24.04'
+      }}
     timeout-minutes: 15
     permissions:
       contents: read
@@ -366,7 +406,13 @@ jobs:
 
   markdownlint:
     name: Markdown
-    runs-on: ubuntu-24.04
+    runs-on: >-
+      ${{
+        github.event_name == 'pull_request' &&
+        'ubuntu-24.04' ||
+        vars.COIL_CI_RUNNER ||
+        'ubuntu-24.04'
+      }}
     timeout-minutes: 10
     permissions:
       contents: read
@@ -410,9 +456,176 @@ jobs:
             "${args[@]}"
 
 
+  c:
+    name: C
+    runs-on: >-
+      ${{
+        github.event_name == 'pull_request' &&
+        'ubuntu-24.04' ||
+        vars.COIL_CI_RUNNER ||
+        'ubuntu-24.04'
+      }}
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Restore clang-format wheel
+        id: clang_format
+        uses: ./.github/actions/verified-download
+        with:
+          name: clang-format
+          version: ${{ env.CLANG_FORMAT_VERSION }}
+          filename: >-
+            clang_format-22.1.8-py2.py3-none-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
+          sha256: ${{ env.CLANG_FORMAT_SHA256 }}
+          origin: https://files.pythonhosted.org
+          directory: packages/e5/88/b82c066fa807da4ca2518fecf79071361f6324b77375e5e92c059c0697fd
+
+      - name: Restore clang-tidy wheel
+        id: clang_tidy
+        uses: ./.github/actions/verified-download
+        with:
+          name: clang-tidy
+          version: ${{ env.CLANG_TIDY_VERSION }}
+          filename: >-
+            clang_tidy-22.1.8-py2.py3-none-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
+          sha256: ${{ env.CLANG_TIDY_SHA256 }}
+          origin: https://files.pythonhosted.org
+          directory: packages/82/19/0f2668f8f5e2452b096a2b898f2b6bcecbceb6dd0c7f75d1755ce1f18d8b
+
+      - name: Install pinned Clang tools
+        run: |
+          set -euo pipefail
+
+          python3 -m venv "${RUNNER_TEMP}/coil-clang"
+          "${RUNNER_TEMP}/coil-clang/bin/python" \
+            -m pip install \
+            --disable-pip-version-check \
+            --no-deps \
+            --no-index \
+            "${{ steps.clang_format.outputs.path }}" \
+            "${{ steps.clang_tidy.outputs.path }}"
+
+          "${RUNNER_TEMP}/coil-clang/bin/clang-format" --version
+          "${RUNNER_TEMP}/coil-clang/bin/clang-tidy" --version
+
+      - name: Validate C policy and sources
+        run: |
+          set -euo pipefail
+
+          clang_format="${RUNNER_TEMP}/coil-clang/bin/clang-format"
+          clang_tidy="${RUNNER_TEMP}/coil-clang/bin/clang-tidy"
+          format_config="tools/lint/code/c/.clang-format"
+          tidy_config="tools/lint/code/c/.clang-tidy"
+
+          "${clang_format}" \
+            --style="file:${format_config}" \
+            --dump-config \
+            >/dev/null
+
+          "${clang_tidy}" \
+            --experimental-custom-checks \
+            --config-file="${tidy_config}" \
+            --list-checks \
+            >/dev/null
+
+          mapfile -d '' format_files < <(
+            git ls-files -z -- '*.c' '*.h' '*.i'
+          )
+
+          if (( ${#format_files[@]} == 0 )); then
+            echo "No tracked C sources or headers found; policy files are valid."
+            exit 0
+          fi
+
+          "${clang_format}" \
+            --style="file:${format_config}" \
+            --dry-run \
+            --Werror \
+            "${format_files[@]}"
+
+          mapfile -d '' translation_units < <(
+            git ls-files -z -- '*.c' '*.i'
+          )
+
+          for source in "${translation_units[@]}"; do
+            "${clang_tidy}" \
+              --experimental-custom-checks \
+              --config-file="${tidy_config}" \
+              "${source}" \
+              -- \
+              -std=c23 \
+              -I.
+          done
+
+
+  bazel:
+    name: Bazel
+    runs-on: >-
+      ${{
+        github.event_name == 'pull_request' &&
+        'ubuntu-24.04' ||
+        vars.COIL_CI_RUNNER ||
+        'ubuntu-24.04'
+      }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Configure runner-near cache plane
+        id: cache_plane
+        uses: ./.github/actions/cache-plane
+
+      - name: Test Bazel workspace when present
+        env:
+          COIL_BAZELRC: ${{ steps.cache_plane.outputs.bazelrc }}
+        run: |
+          set -euo pipefail
+
+          workspace=false
+          for marker in MODULE.bazel WORKSPACE.bazel WORKSPACE; do
+            if [[ -f "${marker}" ]]; then
+              workspace=true
+              break
+            fi
+          done
+
+          if [[ "${workspace}" != true ]]; then
+            echo "No Bazel workspace found; cache integration is ready."
+            exit 0
+          fi
+
+          if ! command -v bazel >/dev/null 2>&1; then
+            printf '%s\n' \
+              'Bazel workspace found, but bazel is not installed.' >&2
+            exit 1
+          fi
+
+          bazel \
+            --bazelrc="${COIL_BAZELRC}" \
+            test \
+            //...
+
+
   lua:
     name: Lua
-    runs-on: ubuntu-24.04
+    runs-on: >-
+      ${{
+        github.event_name == 'pull_request' &&
+        'ubuntu-24.04' ||
+        vars.COIL_CI_RUNNER ||
+        'ubuntu-24.04'
+      }}
     timeout-minutes: 20
     permissions:
       contents: read
@@ -451,69 +664,80 @@ jobs:
             echo "No tracked Lua sources found; skipping Lua lint."
           fi
 
+      - name: Restore Lua archive
+        id: lua_download
+        if: steps.detect.outputs.found == 'true'
+        uses: ./.github/actions/verified-download
+        with:
+          name: lua
+          version: ${{ env.LUA_VERSION }}
+          filename: lua-${{ env.LUA_VERSION }}.tar.gz
+          sha256: ${{ env.LUA_SHA256 }}
+          origin: https://www.lua.org
+          directory: ftp
+
+      - name: Restore Selene archive
+        id: selene_download
+        if: steps.detect.outputs.found == 'true'
+        uses: ./.github/actions/verified-download
+        with:
+          name: selene
+          version: ${{ env.SELENE_VERSION }}
+          filename: selene-${{ env.SELENE_VERSION }}-linux.zip
+          sha256: ${{ env.SELENE_SHA256 }}
+          origin: https://github.com
+          directory: Kampfkarren/selene/releases/download/${{ env.SELENE_VERSION }}
+
+      - name: Restore StyLua archive
+        id: stylua_download
+        if: steps.detect.outputs.found == 'true'
+        uses: ./.github/actions/verified-download
+        with:
+          name: stylua
+          version: ${{ env.STYLUA_VERSION }}
+          filename: stylua-linux-x86_64.zip
+          sha256: ${{ env.STYLUA_SHA256 }}
+          origin: https://github.com
+          directory: JohnnyMorganz/StyLua/releases/download/v${{ env.STYLUA_VERSION }}
+
+      - name: Restore LuaLS archive
+        id: luals_download
+        if: steps.detect.outputs.found == 'true'
+        uses: ./.github/actions/verified-download
+        with:
+          name: lua-language-server
+          version: ${{ env.LUALS_VERSION }}
+          filename: >-
+            lua-language-server-${{ env.LUALS_VERSION }}-linux-x64.tar.gz
+          sha256: ${{ env.LUALS_SHA256 }}
+          origin: https://github.com
+          directory: >-
+            LuaLS/lua-language-server/releases/download/${{ env.LUALS_VERSION }}
+
       - name: Install pinned Lua toolchain
         if: steps.detect.outputs.found == 'true'
         run: |
           set -euo pipefail
 
-          lua_archive="${RUNNER_TEMP}/lua-${LUA_VERSION}.tar.gz"
-
-          curl --fail --silent --show-error --location \
-            --proto '=https' --tlsv1.2 \
-            "https://www.lua.org/ftp/lua-${LUA_VERSION}.tar.gz" \
-            --output "${lua_archive}"
-
-          printf '%s  %s\n' "${LUA_SHA256}" "${lua_archive}" \
-            | sha256sum --check --strict
+          lua_archive="${{ steps.lua_download.outputs.path }}"
 
           tar -xzf "${lua_archive}" -C "${RUNNER_TEMP}"
           make --directory="${RUNNER_TEMP}/lua-${LUA_VERSION}" \
             --jobs="$(nproc)" all
 
-          selene_archive="${RUNNER_TEMP}/selene.zip"
-
-          selene_base="https://github.com/Kampfkarren/selene/releases/download"
-          selene_url="${selene_base}/${SELENE_VERSION}/selene-${SELENE_VERSION}-linux.zip"
-
-          curl --fail --silent --show-error --location \
-            --proto '=https' --tlsv1.2 \
-            "${selene_url}" \
-            --output "${selene_archive}"
-
-          printf '%s  %s\n' "${SELENE_SHA256}" "${selene_archive}" \
-            | sha256sum --check --strict
+          selene_archive="${{ steps.selene_download.outputs.path }}"
 
           mkdir -p "${RUNNER_TEMP}/selene"
           unzip -q "${selene_archive}" -d "${RUNNER_TEMP}/selene"
           chmod 0755 "${RUNNER_TEMP}/selene/selene"
 
-          stylua_archive="${RUNNER_TEMP}/stylua.zip"
-
-          curl --fail --silent --show-error --location \
-            --proto '=https' --tlsv1.2 \
-            "https://github.com/JohnnyMorganz/StyLua/releases/download/v${STYLUA_VERSION}/stylua-linux-x86_64.zip" \
-            --output "${stylua_archive}"
-
-          printf '%s  %s\n' "${STYLUA_SHA256}" "${stylua_archive}" \
-            | sha256sum --check --strict
+          stylua_archive="${{ steps.stylua_download.outputs.path }}"
 
           mkdir -p "${RUNNER_TEMP}/stylua"
           unzip -q "${stylua_archive}" -d "${RUNNER_TEMP}/stylua"
           chmod 0755 "${RUNNER_TEMP}/stylua/stylua"
 
-          luals_archive="${RUNNER_TEMP}/luals.tar.gz"
-
-          luals_base="https://github.com/LuaLS/lua-language-server/releases/download"
-          luals_name="lua-language-server-${LUALS_VERSION}-linux-x64.tar.gz"
-          luals_url="${luals_base}/${LUALS_VERSION}/${luals_name}"
-
-          curl --fail --silent --show-error --location \
-            --proto '=https' --tlsv1.2 \
-            "${luals_url}" \
-            --output "${luals_archive}"
-
-          printf '%s  %s\n' "${LUALS_SHA256}" "${luals_archive}" \
-            | sha256sum --check --strict
+          luals_archive="${{ steps.luals_download.outputs.path }}"
 
           mkdir -p "${RUNNER_TEMP}/luals"
           tar -xzf "${luals_archive}" -C "${RUNNER_TEMP}/luals"
@@ -568,7 +792,13 @@ jobs:
 
   python:
     name: Python
-    runs-on: ubuntu-24.04
+    runs-on: >-
+      ${{
+        github.event_name == 'pull_request' &&
+        'ubuntu-24.04' ||
+        vars.COIL_CI_RUNNER ||
+        'ubuntu-24.04'
+      }}
     timeout-minutes: 20
     permissions:
       contents: read
@@ -614,29 +844,47 @@ jobs:
           node-version: "24"
           package-manager-cache: false
 
+      - name: Restore Ruff archive
+        id: ruff_download
+        if: steps.detect.outputs.found == 'true'
+        uses: ./.github/actions/verified-download
+        with:
+          name: ruff
+          version: ${{ env.RUFF_VERSION }}
+          filename: ruff-x86_64-unknown-linux-gnu.tar.gz
+          sha256: ${{ env.RUFF_SHA256 }}
+          origin: https://github.com
+          directory: astral-sh/ruff/releases/download/${{ env.RUFF_VERSION }}
+
+      - name: Restore Pyright archive
+        id: pyright_download
+        if: steps.detect.outputs.found == 'true'
+        uses: ./.github/actions/verified-download
+        with:
+          name: pyright
+          version: ${{ env.PYRIGHT_VERSION }}
+          filename: pyright.tgz
+          sha256: ${{ env.PYRIGHT_SHA256 }}
+          origin: https://github.com
+          directory: microsoft/pyright/releases/download/${{ env.PYRIGHT_VERSION }}
+
       - name: Install Python lint tools
         if: steps.detect.outputs.found == 'true'
         run: |
           set -euo pipefail
 
-          ruff_archive="${RUNNER_TEMP}/ruff.tar.gz"
-
-          curl --fail --silent --show-error --location \
-            --proto '=https' --tlsv1.2 \
-            "https://github.com/astral-sh/ruff/releases/download/${RUFF_VERSION}/ruff-x86_64-unknown-linux-gnu.tar.gz" \
-            --output "${ruff_archive}"
-
-          printf '%s  %s\n' "${RUFF_SHA256}" "${ruff_archive}" \
-            | sha256sum --check --strict
+          ruff_archive="${{ steps.ruff_download.outputs.path }}"
 
           mkdir -p "${RUNNER_TEMP}/ruff"
           tar -xzf "${ruff_archive}" -C "${RUNNER_TEMP}/ruff" \
             --strip-components=1
 
-          npm install \
-            --global \
-            --ignore-scripts \
-            "pyright@${PYRIGHT_VERSION}"
+          pyright_archive="${{ steps.pyright_download.outputs.path }}"
+
+          mkdir -p "${RUNNER_TEMP}/pyright"
+          tar -xzf "${pyright_archive}" \
+            -C "${RUNNER_TEMP}/pyright" \
+            --strip-components=1
 
           python3 -m venv "${RUNNER_TEMP}/bandit"
 
@@ -693,7 +941,7 @@ jobs:
             --config tools/lint/code/python/ruff.toml \
             "${files[@]}"
 
-          pyright \
+          node "${RUNNER_TEMP}/pyright/index.js" \
             --project tools/lint/code/python/pyrightconfig.json \
             "${files[@]}"
 
@@ -705,7 +953,13 @@ jobs:
 
   shell:
     name: POSIX sh and Bash
-    runs-on: ubuntu-24.04
+    runs-on: >-
+      ${{
+        github.event_name == 'pull_request' &&
+        'ubuntu-24.04' ||
+        vars.COIL_CI_RUNNER ||
+        'ubuntu-24.04'
+      }}
     timeout-minutes: 15
     permissions:
       contents: read
@@ -744,24 +998,38 @@ jobs:
             echo "No tracked POSIX sh or Bash sources found; skipping shell lint."
           fi
 
+      - name: Restore ShellCheck archive
+        id: shellcheck_download
+        if: steps.detect.outputs.found == 'true'
+        uses: ./.github/actions/verified-download
+        with:
+          name: shellcheck
+          version: ${{ env.SHELLCHECK_VERSION }}
+          filename: >-
+            shellcheck-v${{ env.SHELLCHECK_VERSION }}.linux.x86_64.tar.xz
+          sha256: ${{ env.SHELLCHECK_SHA256 }}
+          origin: https://github.com
+          directory: >-
+            koalaman/shellcheck/releases/download/v${{ env.SHELLCHECK_VERSION }}
+
+      - name: Restore shfmt binary
+        id: shfmt_download
+        if: steps.detect.outputs.found == 'true'
+        uses: ./.github/actions/verified-download
+        with:
+          name: shfmt
+          version: ${{ env.SHFMT_VERSION }}
+          filename: shfmt_v${{ env.SHFMT_VERSION }}_linux_amd64
+          sha256: ${{ env.SHFMT_SHA256 }}
+          origin: https://github.com
+          directory: mvdan/sh/releases/download/v${{ env.SHFMT_VERSION }}
+
       - name: Install ShellCheck and shfmt
         if: steps.detect.outputs.found == 'true'
         run: |
           set -euo pipefail
 
-          shellcheck_archive="${RUNNER_TEMP}/shellcheck.tar.xz"
-
-          shellcheck_base="https://github.com/koalaman/shellcheck/releases/download"
-          shellcheck_name="shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz"
-          shellcheck_url="${shellcheck_base}/v${SHELLCHECK_VERSION}/${shellcheck_name}"
-
-          curl --fail --silent --show-error --location \
-            --proto '=https' --tlsv1.2 \
-            "${shellcheck_url}" \
-            --output "${shellcheck_archive}"
-
-          printf '%s  %s\n' "${SHELLCHECK_SHA256}" "${shellcheck_archive}" \
-            | sha256sum --check --strict
+          shellcheck_archive="${{ steps.shellcheck_download.outputs.path }}"
 
           tar -xJf "${shellcheck_archive}" -C "${RUNNER_TEMP}"
 
@@ -770,16 +1038,10 @@ jobs:
             "${RUNNER_TEMP}/shellcheck"
 
           shfmt_binary="${RUNNER_TEMP}/shfmt"
-
-          curl --fail --silent --show-error --location \
-            --proto '=https' --tlsv1.2 \
-            "https://github.com/mvdan/sh/releases/download/v${SHFMT_VERSION}/shfmt_v${SHFMT_VERSION}_linux_amd64" \
-            --output "${shfmt_binary}"
-
-          printf '%s  %s\n' "${SHFMT_SHA256}" "${shfmt_binary}" \
-            | sha256sum --check --strict
-
-          chmod 0755 "${shfmt_binary}"
+          install \
+            --mode=0755 \
+            "${{ steps.shfmt_download.outputs.path }}" \
+            "${shfmt_binary}"
 
       - name: Run POSIX sh and Bash checks
         if: steps.detect.outputs.found == 'true'
@@ -850,7 +1112,13 @@ jobs:
 
   powershell:
     name: PowerShell 7
-    runs-on: ubuntu-24.04
+    runs-on: >-
+      ${{
+        github.event_name == 'pull_request' &&
+        'ubuntu-24.04' ||
+        vars.COIL_CI_RUNNER ||
+        'ubuntu-24.04'
+      }}
     timeout-minutes: 20
     permissions:
       contents: read
@@ -892,44 +1160,44 @@ jobs:
             echo "No tracked PowerShell sources found; skipping PowerShell lint."
           fi
 
+      - name: Restore PowerShell archive
+        id: powershell_download
+        if: steps.detect.outputs.found == 'true'
+        uses: ./.github/actions/verified-download
+        with:
+          name: powershell
+          version: ${{ env.POWERSHELL_VERSION }}
+          filename: powershell-${{ env.POWERSHELL_VERSION }}-linux-x64.tar.gz
+          sha256: ${{ env.POWERSHELL_SHA256 }}
+          origin: https://github.com
+          directory: PowerShell/PowerShell/releases/download/v${{ env.POWERSHELL_VERSION }}
+
+      - name: Restore PSScriptAnalyzer package
+        id: psscriptanalyzer_download
+        if: steps.detect.outputs.found == 'true'
+        uses: ./.github/actions/verified-download
+        with:
+          name: psscriptanalyzer
+          version: ${{ env.PSSCRIPTANALYZER_VERSION }}
+          filename: >-
+            PSScriptAnalyzer.${{ env.PSSCRIPTANALYZER_VERSION }}.nupkg
+          sha256: ${{ env.PSSCRIPTANALYZER_SHA256 }}
+          origin: https://github.com
+          directory: >-
+            PowerShell/PSScriptAnalyzer/releases/download/${{ env.PSSCRIPTANALYZER_VERSION }}
+
       - name: Install pinned PowerShell and PSScriptAnalyzer
         if: steps.detect.outputs.found == 'true'
         run: |
           set -euo pipefail
 
-          pwsh_archive="${RUNNER_TEMP}/powershell.tar.gz"
-
-          pwsh_base="https://github.com/PowerShell/PowerShell/releases/download"
-          pwsh_name="powershell-${POWERSHELL_VERSION}-linux-x64.tar.gz"
-          pwsh_url="${pwsh_base}/v${POWERSHELL_VERSION}/${pwsh_name}"
-
-          curl --fail --silent --show-error --location \
-            --proto '=https' --tlsv1.2 \
-            "${pwsh_url}" \
-            --output "${pwsh_archive}"
-
-          printf '%s  %s\n' "${POWERSHELL_SHA256}" "${pwsh_archive}" \
-            | sha256sum --check --strict
+          pwsh_archive="${{ steps.powershell_download.outputs.path }}"
 
           mkdir -p "${RUNNER_TEMP}/powershell"
           tar -xzf "${pwsh_archive}" -C "${RUNNER_TEMP}/powershell"
           chmod 0755 "${RUNNER_TEMP}/powershell/pwsh"
 
-          analyzer_package="${RUNNER_TEMP}/PSScriptAnalyzer.nupkg"
-
-          analyzer_base="https://github.com/PowerShell/PSScriptAnalyzer/releases/download"
-          analyzer_name="PSScriptAnalyzer.${PSSCRIPTANALYZER_VERSION}.nupkg"
-          analyzer_url="${analyzer_base}/${PSSCRIPTANALYZER_VERSION}/${analyzer_name}"
-
-          curl --fail --silent --show-error --location \
-            --proto '=https' --tlsv1.2 \
-            "${analyzer_url}" \
-            --output "${analyzer_package}"
-
-          printf '%s  %s\n' \
-            "${PSSCRIPTANALYZER_SHA256}" \
-            "${analyzer_package}" \
-            | sha256sum --check --strict
+          analyzer_package="${{ steps.psscriptanalyzer_download.outputs.path }}"
 
           module_root="${RUNNER_TEMP}/modules/PSScriptAnalyzer"
           module_dir="${module_root}/${PSSCRIPTANALYZER_VERSION}"
@@ -1010,7 +1278,13 @@ jobs:
 
   nushell:
     name: Nushell
-    runs-on: ubuntu-24.04
+    runs-on: >-
+      ${{
+        github.event_name == 'pull_request' &&
+        'ubuntu-24.04' ||
+        vars.COIL_CI_RUNNER ||
+        'ubuntu-24.04'
+      }}
     timeout-minutes: 30
     permissions:
       contents: read
@@ -1052,24 +1326,25 @@ jobs:
             echo "No tracked Nushell sources found; skipping Nushell lint."
           fi
 
+      - name: Restore Nushell archive
+        id: nushell_download
+        if: steps.detect.outputs.found == 'true'
+        uses: ./.github/actions/verified-download
+        with:
+          name: nushell
+          version: ${{ env.NUSHELL_VERSION }}
+          filename: >-
+            nu-${{ env.NUSHELL_VERSION }}-x86_64-unknown-linux-gnu.tar.gz
+          sha256: ${{ env.NUSHELL_SHA256 }}
+          origin: https://github.com
+          directory: nushell/nushell/releases/download/${{ env.NUSHELL_VERSION }}
+
       - name: Install pinned Nushell and nufmt
         if: steps.detect.outputs.found == 'true'
         run: |
           set -euo pipefail
 
-          nu_archive="${RUNNER_TEMP}/nushell.tar.gz"
-
-          nu_base="https://github.com/nushell/nushell/releases/download"
-          nu_name="nu-${NUSHELL_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
-          nu_url="${nu_base}/${NUSHELL_VERSION}/${nu_name}"
-
-          curl --fail --silent --show-error --location \
-            --proto '=https' --tlsv1.2 \
-            "${nu_url}" \
-            --output "${nu_archive}"
-
-          printf '%s  %s\n' "${NUSHELL_SHA256}" "${nu_archive}" \
-            | sha256sum --check --strict
+          nu_archive="${{ steps.nushell_download.outputs.path }}"
 
           mkdir -p "${RUNNER_TEMP}/nushell"
           tar -xzf "${nu_archive}" \

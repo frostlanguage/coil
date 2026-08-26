@@ -59,6 +59,7 @@ exceptions:
   - JPL
   - JSON
   - JSONC
+  - LRU
   - MAC
   - MISRA
   - MITRE
@@ -67,6 +68,7 @@ exceptions:
   - NUL
   - NULL
   - NVM
+  - OCI
   - OOM
   - OpenPGP
   - PDG

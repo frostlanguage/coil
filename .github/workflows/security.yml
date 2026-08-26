@@ -34,11 +34,19 @@ env:
   ZIZMOR_SHA256: "dd96df044a6e8538d5f423790f453bdd03d49e5b2bcc38214acc41a2f1297839"
   GITTUF_VERSION: "0.15.0"
   GITTUF_SHA256: "e60629e4d165bf47ac450fde834af20d7c5ff1f08f15d685980c37b9d522ae1d"
+  # Switch to "required" only after refs/gittuf/policy is formally adopted.
+  GITTUF_ENFORCEMENT: "optional"
 
 jobs:
   zizmor:
     name: GitHub Actions security
-    runs-on: ubuntu-24.04
+    runs-on: >-
+      ${{
+        github.event_name == 'pull_request' &&
+        'ubuntu-24.04' ||
+        vars.COIL_CI_RUNNER ||
+        'ubuntu-24.04'
+      }}
     timeout-minutes: 10
     permissions:
       contents: read
@@ -48,34 +56,25 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Restore Zizmor archive
+        id: zizmor_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: zizmor
+          version: ${{ env.ZIZMOR_VERSION }}
+          filename: zizmor-x86_64-unknown-linux-gnu.tar.gz
+          sha256: ${{ env.ZIZMOR_SHA256 }}
+          origin: https://github.com
+          directory: zizmorcore/zizmor/releases/download/v${{ env.ZIZMOR_VERSION }}
+
       - name: Install zizmor
         run: |
           set -euo pipefail
 
-          archive="zizmor-x86_64-unknown-linux-gnu.tar.gz"
-          destination="${RUNNER_TEMP}/${archive}"
-          base_url="https://github.com/zizmorcore/zizmor/releases/download"
-          url="${base_url}/v${ZIZMOR_VERSION}/${archive}"
-
-          curl \
-            --fail \
-            --silent \
-            --show-error \
-            --location \
-            --proto '=https' \
-            --tlsv1.2 \
-            "${url}" \
-            --output "${destination}"
-
-          printf '%s  %s\n' \
-            "${ZIZMOR_SHA256}" \
-            "${destination}" \
-            | sha256sum --check --strict
-
           tar \
             --extract \
             --gzip \
-            --file="${destination}" \
+            --file="${{ steps.zizmor_download.outputs.path }}" \
             --directory="${RUNNER_TEMP}" \
             zizmor
 
@@ -90,11 +89,17 @@ jobs:
             --format github \
             --pedantic \
             --strict-collection \
-            .github/workflows
+            .github
 
   gitleaks:
     name: Gitleaks
-    runs-on: ubuntu-24.04
+    runs-on: >-
+      ${{
+        github.event_name == 'pull_request' &&
+        'ubuntu-24.04' ||
+        vars.COIL_CI_RUNNER ||
+        'ubuntu-24.04'
+      }}
     timeout-minutes: 10
     permissions:
       contents: read
@@ -105,28 +110,20 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Download Gitleaks
+      - name: Restore Gitleaks archive
+        id: gitleaks_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: gitleaks
+          version: ${{ env.GITLEAKS_VERSION }}
+          filename: gitleaks_${{ env.GITLEAKS_VERSION }}_linux_x64.tar.gz
+          sha256: ${{ env.GITLEAKS_SHA256 }}
+          origin: https://github.com
+          directory: gitleaks/gitleaks/releases/download/v${{ env.GITLEAKS_VERSION }}
+
+      - name: Install Gitleaks
         run: |
           set -euo pipefail
-
-          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
-          destination="${RUNNER_TEMP}/${archive}"
-          url="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${archive}"
-
-          curl \
-            --fail \
-            --silent \
-            --show-error \
-            --location \
-            --proto '=https' \
-            --tlsv1.2 \
-            "${url}" \
-            --output "${destination}"
-
-          printf '%s  %s\n' \
-            "${GITLEAKS_SHA256}" \
-            "${destination}" \
-            | sha256sum --check --strict
 
           extraction_directory="${RUNNER_TEMP}/gitleaks-release"
           mkdir --parents "${extraction_directory}"
@@ -134,7 +131,7 @@ jobs:
           tar \
             --extract \
             --gzip \
-            --file="${destination}" \
+            --file="${{ steps.gitleaks_download.outputs.path }}" \
             --directory="${extraction_directory}"
 
           install \
@@ -163,7 +160,13 @@ jobs:
           startsWith(github.ref, 'refs/tags/')
         )
       )
-    runs-on: ubuntu-24.04
+    runs-on: >-
+      ${{
+        github.event_name == 'pull_request' &&
+        'ubuntu-24.04' ||
+        vars.COIL_CI_RUNNER ||
+        'ubuntu-24.04'
+      }}
     timeout-minutes: 10
     permissions:
       contents: read
@@ -179,6 +182,26 @@ jobs:
         run: |
           set -euo pipefail
 
+          case "${GITTUF_ENFORCEMENT}" in
+            optional|required)
+              ;;
+            *)
+              printf 'Invalid GITTUF_ENFORCEMENT: %s\n' \
+                "${GITTUF_ENFORCEMENT}" >&2
+              exit 1
+              ;;
+          esac
+
+          required=false
+          if [[ "${GITTUF_ENFORCEMENT}" == required \
+            && "${GITHUB_EVENT_NAME}" == push \
+            && ( "${GITHUB_REF}" == refs/heads/main \
+              || "${GITHUB_REF}" == refs/tags/* ) ]]; then
+            required=true
+          fi
+
+          printf 'required=%s\n' "${required}" >> "${GITHUB_OUTPUT}"
+
           set +e
           git ls-remote \
             --exit-code \
@@ -191,8 +214,16 @@ jobs:
 
           if [[ "${ls_remote_status}" -eq 2 ]]; then
             printf '%s\n' 'initialized=false' >> "${GITHUB_OUTPUT}"
+
+            if [[ "${required}" == true ]]; then
+              printf '%s\n' \
+                'gittuf policy is required but the repository is not initialized.' \
+                >&2
+              exit 1
+            fi
+
             printf '%s\n' \
-              'gittuf is not initialized; policy verification is skipped.'
+              'gittuf is not initialized; optional policy check is skipped.'
             exit 0
           fi
 
@@ -210,35 +241,39 @@ jobs:
             printf '%s\n' 'initialized=true' >> "${GITHUB_OUTPUT}"
           else
             printf '%s\n' 'initialized=false' >> "${GITHUB_OUTPUT}"
+
+            if [[ "${required}" == true ]]; then
+              printf '%s\n' \
+                'gittuf policy is required but refs/gittuf/policy is absent.' \
+                >&2
+              exit 1
+            fi
+
             printf '%s\n' \
-              'gittuf policy ref is absent; policy verification is skipped.'
+              'gittuf policy ref is absent; optional policy check is skipped.'
           fi
 
-      - name: Download gittuf
+      - name: Restore gittuf binary
+        id: gittuf_download
+        if: steps.metadata.outputs.initialized == 'true'
+        uses: ./.github/actions/verified-download
+        with:
+          name: gittuf
+          version: ${{ env.GITTUF_VERSION }}
+          filename: gittuf_${{ env.GITTUF_VERSION }}_linux_amd64
+          sha256: ${{ env.GITTUF_SHA256 }}
+          origin: https://github.com
+          directory: gittuf/gittuf/releases/download/v${{ env.GITTUF_VERSION }}
+
+      - name: Install gittuf
         if: steps.metadata.outputs.initialized == 'true'
         run: |
           set -euo pipefail
 
-          filename="gittuf_${GITTUF_VERSION}_linux_amd64"
-          destination="${RUNNER_TEMP}/gittuf"
-          url="https://github.com/gittuf/gittuf/releases/download/v${GITTUF_VERSION}/${filename}"
-
-          curl \
-            --fail \
-            --silent \
-            --show-error \
-            --location \
-            --proto '=https' \
-            --tlsv1.2 \
-            "${url}" \
-            --output "${destination}"
-
-          printf '%s  %s\n' \
-            "${GITTUF_SHA256}" \
-            "${destination}" \
-            | sha256sum --check --strict
-
-          chmod 0755 "${destination}"
+          install \
+            --mode=0755 \
+            "${{ steps.gittuf_download.outputs.path }}" \
+            "${RUNNER_TEMP}/gittuf"
 
       - name: Verify gittuf policy
         if: steps.metadata.outputs.initialized == 'true'

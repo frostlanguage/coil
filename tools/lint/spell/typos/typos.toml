@@ -10,6 +10,7 @@ extend-exclude = [
   "**/*.dic",
   "**/*.lock",
   "**/*.min.*",
+  "tests/mock/git_hooks/coil-hook-test-suite.lua",
 ]
 
 [default]
@@ -39,6 +40,8 @@ unicode = true
 "atoi" = "atoi"
 "atol" = "atol"
 "BANNED" = "BANNED"
+"Bazel" = "Bazel"
+"bazelrc" = "bazelrc"
 "bcmp" = "bcmp"
 "bcopy" = "bcopy"
 "bitwise" = "bitwise"
@@ -104,6 +107,7 @@ unicode = true
 "enums" = "enums"
 "EOF" = "EOF"
 "ERANGE" = "ERANGE"
+"errno" = "errno"
 "execlp" = "execlp"
 "execvp" = "execvp"
 "fallthrough" = "fallthrough"
@@ -125,9 +129,12 @@ unicode = true
 "GDB" = "GDB"
 "getenv" = "getenv"
 "getts" = "getts"
+"GitHub" = "GitHub"
 "gmtime" = "gmtime"
 "GNU" = "GNU"
 "GPU" = "GPU"
+"gRPC" = "gRPC"
+"grpcs" = "grpcs"
 "Hardcoded" = "Hardcoded"
 "hoc" = "hoc"
 "HTML" = "HTML"
@@ -160,6 +167,7 @@ unicode = true
 "localtime" = "localtime"
 "longjmp" = "longjmp"
 "lookups" = "lookups"
+"LRU" = "LRU"
 "lstrcat" = "lstrcat"
 "lstrcpy" = "lstrcpy"
 "ltoa" = "ltoa"
@@ -198,6 +206,8 @@ unicode = true
 "nullability" = "nullability"
 "nullable" = "nullable"
 "NVM" = "NVM"
+"NVMe" = "NVMe"
+"OCI" = "OCI"
 "OOM" = "OOM"
 "OpenPGP" = "OpenPGP"
 "Ottenstein" = "Ottenstein"
@@ -241,6 +251,7 @@ unicode = true
 "SPDX" = "SPDX"
 "splitpath" = "splitpath"
 "SQL" = "SQL"
+"Squid" = "Squid"
 "srand" = "srand"
 "sscanf" = "sscanf"
 "stdint" = "stdint"
@@ -311,6 +322,10 @@ unicode = true
 "XOR" = "XOR"
 "YAML" = "YAML"
 "yamllint" = "yamllint"
+"zstd" = "zstd"
 # END GENERATED WORDS
+
+[default.extend-identifiers]
+"StrCpy" = "StrCpy"
 
 # EOF

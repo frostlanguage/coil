@@ -471,6 +471,7 @@ local function run_test_suite(repository_root, temporary_root)
    )
 
    make_directory(join_path(repository, ".githooks"))
+   make_directory(join_path(repository, ".githooks", "lib"))
    make_directory(join_path(repository, "tools"))
    make_directory(join_path(repository, "tools", "security"))
    make_directory(join_path(repository, "tools", "security", "git"))
@@ -486,6 +487,10 @@ local function run_test_suite(repository_root, temporary_root)
    copy_file(
       join_path(repository_root, ".githooks", "commit-msg"),
       join_path(repository, ".githooks", "commit-msg")
+   )
+   copy_file(
+      join_path(repository_root, ".githooks", "lib", "platform.lua"),
+      join_path(repository, ".githooks", "lib", "platform.lua")
    )
    copy_file(
       join_path(repository_root, "tools", "security", "git", "gitleaks.toml"),

@@ -39,7 +39,13 @@ defaults:
 jobs:
   reuse:
     name: REUSE compliance
-    runs-on: ubuntu-24.04
+    runs-on: >-
+      ${{
+        github.event_name == 'pull_request' &&
+        'ubuntu-24.04' ||
+        vars.COIL_CI_RUNNER ||
+        'ubuntu-24.04'
+      }}
     timeout-minutes: 10
 
     permissions:

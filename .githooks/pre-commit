@@ -9,48 +9,48 @@
 -- Missing Gitleaks emits a warning and bypasses only the local secret scan;
 -- the GitHub security workflow remains the mandatory enforcement boundary.
 
+local function hook_directory(path)
+   return path:match("^(.*)[/\\][^/\\]+$") or ".githooks"
+end
+
+local platform = dofile(
+   hook_directory(arg[0] or "").."/lib/platform.lua"
+)
+
+
 local function shell_quote(value)
-   return "'"..value:gsub("'", "'\\''").."'"
+   return platform.shell_quote(value)
 end
 
 --- Run a command and report whether it completed successfully.
 -- @param command string: shell command to execute.
 -- @return boolean: true when the command exits with status zero.
 local function command_succeeded(command)
-   local first, _, code = os.execute(command)
-
-   if type(first) == "number" then
-      return first == 0
-   end
-
-   if first == true then
-      return true
-   end
-
-   return code == 0
+   return platform.command_succeeded(command)
 end
 
 --- Capture stdout from a command.
 -- @param command string: shell command to execute.
 -- @return string|nil: stdout, or nil when the command could not start.
 local function command_output(command)
-   local handle = io.popen(command, "r")
+   return platform.command_output(command)
+end
 
-   if not handle then
-      return nil
-   end
+local function silence_stderr(command)
+   return platform.silence_stderr(command)
+end
 
-   local output = handle:read("*a")
-   handle:close()
-
-   return output
+local function silence_all(command)
+   return platform.silence_all(command)
 end
 
 --- Read one Git configuration value.
 -- @param key string: Git configuration key.
 -- @return string|nil: configured value, or nil when absent.
 local function git_config(key)
-   local command = "git config --get "..shell_quote(key).." 2>/dev/null"
+   local command = silence_stderr(
+      "git config --get "..shell_quote(key)
+   )
    local output = command_output(command)
 
    if not output then
@@ -165,7 +165,7 @@ end
 -- @return string|nil: short branch name, or nil for detached HEAD.
 local function current_branch()
    local output = command_output(
-      "git symbolic-ref --quiet --short HEAD 2>/dev/null"
+      silence_stderr("git symbolic-ref --quiet --short HEAD")
    )
 
    if not output then
@@ -204,7 +204,7 @@ end
 -- @return string|nil: repository root, or nil outside a work tree.
 local function repository_root()
    local output = command_output(
-      "git rev-parse --show-toplevel 2>/dev/null"
+      silence_stderr("git rev-parse --show-toplevel")
    )
 
    if not output then
@@ -252,8 +252,7 @@ end
 -- @param name string: executable name.
 -- @return boolean: true when the executable can be resolved.
 local function command_exists(name)
-   local command = "command -v "..shell_quote(name).." >/dev/null 2>&1"
-   return command_succeeded(command)
+   return platform.command_exists(name)
 end
 
 --- Validate the local OpenPGP signing configuration.
@@ -296,7 +295,7 @@ local function validate_openpgp_configuration()
       "--batch",
       "--list-secret-keys",
       shell_quote(signing_key),
-      ">/dev/null 2>&1",
+      platform.all_redirect(),
    }, " ")
 
    if not command_succeeded(command) then
@@ -332,13 +331,13 @@ local function scan_staged_secrets()
    end
 
    local command = table.concat({
-      "cd", shell_quote(root), "&&",
       "gitleaks", "git",
-      "--config", shell_quote(relative_config),
+      "--config", shell_quote(config),
       "--pre-commit",
       "--redact",
       "--staged",
       "--verbose",
+      shell_quote(root),
    }, " ")
 
    if not command_succeeded(command) then

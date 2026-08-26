@@ -18,6 +18,7 @@ elif
 ENOMEM
 ENOSPC
 ERANGE
+errno
 execlp
 execvp
 fopen

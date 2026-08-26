@@ -45,7 +45,13 @@ env:
 jobs:
   cspell:
     name: CSpell
-    runs-on: ubuntu-24.04
+    runs-on: >-
+      ${{
+        github.event_name == 'pull_request' &&
+        'ubuntu-24.04' ||
+        vars.COIL_CI_RUNNER ||
+        'ubuntu-24.04'
+      }}
     timeout-minutes: 10
     permissions:
       contents: read
@@ -68,7 +74,13 @@ jobs:
 
   codespell:
     name: codespell
-    runs-on: ubuntu-24.04
+    runs-on: >-
+      ${{
+        github.event_name == 'pull_request' &&
+        'ubuntu-24.04' ||
+        vars.COIL_CI_RUNNER ||
+        'ubuntu-24.04'
+      }}
     timeout-minutes: 10
     permissions:
       contents: read
@@ -78,40 +90,28 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Download codespell
+      - name: Restore codespell wheel
+        id: codespell_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: codespell
+          version: ${{ env.CODESPELL_VERSION }}
+          filename: codespell-${{ env.CODESPELL_VERSION }}-py3-none-any.whl
+          sha256: ${{ env.CODESPELL_SHA256 }}
+          origin: https://files.pythonhosted.org
+          directory: packages/20/01/b394922252051e97aab231d416c86da3d8a6d781eeadcdca1082867de64e
+
+      - name: Install codespell
         run: |
           set -euo pipefail
 
-          wheel="codespell-${CODESPELL_VERSION}-py3-none-any.whl"
-          destination="${RUNNER_TEMP}/${wheel}"
-          base_url="https://files.pythonhosted.org/packages"
-          package_path="20/01/b394922252051e97aab231d416c86da3d8a6d781eeadcdca1082867de64e"
-          url="${base_url}/${package_path}/${wheel}"
-
-          curl \
-            --fail \
-            --silent \
-            --show-error \
-            --location \
-            --proto '=https' \
-            --tlsv1.2 \
-            "${url}" \
-            --output "${destination}"
-
-          printf '%s  %s\n' \
-            "${CODESPELL_SHA256}" \
-            "${destination}" \
-            | sha256sum --check --strict
-
           python3 -m venv "${RUNNER_TEMP}/codespell"
-
           "${RUNNER_TEMP}/codespell/bin/python" \
-            -m pip \
-            install \
+            -m pip install \
             --disable-pip-version-check \
             --no-deps \
             --no-index \
-            "${destination}"
+            "${{ steps.codespell_download.outputs.path }}"
 
       - name: Check spelling
         run: |
@@ -123,7 +123,13 @@ jobs:
 
   typos:
     name: typos
-    runs-on: ubuntu-24.04
+    runs-on: >-
+      ${{
+        github.event_name == 'pull_request' &&
+        'ubuntu-24.04' ||
+        vars.COIL_CI_RUNNER ||
+        'ubuntu-24.04'
+      }}
     timeout-minutes: 10
     permissions:
       contents: read
@@ -133,39 +139,28 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Download typos
+      - name: Restore typos archive
+        id: typos_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: typos
+          version: ${{ env.TYPOS_VERSION }}
+          filename: typos-v${{ env.TYPOS_VERSION }}-x86_64-unknown-linux-musl.tar.gz
+          sha256: ${{ env.TYPOS_SHA256 }}
+          origin: https://github.com
+          directory: crate-ci/typos/releases/download/v${{ env.TYPOS_VERSION }}
+
+      - name: Install typos
         run: |
           set -euo pipefail
 
-          archive="typos-v${TYPOS_VERSION}-x86_64-unknown-linux-musl.tar.gz"
-          destination="${RUNNER_TEMP}/${archive}"
-          base_url="https://github.com/crate-ci/typos/releases/download"
-          url="${base_url}/v${TYPOS_VERSION}/${archive}"
-
-          curl \
-            --fail \
-            --silent \
-            --show-error \
-            --location \
-            --proto '=https' \
-            --tlsv1.2 \
-            "${url}" \
-            --output "${destination}"
-
-          printf '%s  %s\n' \
-            "${TYPOS_SHA256}" \
-            "${destination}" \
-            | sha256sum --check --strict
-
           extraction_directory="${RUNNER_TEMP}/typos-release"
           mkdir --parents "${extraction_directory}"
-
           tar \
             --extract \
             --gzip \
-            --file="${destination}" \
+            --file="${{ steps.typos_download.outputs.path }}" \
             --directory="${extraction_directory}"
-
           install \
             --mode=0755 \
             "${extraction_directory}/typos" \
@@ -181,7 +176,13 @@ jobs:
 
   lychee:
     name: Lychee
-    runs-on: ubuntu-24.04
+    runs-on: >-
+      ${{
+        github.event_name == 'pull_request' &&
+        'ubuntu-24.04' ||
+        vars.COIL_CI_RUNNER ||
+        'ubuntu-24.04'
+      }}
     timeout-minutes: 15
     permissions:
       contents: read
@@ -191,39 +192,28 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Download Lychee
+      - name: Restore Lychee archive
+        id: lychee_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: lychee
+          version: ${{ env.LYCHEE_VERSION }}
+          filename: lychee-x86_64-unknown-linux-gnu.tar.gz
+          sha256: ${{ env.LYCHEE_SHA256 }}
+          origin: https://github.com
+          directory: lycheeverse/lychee/releases/download/lychee-v${{ env.LYCHEE_VERSION }}
+
+      - name: Install Lychee
         run: |
           set -euo pipefail
 
-          archive="lychee-x86_64-unknown-linux-gnu.tar.gz"
-          destination="${RUNNER_TEMP}/${archive}"
-          base_url="https://github.com/lycheeverse/lychee/releases/download"
-          url="${base_url}/lychee-v${LYCHEE_VERSION}/${archive}"
-
-          curl \
-            --fail \
-            --silent \
-            --show-error \
-            --location \
-            --proto '=https' \
-            --tlsv1.2 \
-            "${url}" \
-            --output "${destination}"
-
-          printf '%s  %s\n' \
-            "${LYCHEE_SHA256}" \
-            "${destination}" \
-            | sha256sum --check --strict
-
           extraction_directory="${RUNNER_TEMP}/lychee-release"
           mkdir --parents "${extraction_directory}"
-
           tar \
             --extract \
             --gzip \
-            --file="${destination}" \
+            --file="${{ steps.lychee_download.outputs.path }}" \
             --directory="${extraction_directory}"
-
           install \
             --mode=0755 \
             "${extraction_directory}/lychee-x86_64-unknown-linux-gnu/lychee" \
@@ -241,7 +231,13 @@ jobs:
 
   vale:
     name: Vale
-    runs-on: ubuntu-24.04
+    runs-on: >-
+      ${{
+        github.event_name == 'pull_request' &&
+        'ubuntu-24.04' ||
+        vars.COIL_CI_RUNNER ||
+        'ubuntu-24.04'
+      }}
     timeout-minutes: 10
     permissions:
       contents: read
@@ -251,34 +247,25 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Download Vale
+      - name: Restore Vale archive
+        id: vale_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: vale
+          version: ${{ env.VALE_VERSION }}
+          filename: vale_${{ env.VALE_VERSION }}_Linux_64-bit.tar.gz
+          sha256: ${{ env.VALE_SHA256 }}
+          origin: https://github.com
+          directory: vale-cli/vale/releases/download/v${{ env.VALE_VERSION }}
+
+      - name: Install Vale
         run: |
           set -euo pipefail
-
-          archive="vale_${VALE_VERSION}_Linux_64-bit.tar.gz"
-          destination="${RUNNER_TEMP}/${archive}"
-          base_url="https://github.com/vale-cli/vale/releases/download"
-          url="${base_url}/v${VALE_VERSION}/${archive}"
-
-          curl \
-            --fail \
-            --silent \
-            --show-error \
-            --location \
-            --proto '=https' \
-            --tlsv1.2 \
-            "${url}" \
-            --output "${destination}"
-
-          printf '%s  %s\n' \
-            "${VALE_SHA256}" \
-            "${destination}" \
-            | sha256sum --check --strict
 
           tar \
             --extract \
             --gzip \
-            --file="${destination}" \
+            --file="${{ steps.vale_download.outputs.path }}" \
             --directory="${RUNNER_TEMP}" \
             vale
 

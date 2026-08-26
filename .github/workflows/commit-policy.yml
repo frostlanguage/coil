@@ -40,7 +40,6 @@ env:
   TYPOS_SHA256: "c62a626df385c96574743fd4974aeb271a41a67d080a0398e36e1a42782f614a"
   VALE_VERSION: "3.18.0"
   VALE_SHA256: "a6f71a75a12fe689345b754f2412b90367fe33648abb7d200fa19eaadc2dbf6d"
-  CSPELL_VERSION: "10.0.1"
   GITLEAKS_VERSION: "8.30.1"
   GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
   GITTUF_VERSION: "0.15.0"
@@ -50,7 +49,13 @@ env:
 jobs:
   git-hook-mocks:
     name: Git hook mock tests
-    runs-on: ubuntu-24.04
+    runs-on: >-
+      ${{
+        github.event_name == 'pull_request' &&
+        'ubuntu-24.04' ||
+        vars.COIL_CI_RUNNER ||
+        'ubuntu-24.04'
+      }}
     timeout-minutes: 25
     permissions:
       contents: read
@@ -61,18 +66,111 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Setup Node.js for CSpell
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: "24"
-          package-manager-cache: false
-
       - name: Validate mock test sources
         run: |
           set -euo pipefail
 
           test -f tests/mock/git_hooks/coil-hook-test-suite.lua
           test -f tests/mock/git_hooks/coil-ref-policy-test-suite.lua
+
+      - name: Restore Lua source archive
+        id: lua_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: lua
+          version: ${{ env.LUA_VERSION }}
+          filename: lua-${{ env.LUA_VERSION }}.tar.gz
+          sha256: ${{ env.LUA_SHA256 }}
+          origin: https://www.lua.org
+          directory: ftp
+
+      - name: Restore luv source archive
+        id: luv_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: luv
+          version: ${{ env.LUV_VERSION }}
+          filename: luv-${{ env.LUV_VERSION }}.tar.gz
+          sha256: ${{ env.LUV_SHA256 }}
+          origin: https://github.com
+          directory: luvit/luv/releases/download/${{ env.LUV_VERSION }}
+
+      - name: Restore codespell wheel
+        id: codespell_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: codespell
+          version: ${{ env.CODESPELL_VERSION }}
+          filename: codespell-${{ env.CODESPELL_VERSION }}-py3-none-any.whl
+          sha256: ${{ env.CODESPELL_SHA256 }}
+          origin: https://files.pythonhosted.org
+          directory: packages/20/01/b394922252051e97aab231d416c86da3d8a6d781eeadcdca1082867de64e
+
+      - name: Restore typos archive
+        id: typos_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: typos
+          version: ${{ env.TYPOS_VERSION }}
+          filename: typos-v${{ env.TYPOS_VERSION }}-x86_64-unknown-linux-musl.tar.gz
+          sha256: ${{ env.TYPOS_SHA256 }}
+          origin: https://github.com
+          directory: crate-ci/typos/releases/download/v${{ env.TYPOS_VERSION }}
+
+      - name: Restore Vale archive
+        id: vale_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: vale
+          version: ${{ env.VALE_VERSION }}
+          filename: vale_${{ env.VALE_VERSION }}_Linux_64-bit.tar.gz
+          sha256: ${{ env.VALE_SHA256 }}
+          origin: https://github.com
+          directory: vale-cli/vale/releases/download/v${{ env.VALE_VERSION }}
+
+      - name: Restore Lychee archive
+        id: lychee_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: lychee
+          version: ${{ env.LYCHEE_VERSION }}
+          filename: lychee-x86_64-unknown-linux-gnu.tar.gz
+          sha256: ${{ env.LYCHEE_SHA256 }}
+          origin: https://github.com
+          directory: lycheeverse/lychee/releases/download/lychee-v${{ env.LYCHEE_VERSION }}
+
+      - name: Restore Gitleaks archive
+        id: gitleaks_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: gitleaks
+          version: ${{ env.GITLEAKS_VERSION }}
+          filename: gitleaks_${{ env.GITLEAKS_VERSION }}_linux_x64.tar.gz
+          sha256: ${{ env.GITLEAKS_SHA256 }}
+          origin: https://github.com
+          directory: gitleaks/gitleaks/releases/download/v${{ env.GITLEAKS_VERSION }}
+
+      - name: Restore gittuf binary
+        id: gittuf_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: gittuf
+          version: ${{ env.GITTUF_VERSION }}
+          filename: gittuf_${{ env.GITTUF_VERSION }}_linux_amd64
+          sha256: ${{ env.GITTUF_SHA256 }}
+          origin: https://github.com
+          directory: gittuf/gittuf/releases/download/v${{ env.GITTUF_VERSION }}
+
+      - name: Restore git-remote-gittuf binary
+        id: git_remote_gittuf_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: git-remote-gittuf
+          version: ${{ env.GITTUF_VERSION }}
+          filename: git-remote-gittuf_${{ env.GITTUF_VERSION }}_linux_amd64
+          sha256: ${{ env.GIT_REMOTE_GITTUF_SHA256 }}
+          origin: https://github.com
+          directory: gittuf/gittuf/releases/download/v${{ env.GITTUF_VERSION }}
 
       - name: Install pinned mock-test toolchain
         run: |
@@ -84,23 +182,7 @@ jobs:
           printf '%s\n' "${bin_dir}" >> "${GITHUB_PATH}"
 
           # Lua
-          lua_archive="lua-${LUA_VERSION}.tar.gz"
-          lua_destination="${RUNNER_TEMP}/${lua_archive}"
-
-          curl \
-            --fail \
-            --silent \
-            --show-error \
-            --location \
-            --proto '=https' \
-            --tlsv1.2 \
-            "https://www.lua.org/ftp/${lua_archive}" \
-            --output "${lua_destination}"
-
-          printf '%s  %s\n' \
-            "${LUA_SHA256}" \
-            "${lua_destination}" \
-            | sha256sum --check --strict
+          lua_destination="${{ steps.lua_download.outputs.path }}"
 
           tar \
             --extract \
@@ -124,26 +206,10 @@ jobs:
             "${bin_dir}/luac"
 
           # luv: the Lua hook mocks use libuv for portable process and filesystem IO.
-          luv_archive="luv-${LUV_VERSION}.tar.gz"
-          luv_destination="${RUNNER_TEMP}/${luv_archive}"
+          luv_destination="${{ steps.luv_download.outputs.path }}"
           luv_source="${RUNNER_TEMP}/luv-${LUV_VERSION}"
           luv_build="${RUNNER_TEMP}/luv-build"
           lua_modules="${RUNNER_TEMP}/lua-modules"
-
-          curl \
-            --fail \
-            --silent \
-            --show-error \
-            --location \
-            --proto '=https' \
-            --tlsv1.2 \
-            "https://github.com/luvit/luv/releases/download/${LUV_VERSION}/${luv_archive}" \
-            --output "${luv_destination}"
-
-          printf '%s  %s\n' \
-            "${LUV_SHA256}" \
-            "${luv_destination}" \
-            | sha256sum --check --strict
 
           mkdir --parents "${luv_source}" "${lua_modules}"
 
@@ -175,33 +241,28 @@ jobs:
             "${lua_modules}/?.so;;" \
             >> "${GITHUB_ENV}"
 
-          # CSpell: exact npm version, matching the repository package-manager
-          # pinning model used for tools without a standalone verified binary.
-          npm install \
-            --global \
-            --ignore-scripts \
-            "cspell@${CSPELL_VERSION}"
+          # CSpell integration stub. The dedicated spelling workflow executes
+          # the real pinned CSpell action; this suite only verifies hook wiring.
+          cat > "${bin_dir}/cspell" <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+
+          if [[ "${1:-}" == "--version" ]]; then
+            echo "coil-cspell-hook-mock"
+            exit 0
+          fi
+
+          input="$(cat)"
+
+          if [[ "${input}" == *qxylophoniczz* ]]; then
+            exit 1
+          fi
+          EOF
+
+          chmod 0755 "${bin_dir}/cspell"
 
           # codespell
-          codespell_wheel="codespell-${CODESPELL_VERSION}-py3-none-any.whl"
-          codespell_destination="${RUNNER_TEMP}/${codespell_wheel}"
-          codespell_base_url="https://files.pythonhosted.org/packages"
-          codespell_package_path="20/01/b394922252051e97aab231d416c86da3d8a6d781eeadcdca1082867de64e"
-
-          curl \
-            --fail \
-            --silent \
-            --show-error \
-            --location \
-            --proto '=https' \
-            --tlsv1.2 \
-            "${codespell_base_url}/${codespell_package_path}/${codespell_wheel}" \
-            --output "${codespell_destination}"
-
-          printf '%s  %s\n' \
-            "${CODESPELL_SHA256}" \
-            "${codespell_destination}" \
-            | sha256sum --check --strict
+          codespell_destination="${{ steps.codespell_download.outputs.path }}"
 
           python3 -m venv "${RUNNER_TEMP}/codespell"
 
@@ -218,23 +279,7 @@ jobs:
             "${bin_dir}/codespell"
 
           # typos
-          typos_archive="typos-v${TYPOS_VERSION}-x86_64-unknown-linux-musl.tar.gz"
-          typos_destination="${RUNNER_TEMP}/${typos_archive}"
-
-          curl \
-            --fail \
-            --silent \
-            --show-error \
-            --location \
-            --proto '=https' \
-            --tlsv1.2 \
-            "https://github.com/crate-ci/typos/releases/download/v${TYPOS_VERSION}/${typos_archive}" \
-            --output "${typos_destination}"
-
-          printf '%s  %s\n' \
-            "${TYPOS_SHA256}" \
-            "${typos_destination}" \
-            | sha256sum --check --strict
+          typos_destination="${{ steps.typos_download.outputs.path }}"
 
           mkdir --parents "${RUNNER_TEMP}/typos-release"
 
@@ -250,23 +295,7 @@ jobs:
             "${bin_dir}/typos"
 
           # Vale
-          vale_archive="vale_${VALE_VERSION}_Linux_64-bit.tar.gz"
-          vale_destination="${RUNNER_TEMP}/${vale_archive}"
-
-          curl \
-            --fail \
-            --silent \
-            --show-error \
-            --location \
-            --proto '=https' \
-            --tlsv1.2 \
-            "https://github.com/vale-cli/vale/releases/download/v${VALE_VERSION}/${vale_archive}" \
-            --output "${vale_destination}"
-
-          printf '%s  %s\n' \
-            "${VALE_SHA256}" \
-            "${vale_destination}" \
-            | sha256sum --check --strict
+          vale_destination="${{ steps.vale_download.outputs.path }}"
 
           tar \
             --extract \
@@ -281,23 +310,7 @@ jobs:
             "${bin_dir}/vale"
 
           # Lychee
-          lychee_archive="lychee-x86_64-unknown-linux-gnu.tar.gz"
-          lychee_destination="${RUNNER_TEMP}/${lychee_archive}"
-
-          curl \
-            --fail \
-            --silent \
-            --show-error \
-            --location \
-            --proto '=https' \
-            --tlsv1.2 \
-            "https://github.com/lycheeverse/lychee/releases/download/lychee-v${LYCHEE_VERSION}/${lychee_archive}" \
-            --output "${lychee_destination}"
-
-          printf '%s  %s\n' \
-            "${LYCHEE_SHA256}" \
-            "${lychee_destination}" \
-            | sha256sum --check --strict
+          lychee_destination="${{ steps.lychee_download.outputs.path }}"
 
           mkdir --parents "${RUNNER_TEMP}/lychee-release"
 
@@ -313,23 +326,7 @@ jobs:
             "${bin_dir}/lychee"
 
           # Gitleaks
-          gitleaks_archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
-          gitleaks_destination="${RUNNER_TEMP}/${gitleaks_archive}"
-
-          curl \
-            --fail \
-            --silent \
-            --show-error \
-            --location \
-            --proto '=https' \
-            --tlsv1.2 \
-            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${gitleaks_archive}" \
-            --output "${gitleaks_destination}"
-
-          printf '%s  %s\n' \
-            "${GITLEAKS_SHA256}" \
-            "${gitleaks_destination}" \
-            | sha256sum --check --strict
+          gitleaks_destination="${{ steps.gitleaks_download.outputs.path }}"
 
           tar \
             --extract \
@@ -341,45 +338,15 @@ jobs:
           chmod 0755 "${bin_dir}/gitleaks"
 
           # gittuf
-          gittuf_binary="gittuf_${GITTUF_VERSION}_linux_amd64"
-          gittuf_destination="${bin_dir}/gittuf"
+          install \
+            --mode=0755 \
+            "${{ steps.gittuf_download.outputs.path }}" \
+            "${bin_dir}/gittuf"
 
-          curl \
-            --fail \
-            --silent \
-            --show-error \
-            --location \
-            --proto '=https' \
-            --tlsv1.2 \
-            "https://github.com/gittuf/gittuf/releases/download/v${GITTUF_VERSION}/${gittuf_binary}" \
-            --output "${gittuf_destination}"
-
-          printf '%s  %s\n' \
-            "${GITTUF_SHA256}" \
-            "${gittuf_destination}" \
-            | sha256sum --check --strict
-
-          chmod 0755 "${gittuf_destination}"
-
-          git_remote_binary="git-remote-gittuf_${GITTUF_VERSION}_linux_amd64"
-          git_remote_destination="${bin_dir}/git-remote-gittuf"
-
-          curl \
-            --fail \
-            --silent \
-            --show-error \
-            --location \
-            --proto '=https' \
-            --tlsv1.2 \
-            "https://github.com/gittuf/gittuf/releases/download/v${GITTUF_VERSION}/${git_remote_binary}" \
-            --output "${git_remote_destination}"
-
-          printf '%s  %s\n' \
-            "${GIT_REMOTE_GITTUF_SHA256}" \
-            "${git_remote_destination}" \
-            | sha256sum --check --strict
-
-          chmod 0755 "${git_remote_destination}"
+          install \
+            --mode=0755 \
+            "${{ steps.git_remote_gittuf_download.outputs.path }}" \
+            "${bin_dir}/git-remote-gittuf"
 
       - name: Show mock-test tool versions
         run: |
@@ -422,7 +389,13 @@ jobs:
     name: Structure, DCO, and OpenPGP
     needs:
       - git-hook-mocks
-    runs-on: ubuntu-24.04
+    runs-on: >-
+      ${{
+        github.event_name == 'pull_request' &&
+        'ubuntu-24.04' ||
+        vars.COIL_CI_RUNNER ||
+        'ubuntu-24.04'
+      }}
     timeout-minutes: 15
     permissions:
       contents: read
@@ -574,7 +547,13 @@ jobs:
     name: Commit message spelling and prose
     needs:
       - git-hook-mocks
-    runs-on: ubuntu-24.04
+    runs-on: >-
+      ${{
+        github.event_name == 'pull_request' &&
+        'ubuntu-24.04' ||
+        vars.COIL_CI_RUNNER ||
+        'ubuntu-24.04'
+      }}
     timeout-minutes: 20
     permissions:
       contents: read
@@ -649,25 +628,24 @@ jobs:
           summary: true
           use_cspell_files: false
 
-      - name: Download codespell
+      - name: Restore codespell wheel
+        id: prose_codespell_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: codespell
+          version: ${{ env.CODESPELL_VERSION }}
+          filename: codespell-${{ env.CODESPELL_VERSION }}-py3-none-any.whl
+          sha256: ${{ env.CODESPELL_SHA256 }}
+          origin: https://files.pythonhosted.org
+          directory: packages/20/01/b394922252051e97aab231d416c86da3d8a6d781eeadcdca1082867de64e
+
+      - name: Install codespell
         run: |
           set -euo pipefail
-
-          wheel="codespell-${CODESPELL_VERSION}-py3-none-any.whl"
-          destination="${RUNNER_TEMP}/${wheel}"
-          base_url="https://files.pythonhosted.org/packages"
-          package_path="20/01/b394922252051e97aab231d416c86da3d8a6d781eeadcdca1082867de64e"
-          url="${base_url}/${package_path}/${wheel}"
-
-          curl --fail --silent --show-error --location \
-            --proto '=https' --tlsv1.2 "${url}" --output "${destination}"
-
-          printf '%s  %s\n' "${CODESPELL_SHA256}" "${destination}" \
-            | sha256sum --check --strict
-
           python3 -m venv "${RUNNER_TEMP}/codespell"
           "${RUNNER_TEMP}/codespell/bin/python" -m pip install \
-            --disable-pip-version-check --no-deps --no-index "${destination}"
+            --disable-pip-version-check --no-deps --no-index \
+            "${{ steps.prose_codespell_download.outputs.path }}"
 
       - name: Check commit-message spelling with codespell
         run: |
@@ -676,18 +654,23 @@ jobs:
             --config tools/lint/spell/codespell/.codespellrc \
             .commit-policy/messages
 
-      - name: Download typos
+      - name: Restore typos archive
+        id: prose_typos_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: typos
+          version: ${{ env.TYPOS_VERSION }}
+          filename: typos-v${{ env.TYPOS_VERSION }}-x86_64-unknown-linux-musl.tar.gz
+          sha256: ${{ env.TYPOS_SHA256 }}
+          origin: https://github.com
+          directory: crate-ci/typos/releases/download/v${{ env.TYPOS_VERSION }}
+
+      - name: Install typos
         run: |
           set -euo pipefail
-          archive="typos-v${TYPOS_VERSION}-x86_64-unknown-linux-musl.tar.gz"
-          destination="${RUNNER_TEMP}/${archive}"
-          url="https://github.com/crate-ci/typos/releases/download/v${TYPOS_VERSION}/${archive}"
-          curl --fail --silent --show-error --location \
-            --proto '=https' --tlsv1.2 "${url}" --output "${destination}"
-          printf '%s  %s\n' "${TYPOS_SHA256}" "${destination}" \
-            | sha256sum --check --strict
           mkdir --parents "${RUNNER_TEMP}/typos-release"
-          tar --extract --gzip --file="${destination}" \
+          tar --extract --gzip \
+            --file="${{ steps.prose_typos_download.outputs.path }}" \
             --directory="${RUNNER_TEMP}/typos-release"
           install --mode=0755 "${RUNNER_TEMP}/typos-release/typos" \
             "${RUNNER_TEMP}/typos"
@@ -699,17 +682,22 @@ jobs:
             --config tools/lint/spell/typos/typos.toml \
             .commit-policy/messages
 
-      - name: Download Vale
+      - name: Restore Vale archive
+        id: prose_vale_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: vale
+          version: ${{ env.VALE_VERSION }}
+          filename: vale_${{ env.VALE_VERSION }}_Linux_64-bit.tar.gz
+          sha256: ${{ env.VALE_SHA256 }}
+          origin: https://github.com
+          directory: vale-cli/vale/releases/download/v${{ env.VALE_VERSION }}
+
+      - name: Install Vale
         run: |
           set -euo pipefail
-          archive="vale_${VALE_VERSION}_Linux_64-bit.tar.gz"
-          destination="${RUNNER_TEMP}/${archive}"
-          url="https://github.com/vale-cli/vale/releases/download/v${VALE_VERSION}/${archive}"
-          curl --fail --silent --show-error --location \
-            --proto '=https' --tlsv1.2 "${url}" --output "${destination}"
-          printf '%s  %s\n' "${VALE_SHA256}" "${destination}" \
-            | sha256sum --check --strict
-          tar --extract --gzip --file="${destination}" \
+          tar --extract --gzip \
+            --file="${{ steps.prose_vale_download.outputs.path }}" \
             --directory="${RUNNER_TEMP}" vale
 
       - name: Check commit-message prose with Vale
@@ -719,18 +707,23 @@ jobs:
             --config tools/lint/spell/vale/.vale.ini \
             .commit-policy/messages
 
-      - name: Download Lychee
+      - name: Restore Lychee archive
+        id: prose_lychee_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: lychee
+          version: ${{ env.LYCHEE_VERSION }}
+          filename: lychee-x86_64-unknown-linux-gnu.tar.gz
+          sha256: ${{ env.LYCHEE_SHA256 }}
+          origin: https://github.com
+          directory: lycheeverse/lychee/releases/download/lychee-v${{ env.LYCHEE_VERSION }}
+
+      - name: Install Lychee
         run: |
           set -euo pipefail
-          archive="lychee-x86_64-unknown-linux-gnu.tar.gz"
-          destination="${RUNNER_TEMP}/${archive}"
-          url="https://github.com/lycheeverse/lychee/releases/download/lychee-v${LYCHEE_VERSION}/${archive}"
-          curl --fail --silent --show-error --location \
-            --proto '=https' --tlsv1.2 "${url}" --output "${destination}"
-          printf '%s  %s\n' "${LYCHEE_SHA256}" "${destination}" \
-            | sha256sum --check --strict
           mkdir --parents "${RUNNER_TEMP}/lychee-release"
-          tar --extract --gzip --file="${destination}" \
+          tar --extract --gzip \
+            --file="${{ steps.prose_lychee_download.outputs.path }}" \
             --directory="${RUNNER_TEMP}/lychee-release"
           install --mode=0755 \
             "${RUNNER_TEMP}/lychee-release/lychee-x86_64-unknown-linux-gnu/lychee" \

@@ -1,6 +1,7 @@
 Acked
 actionlint
 Assisted
+bazelrc
 codespell
 codespellrc
 Coil
@@ -8,10 +9,13 @@ CoilStr
 CSpell
 EditorConfig
 Follows
+gRPC
+grpcs
 libmemalloc
 lychee
 markdownlint
 no-stdlib
+NVMe
 Refs
 Reported
 Reviewed
@@ -23,3 +27,4 @@ Tested
 typos
 Vale
 yamllint
+zstd

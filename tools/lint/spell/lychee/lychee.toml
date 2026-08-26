@@ -21,6 +21,10 @@ include_verbatim = false
 exclude_all_private = true
 exclude_path = [ "(^|/)LICENSES/", "(^|/)node_modules/", "(^|/)(?:build|dist|vendor)/" ]
 
-exclude = [ "^mailto:" ]
+exclude = [
+  "^mailto:",
+  '^https://www\.iso\.org/',
+  '^https://www\.sei\.cmu\.edu/',
+]
 
 # EOF

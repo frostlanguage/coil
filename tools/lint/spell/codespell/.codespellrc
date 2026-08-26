@@ -8,6 +8,6 @@ check-hidden =
 count =
 ignore-words = tools/lint/spell/dictionary/coil-words.txt
 quiet-level = 2
-skip = .git,LICENSES,*.lock,*.min.*,*.svg,*.aff,*.dic
+skip = .git,LICENSES,*.lock,*.min.*,*.svg,*.aff,*.dic,tests/mock/git_hooks/coil-hook-test-suite.lua
 
 # EOF

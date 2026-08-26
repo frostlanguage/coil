@@ -1,12 +1,15 @@
 Allman
+Bazel
 Böhm
 Ferrante
 Forgejo
 Frama
+GitHub
 Jacopini
 Jacopini's
 Kernighan
 Klocwork
 Ottenstein
 Ritchie
+Squid
 Volkmer

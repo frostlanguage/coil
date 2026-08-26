@@ -198,6 +198,18 @@ tab_width = 2
 max_line_length = 120
 trim_trailing_whitespace = false
 
+# These normative reference documents contain wide standards tables, long
+# identifiers, and code examples where hard wrapping changes semantics.
+[docs/code_style/c_language/c-code-style.md]
+indent_size = unset
+tab_width = unset
+max_line_length = off
+
+[docs/code_style/c_language/c-common-pitfalls.md]
+indent_size = unset
+tab_width = unset
+max_line_length = off
+
 [*.{rst,adoc}]
 indent_style = space
 indent_size = 2

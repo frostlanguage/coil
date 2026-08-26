@@ -17,6 +17,8 @@ atof
 atoi
 atol
 BANNED
+Bazel
+bazelrc
 bcmp
 bcopy
 bitwise
@@ -82,6 +84,7 @@ enum
 enums
 EOF
 ERANGE
+errno
 execlp
 execvp
 fallthrough
@@ -103,9 +106,12 @@ GC
 GDB
 getenv
 getts
+GitHub
 gmtime
 GNU
 GPU
+gRPC
+grpcs
 Hardcoded
 hoc
 HTML
@@ -138,6 +144,7 @@ libmemalloc
 localtime
 longjmp
 lookups
+LRU
 lstrcat
 lstrcpy
 ltoa
@@ -176,6 +183,8 @@ NULL
 nullability
 nullable
 NVM
+NVMe
+OCI
 OOM
 OpenPGP
 Ottenstein
@@ -219,6 +228,7 @@ SIMD
 SPDX
 splitpath
 SQL
+Squid
 srand
 sscanf
 stdint
@@ -289,3 +299,4 @@ XML
 XOR
 YAML
 yamllint
+zstd

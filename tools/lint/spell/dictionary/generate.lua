@@ -6,7 +6,9 @@
 local check_only = arg[1] == "--check"
 
 if arg[1] and not check_only then
-   io.stderr:write("usage: lua tools/lint/spell/dictionary/generate.lua [--check]\n")
+   io.stderr:write(
+      "usage: lua tools/lint/spell/dictionary/generate.lua [--check]\n"
+   )
    os.exit(2)
 end
 
@@ -90,10 +92,21 @@ for _, category in ipairs(categories) do
    local category_words = {}
    for line in content:gmatch("([^\r\n]+)") do
       if line:match("^%s") or line:match("%s$") then
-         error(path .. ": surrounding whitespace in entry " .. string.format("%q", line))
+         error(
+            path
+               .. ": surrounding whitespace in entry "
+               .. string.format("%q", line)
+         )
       end
       if seen[line] then
-         error(path .. ": duplicate entry " .. string.format("%q", line) .. " (also in " .. seen[line] .. ")")
+         error(
+            path
+               .. ": duplicate entry "
+               .. string.format("%q", line)
+               .. " (also in "
+               .. seen[line]
+               .. ")"
+         )
       end
 
       seen[line] = category
@@ -128,7 +141,11 @@ local function emit(path, content)
          error("cannot read " .. path .. ": " .. error_message)
       end
       if current ~= content then
-         io.stderr:write("error: generated spelling adapter is stale: " .. path .. "\n")
+         io.stderr:write(
+            "error: generated spelling adapter is stale: "
+               .. path
+               .. "\n"
+         )
          stale = true
       end
       return
@@ -145,7 +162,12 @@ end
 -- @param start_marker string: Opening marker retained in the file.
 -- @param end_marker string: Closing marker retained in the file.
 -- @param generated_lines table: Lines inserted between the markers.
-local function replace_generated_section(path, start_marker, end_marker, generated_lines)
+local function replace_generated_section(
+   path,
+   start_marker,
+   end_marker,
+   generated_lines
+)
    local current, error_message = read_file(path)
    if not current then
       error("cannot read " .. path .. ": " .. error_message)
@@ -153,7 +175,9 @@ local function replace_generated_section(path, start_marker, end_marker, generat
    local start_position = current:find(start_marker, 1, true)
    local end_position = current:find(end_marker, 1, true)
 
-   if not start_position or not end_position or end_position <= start_position then
+   if not start_position
+      or not end_position
+      or end_position <= start_position then
       error(path .. ": generated-section markers are missing or invalid")
    end
 
@@ -168,7 +192,10 @@ local function replace_generated_section(path, start_marker, end_marker, generat
 end
 
 emit(dictionary_root .. "/coil-words.txt", table.concat(words, "\n") .. "\n")
-emit(spell_root .. "/vale/styles/config/vocabularies/Coil/accept.txt", table.concat(words, "\n") .. "\n")
+emit(
+   spell_root .. "/vale/styles/config/vocabularies/Coil/accept.txt",
+   table.concat(words, "\n") .. "\n"
+)
 
 local toml_words = {}
 for _, word in ipairs(words) do

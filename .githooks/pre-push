@@ -18,41 +18,39 @@
 -- Tags:
 --   strict Semantic Versioning 2.0.0 without a "v" prefix.
 
+local function hook_directory(path)
+   return path:match("^(.*)[/\\][^/\\]+$") or ".githooks"
+end
+
+local platform = dofile(
+   hook_directory(arg[0] or "").."/lib/platform.lua"
+)
+
+
 local function shell_quote(value)
-   return "'"..value:gsub("'", "'\\''").."'"
+   return platform.shell_quote(value)
 end
 
 --- Run a command and report whether it completed successfully.
 -- @param command string: shell command.
 -- @return boolean: true for exit status zero.
 local function command_succeeded(command)
-   local first, _, code = os.execute(command)
-
-   if type(first) == "number" then
-      return first == 0
-   end
-
-   if first == true then
-      return true
-   end
-
-   return code == 0
+   return platform.command_succeeded(command)
 end
 
 --- Capture stdout from a command.
 -- @param command string: shell command.
 -- @return string|nil: stdout.
 local function command_output(command)
-   local handle = io.popen(command, "r")
+   return platform.command_output(command)
+end
 
-   if not handle then
-      return nil
-   end
+local function silence_stderr(command)
+   return platform.silence_stderr(command)
+end
 
-   local output = handle:read("*a")
-   handle:close()
-
-   return output
+local function silence_all(command)
+   return platform.silence_all(command)
 end
 
 --- Print a fatal pre-push diagnostic.
@@ -322,7 +320,7 @@ local function peel_commit(object_id)
    local command = table.concat({
       "git rev-parse",
       shell_quote(object_id.."^{commit}"),
-      "2>/dev/null",
+      platform.stderr_redirect(),
    }, " ")
 
    local output = command_output(command)
@@ -352,7 +350,7 @@ local function outgoing_commits(local_commit, remote_object)
          "git rev-list",
          shell_quote(local_commit),
          "--not --remotes",
-         "2>/dev/null",
+         platform.stderr_redirect(),
       }, " ")
    else
       local remote_commit = peel_commit(remote_object)
@@ -361,14 +359,14 @@ local function outgoing_commits(local_commit, remote_object)
          command = table.concat({
             "git rev-list",
             shell_quote(remote_commit..".."..local_commit),
-            "2>/dev/null",
+            platform.stderr_redirect(),
          }, " ")
       else
          command = table.concat({
             "git rev-list",
             shell_quote(local_commit),
             "--not --remotes",
-            "2>/dev/null",
+            platform.stderr_redirect(),
          }, " ")
       end
    end
@@ -395,7 +393,7 @@ local function has_openpgp_signature(commit)
    local command = table.concat({
       "git cat-file commit",
       shell_quote(commit),
-      "2>/dev/null",
+      platform.stderr_redirect(),
    }, " ")
 
    local output = command_output(command)
@@ -415,7 +413,7 @@ end
 -- @return boolean: true when git verify-commit succeeds.
 local function verify_signature(commit)
    return command_succeeded(
-      "git verify-commit "..shell_quote(commit).." >/dev/null 2>&1"
+      silence_all("git verify-commit "..shell_quote(commit))
    )
 end
 
@@ -423,7 +421,7 @@ end
 -- @return string|nil: hook path.
 local function commit_msg_hook()
    local source = arg[0] or ""
-   local directory = source:match("^(.*)/[^/]+$")
+   local directory = platform.dirname(source)
 
    if not directory or directory == "" then
       directory = ".githooks"
@@ -446,8 +444,13 @@ end
 -- @param commit string: commit identifier.
 -- @return boolean: true when policy succeeds.
 local function validate_message(hook, commit)
+   if not platform.command_exists("lua") then
+      fail("Lua executable 'lua' is required to validate commit messages.")
+      return false
+   end
+
    return command_succeeded(
-      shell_quote(hook).." --commit "..shell_quote(commit)
+      "lua "..shell_quote(hook).." --commit "..shell_quote(commit)
    )
 end
 

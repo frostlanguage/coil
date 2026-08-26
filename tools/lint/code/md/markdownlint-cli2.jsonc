@@ -19,7 +19,23 @@
 
     "MD033": false,
 
-    "MD041": false
+    "MD041": false,
+
+    "MD053": {
+      "ignored_definitions": [
+        "//",
+        "asil-d-badge",
+        "dal-a-badge",
+        "do-178c",
+        "iec-61508",
+        "iec-62304",
+        "iec-62304-class-c-badge",
+        "iso-13849",
+        "iso-26262",
+        "pl-e-badge",
+        "sil-4-badge"
+      ]
+    }
   },
 
   "noProgress": true,
