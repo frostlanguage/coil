@@ -46,7 +46,7 @@ SPDX-License-Identifier: GPL-3.0-only
 [forks-url]: https://github.com/frostlanguage/coil/network/members
 
 [stars-shield]: https://img.shields.io/github/stars/frostlanguage/coil.svg?style=flat-square&logo=riseup&logoColor=white&label=Stars&labelColor=1F2328&color=E3B341
-[stars-url]: https://github.com/frostlanguage/coil/stargazers
+[stars-url]: https://github.com/frostlanguage/coil
 
 [issues-shield]: https://img.shields.io/github/issues/frostlanguage/coil.svg?style=flat-square&logo=sentry&logoColor=white&label=Issues&labelColor=1F2328&color=DA3633
 [issues-url]: https://github.com/frostlanguage/coil/issues

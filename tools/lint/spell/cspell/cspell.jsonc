@@ -1,0 +1,46 @@
+// SPDX-FileCopyrightText: © 2026 Rafael V. Volkmer <rafael.v.volkmer@gmail.com>
+// SPDX-License-Identifier: GPL-3.0-only
+
+{
+  "$schema": "https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json",
+  "version": "0.2",
+  "language": "en-US",
+  "useGitignore": true,
+  "enableGlobDot": true,
+  "globRoot": "../../../..",
+  "files": [
+    "**/*.{c,h,cpp,hpp,md,markdown,mdx,rst,adoc}"
+  ],
+  "ignorePaths": [
+    ".git/**",
+    "LICENSES/**",
+    "**/*.lock",
+    "**/*.min.*",
+    "**/*.{a,aff,bin,bmp,dic,dylib,elf,exe,gif,gz,ico,jpeg,jpg,o,pdf,png,so,svg,tar,webp,woff,woff2,zip}"
+  ],
+  "dictionaryDefinitions": [
+    {
+      "name": "coil",
+      "path": "./cspell-words.txt",
+      "addWords": true
+    }
+  ],
+  "dictionaries": [
+    "coil"
+  ],
+  "ignoreRegExpList": [
+    "Urls",
+    "Email",
+    "Base64",
+    "EscapeCharacters",
+    "/\\b[0-9a-f]{7,64}\\b/gi"
+  ],
+  "overrides": [
+    {
+      "filename": "**/*.{c,h,cpp,hpp}",
+      "languageId": "cpp"
+    }
+  ]
+}
+
+// EOF

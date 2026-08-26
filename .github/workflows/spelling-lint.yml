@@ -1,0 +1,280 @@
+# SPDX-FileCopyrightText: © 2026 Rafael V. Volkmer <rafael.v.volkmer@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-only
+
+---
+name: Spelling and Prose
+
+on:
+  push:
+    branches:
+      - "**"
+    tags:
+      - "**"
+  pull_request:
+    branches:
+      - "**"
+  merge_group: {}
+  release:
+    types:
+      - published
+      - prereleased
+      - released
+  workflow_dispatch: {}
+
+permissions: {}
+
+concurrency:
+  group: >-
+    ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  CODESPELL_VERSION: "2.4.1"
+  CODESPELL_SHA256: "3dadafa67df7e4a3dbf51e0d7315061b80d265f9552ebd699b3dd6834b47e425"
+  LYCHEE_VERSION: "0.24.1"
+  LYCHEE_SHA256: "3ecad9a6e5ec42efaa9cdbdbad2406fdeef11ee38f7774aaf038f981d3248684"
+  TYPOS_VERSION: "1.46.0"
+  TYPOS_SHA256: "c62a626df385c96574743fd4974aeb271a41a67d080a0398e36e1a42782f614a"
+  VALE_VERSION: "3.18.0"
+  VALE_SHA256: "a6f71a75a12fe689345b754f2412b90367fe33648abb7d200fa19eaadc2dbf6d"
+
+jobs:
+  cspell:
+    name: CSpell
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check spelling
+        uses: streetsidesoftware/cspell-action@e0668cf020899e887ee8ad4d173c31738a79eae8 # v9.0.1
+        with:
+          check_dot_files: true
+          config: tools/lint/spell/cspell/cspell.jsonc
+          incremental_files_only: false
+          root: .
+          strict: true
+          summary: true
+          use_cspell_files: true
+
+  codespell:
+    name: codespell
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download codespell
+        run: |
+          set -euo pipefail
+
+          wheel="codespell-${CODESPELL_VERSION}-py3-none-any.whl"
+          destination="${RUNNER_TEMP}/${wheel}"
+          base_url="https://files.pythonhosted.org/packages"
+          package_path="20/01/b394922252051e97aab231d416c86da3d8a6d781eeadcdca1082867de64e"
+          url="${base_url}/${package_path}/${wheel}"
+
+          curl \
+            --fail \
+            --silent \
+            --show-error \
+            --location \
+            --proto '=https' \
+            --tlsv1.2 \
+            "${url}" \
+            --output "${destination}"
+
+          printf '%s  %s\n' \
+            "${CODESPELL_SHA256}" \
+            "${destination}" \
+            | sha256sum --check --strict
+
+          python3 -m venv "${RUNNER_TEMP}/codespell"
+
+          "${RUNNER_TEMP}/codespell/bin/python" \
+            -m pip \
+            install \
+            --disable-pip-version-check \
+            --no-deps \
+            --no-index \
+            "${destination}"
+
+      - name: Check spelling
+        run: |
+          set -euo pipefail
+
+          "${RUNNER_TEMP}/codespell/bin/codespell" \
+            --config tools/lint/spell/codespell/.codespellrc \
+            .
+
+  typos:
+    name: typos
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download typos
+        run: |
+          set -euo pipefail
+
+          archive="typos-v${TYPOS_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+          destination="${RUNNER_TEMP}/${archive}"
+          base_url="https://github.com/crate-ci/typos/releases/download"
+          url="${base_url}/v${TYPOS_VERSION}/${archive}"
+
+          curl \
+            --fail \
+            --silent \
+            --show-error \
+            --location \
+            --proto '=https' \
+            --tlsv1.2 \
+            "${url}" \
+            --output "${destination}"
+
+          printf '%s  %s\n' \
+            "${TYPOS_SHA256}" \
+            "${destination}" \
+            | sha256sum --check --strict
+
+          tar \
+            --extract \
+            --gzip \
+            --file="${destination}" \
+            --directory="${RUNNER_TEMP}" \
+            typos
+
+      - name: Check spelling
+        run: |
+          set -euo pipefail
+
+          "${RUNNER_TEMP}/typos" \
+            --config tools/lint/spell/typos/typos.toml \
+            .
+
+  lychee:
+    name: Lychee
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download Lychee
+        run: |
+          set -euo pipefail
+
+          archive="lychee-x86_64-unknown-linux-gnu.tar.gz"
+          destination="${RUNNER_TEMP}/${archive}"
+          base_url="https://github.com/lycheeverse/lychee/releases/download"
+          url="${base_url}/lychee-v${LYCHEE_VERSION}/${archive}"
+
+          curl \
+            --fail \
+            --silent \
+            --show-error \
+            --location \
+            --proto '=https' \
+            --tlsv1.2 \
+            "${url}" \
+            --output "${destination}"
+
+          printf '%s  %s\n' \
+            "${LYCHEE_SHA256}" \
+            "${destination}" \
+            | sha256sum --check --strict
+
+          tar \
+            --extract \
+            --gzip \
+            --file="${destination}" \
+            --directory="${RUNNER_TEMP}" \
+            lychee
+
+      - name: Check documentation links
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          "${RUNNER_TEMP}/lychee" \
+            --config tools/lint/spell/lychee/lychee.toml \
+            .
+
+  vale:
+    name: Vale
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download Vale
+        run: |
+          set -euo pipefail
+
+          archive="vale_${VALE_VERSION}_Linux_64-bit.tar.gz"
+          destination="${RUNNER_TEMP}/${archive}"
+          base_url="https://github.com/vale-cli/vale/releases/download"
+          url="${base_url}/v${VALE_VERSION}/${archive}"
+
+          curl \
+            --fail \
+            --silent \
+            --show-error \
+            --location \
+            --proto '=https' \
+            --tlsv1.2 \
+            "${url}" \
+            --output "${destination}"
+
+          printf '%s  %s\n' \
+            "${VALE_SHA256}" \
+            "${destination}" \
+            | sha256sum --check --strict
+
+          tar \
+            --extract \
+            --gzip \
+            --file="${destination}" \
+            --directory="${RUNNER_TEMP}" \
+            vale
+
+      - name: Check prose
+        run: |
+          set -euo pipefail
+
+          "${RUNNER_TEMP}/vale" \
+            --no-global \
+            --config tools/lint/spell/vale/.vale.ini \
+            .
+
+# EOF

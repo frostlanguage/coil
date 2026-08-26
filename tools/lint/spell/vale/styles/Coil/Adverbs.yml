@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: © 2026 Rafael V. Volkmer <rafael.v.volkmer@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-only
+
+---
+extends: sequence
+message: "Remove the adverb '%[1]s' and choose a precise verb or measurement."
+level: warning
+scope: paragraph
+tokens:
+  - tag: RB|RBR|RBS
+
+# EOF

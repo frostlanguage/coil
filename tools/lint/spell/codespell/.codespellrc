@@ -1,0 +1,13 @@
+# SPDX-FileCopyrightText: © 2026 Rafael V. Volkmer <rafael.v.volkmer@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-only
+
+[codespell]
+builtin = clear,rare,code
+check-filenames =
+check-hidden =
+count =
+ignore-words = tools/lint/spell/cspell/cspell-words.txt
+quiet-level = 2
+skip = .git,LICENSES,*.lock,*.min.*,*.svg,*.aff,*.dic
+
+# EOF
