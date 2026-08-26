@@ -91,13 +91,13 @@ jobs:
           "${RUNNER_TEMP}/actionlint" \
             -color \
             -config-file tools/actionlint.yaml
-
   editorconfig:
     name: EditorConfig
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -110,6 +110,8 @@ jobs:
 
           archive="ec-linux-amd64.tar.gz"
           destination="${RUNNER_TEMP}/${archive}"
+          extract_dir="${RUNNER_TEMP}/editorconfig-checker"
+          binary="${extract_dir}/bin/ec-linux-amd64"
           base_url="https://github.com/editorconfig-checker/editorconfig-checker/releases/download"
           url="${base_url}/v${EDITORCONFIG_CHECKER_VERSION}/${archive}"
 
@@ -128,12 +130,30 @@ jobs:
             "${destination}" \
             | sha256sum --check --strict
 
+          rm -rf "${extract_dir}"
+          mkdir -p "${extract_dir}"
+
           tar \
             --extract \
             --gzip \
             --file="${destination}" \
-            --directory="${RUNNER_TEMP}" \
-            ec
+            --directory="${extract_dir}"
+
+          if [[ ! -f "${binary}" ]]; then
+            echo "EditorConfig Checker binary not found: ${binary}" >&2
+            echo "Archive contents:" >&2
+            tar \
+              --list \
+              --gzip \
+              --file="${destination}" \
+              >&2
+            exit 1
+          fi
+
+          install \
+            --mode=0755 \
+            "${binary}" \
+            "${RUNNER_TEMP}/ec"
 
       - name: Run EditorConfig Checker
         run: |
