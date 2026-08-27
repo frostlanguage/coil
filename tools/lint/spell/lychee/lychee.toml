@@ -29,6 +29,7 @@ exclude_path = [
 exclude = [
   "^mailto:",
   '^https://www\.iso\.org/',
+  '^https://www\.microsoft\.com/en-us/security/blog/2012/08/30/microsofts-free-security-tools-banned-h/$',
   '^https://www\.sei\.cmu\.edu/',
 ]
 

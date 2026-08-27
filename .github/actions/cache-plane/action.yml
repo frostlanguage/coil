@@ -171,7 +171,7 @@ runs:
 
         enabled=false
         if [[ "${mode}" != disabled ]] && \
-           [[ "${proxy_enabled}" == true || \
+            [[ "${proxy_enabled}" == true || \
               "${registry_enabled}" == true || \
               "${bazel_enabled}" == true || \
               "${local_tool_cache}" == true || \
