@@ -4250,6 +4250,5 @@ to trace failure modes to their primary `CSTYLE-*` controls.
 [sei-cert-c]: https://www.sei.cmu.edu/library/sei-cert-c-coding-standard-rules-for-developing-safe-reliable-and-secure-systems-2016-edition/
 [sei-cert-c-badge]: https://img.shields.io/badge/SEI%20CERT%20C-2016-2F81F7?style=flat-square&logo=cmake&logoColor=white&labelColor=1F2328
 [sil-4-badge]: https://img.shields.io/badge/SIL%204-IEC%2061508-DA3633?style=flat-square&logo=target&logoColor=white&labelColor=1F2328
-
 <!-- EOF -->
 

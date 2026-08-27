@@ -10,6 +10,7 @@ extend-exclude = [
   "**/*.dic",
   "**/*.lock",
   "**/*.min.*",
+  "**/*.patch",
   "tests/mock/git_hooks/coil-hook-test-suite.lua",
 ]
 

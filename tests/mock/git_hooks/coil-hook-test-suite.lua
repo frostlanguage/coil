@@ -4,7 +4,8 @@
 -- SPDX-License-Identifier: GPL-3.0-only
 
 local uv = require("luv")
-local path_separator = package.config:sub(1, 1)
+local is_windows = os.getenv("OS") == "Windows_NT"
+local path_separator = is_windows and "\\" or "/"
 
 --- Join path components using the native directory separator.
 -- @param ... string: Path components.
@@ -354,6 +355,13 @@ local function main()
    local user_name = git_config(repository_root, "user.name")
    local user_email = git_config(repository_root, "user.email")
    local remote = git_config(repository_root, "remote.pushDefault")
+
+   if user_name == "" then
+      user_name = "Coil Test User"
+   end
+   if user_email == "" then
+      user_email = "coil-tests@example.org"
+   end
 
    if remote == "" then
       local branch_output, branch_success = capture_command(

@@ -3,7 +3,7 @@
 
 ---
 name: Configure CI cache plane
-description: Detect runner-near caches and generate safe Bazel cache policy.
+description: Detect shared, local, specialized, and egress cache services.
 
 inputs:
   mode:
@@ -13,7 +13,7 @@ inputs:
 
 outputs:
   enabled:
-    description: Whether at least one runner-near cache layer is configured.
+    description: Whether at least one effective cache-plane service is configured.
     value: ${{ steps.configure.outputs.enabled }}
   bazelrc:
     description: Generated Bazel rc file with remote-cache policy.
@@ -21,6 +21,12 @@ outputs:
   bazel_write:
     description: Whether this GitHub event may upload Bazel cache results.
     value: ${{ steps.configure.outputs.bazel_write }}
+  shared_cache_enabled:
+    description: Whether an S3-compatible shared object cache is configured.
+    value: ${{ steps.configure.outputs.shared_cache_enabled }}
+  shared_cache_write:
+    description: Whether this GitHub event may populate the shared object cache.
+    value: ${{ steps.configure.outputs.shared_cache_write }}
   registry_enabled:
     description: Whether a runner-near OCI registry is configured.
     value: ${{ steps.configure.outputs.registry_enabled }}
@@ -57,6 +63,7 @@ runs:
         registry_enabled=false
         bazel_enabled=false
         local_tool_cache=false
+        shared_cache_enabled=false
 
         if [[ -n "${HTTPS_PROXY:-${https_proxy:-}}" || \
               -n "${HTTP_PROXY:-${http_proxy:-}}" ]]; then
@@ -95,34 +102,89 @@ runs:
           local_tool_cache=true
         fi
 
-        enabled=false
-        if [[ "${proxy_enabled}" == true || \
-              "${registry_enabled}" == true || \
-              "${bazel_enabled}" == true || \
-              "${local_tool_cache}" == true ]]; then
-          enabled=true
+        s3_bucket="${COIL_CI_S3_CACHE_BUCKET:-}"
+        s3_endpoint="${COIL_CI_S3_CACHE_ENDPOINT:-}"
+        s3_prefix="${COIL_CI_S3_CACHE_PREFIX:-coil/cache}"
+
+        if [[ -n "${s3_endpoint}" && -z "${s3_bucket}" ]]; then
+          printf '%s\n' \
+            'COIL_CI_S3_CACHE_ENDPOINT requires COIL_CI_S3_CACHE_BUCKET.' >&2
+          exit 1
         fi
 
-        if [[ "${mode}" == required ]]; then
-          if [[ "${proxy_enabled}" != true || \
-                "${registry_enabled}" != true || \
-                "${bazel_enabled}" != true ]]; then
+        if [[ -n "${s3_bucket}" ]]; then
+          if [[ "${s3_bucket}" == */* || \
+                "${s3_bucket}" == *://* || \
+                "${s3_bucket}" =~ [[:space:]] ]]; then
             printf '%s\n' \
-              'Required cache plane is missing proxy, registry, or Bazel cache.' \
-              >&2
+              'COIL_CI_S3_CACHE_BUCKET must contain only a bucket name.' >&2
             exit 1
+          fi
+
+          case "${s3_endpoint}" in
+            ""|http://*|https://*)
+              ;;
+            *)
+              printf '%s\n' \
+                'COIL_CI_S3_CACHE_ENDPOINT must use HTTP or HTTPS.' >&2
+              exit 1
+              ;;
+          esac
+
+          if [[ "${s3_prefix}" == /* || \
+                "${s3_prefix}" == *\\* || \
+                "${s3_prefix}" == ".." || \
+                "${s3_prefix}" == ../* || \
+                "${s3_prefix}" == */../* || \
+                "${s3_prefix}" == */.. ]]; then
+            printf '%s\n' \
+              'COIL_CI_S3_CACHE_PREFIX must be a relative object prefix.' >&2
+            exit 1
+          fi
+
+          if ! command -v aws >/dev/null 2>&1; then
+            printf '%s\n' \
+              'The S3-compatible shared cache requires the aws CLI.' >&2
+            exit 1
+          fi
+
+          shared_cache_enabled=true
+        fi
+
+        shared_cache_write=false
+        bazel_write=false
+
+        if [[ "${mode}" != disabled ]]; then
+          if [[ "${EVENT_NAME}" == merge_group ]]; then
+            shared_cache_write=true
+            bazel_write=true
+          elif [[ "${EVENT_NAME}" == push && \
+                  "${REF_NAME}" == "${DEFAULT_BRANCH}" ]]; then
+            shared_cache_write=true
+            bazel_write=true
+          elif [[ "${EVENT_NAME}" == workflow_dispatch && \
+                  "${REF_NAME}" == "${DEFAULT_BRANCH}" ]]; then
+            shared_cache_write=true
+            bazel_write=true
           fi
         fi
 
-        bazel_write=false
-        if [[ "${EVENT_NAME}" == merge_group ]]; then
-          bazel_write=true
-        elif [[ "${EVENT_NAME}" == push && \
-                "${REF_NAME}" == "${DEFAULT_BRANCH}" ]]; then
-          bazel_write=true
-        elif [[ "${EVENT_NAME}" == workflow_dispatch && \
-                "${REF_NAME}" == "${DEFAULT_BRANCH}" ]]; then
-          bazel_write=true
+        enabled=false
+        if [[ "${mode}" != disabled ]] && \
+           [[ "${proxy_enabled}" == true || \
+              "${registry_enabled}" == true || \
+              "${bazel_enabled}" == true || \
+              "${local_tool_cache}" == true || \
+              "${shared_cache_enabled}" == true ]]; then
+          enabled=true
+        fi
+
+        if [[ "${mode}" == required && \
+              "${shared_cache_enabled}" != true ]]; then
+          printf '%s\n' \
+            'Required cache plane is missing the shared S3-compatible cache.' \
+            >&2
+          exit 1
         fi
 
         cache_dir="${RUNNER_TEMP}/coil-cache-plane"
@@ -147,6 +209,10 @@ runs:
         printf 'enabled=%s\n' "${enabled}" >> "${GITHUB_OUTPUT}"
         printf 'bazelrc=%s\n' "${bazelrc}" >> "${GITHUB_OUTPUT}"
         printf 'bazel_write=%s\n' "${bazel_write}" >> "${GITHUB_OUTPUT}"
+        printf 'shared_cache_enabled=%s\n' \
+          "${shared_cache_enabled}" >> "${GITHUB_OUTPUT}"
+        printf 'shared_cache_write=%s\n' \
+          "${shared_cache_write}" >> "${GITHUB_OUTPUT}"
         printf 'registry_enabled=%s\n' \
           "${registry_enabled}" >> "${GITHUB_OUTPUT}"
         printf 'proxy_enabled=%s\n' \
@@ -155,17 +221,23 @@ runs:
         {
           printf '%s\n' '### Coil CI cache plane'
           printf '\n'
-          printf '| Layer | State |\n'
+          printf '| Service | State |\n'
           printf '| --- | --- |\n'
-          printf '| Runner-local tool cache | %s |\n' "${local_tool_cache}"
-          printf '| Egress proxy | %s |\n' "${proxy_enabled}"
-          printf '| OCI registry | %s |\n' "${registry_enabled}"
+          printf '| L0 runner-local tool cache | %s |\n' "${local_tool_cache}"
+          if [[ "${shared_cache_enabled}" == true ]]; then
+            printf '| L1 shared object cache | enabled (%s) |\n' \
+              "$([[ "${shared_cache_write}" == true ]] && echo read-write || echo read-only)"
+          else
+            printf '%s\n' '| L1 shared object cache | false |'
+          fi
+          printf '| OCI registry / mirror | %s |\n' "${registry_enabled}"
           if [[ "${bazel_enabled}" == true ]]; then
             printf '| Bazel remote cache | enabled (%s) |\n' \
               "$([[ "${bazel_write}" == true ]] && echo read-write || echo read-only)"
           else
             printf '%s\n' '| Bazel remote cache | false |'
           fi
+          printf '| Egress proxy | %s |\n' "${proxy_enabled}"
           printf '\n'
           printf 'Mode: `%s`. Endpoints are intentionally not logged.\n' "${mode}"
         } >> "${GITHUB_STEP_SUMMARY}"

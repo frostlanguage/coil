@@ -19,7 +19,12 @@ include_mail = false
 include_verbatim = false
 
 exclude_all_private = true
-exclude_path = [ "(^|/)LICENSES/", "(^|/)node_modules/", "(^|/)(?:build|dist|vendor)/" ]
+exclude_path = [
+  "(^|/)LICENSES/",
+  "(^|/)node_modules/",
+  "(^|/)(?:build|dist|vendor)/",
+  "(^|/).*\\.patch$",
+]
 
 exclude = [
   "^mailto:",

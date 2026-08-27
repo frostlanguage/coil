@@ -902,7 +902,7 @@ optimization level, CPU, ABI, or input data changes.
 | Invalid shift                              | shift count negative or at least type width               | [CWE-682][cwe-682], [CWE-758][cwe-758] | [C23][c23], [CERT C][cert-c], [MISRA C][misra-c]                 | [`CSTYLE-101-7-3-integer-overflow-and-shift-safety`](./c-code-style.md#73-integer-overflow-and-shift-safety) |
 | Divide overflow                            | `TYPE_MIN / -1` for signed integer                        | [CWE-190][cwe-190], [CWE-369][cwe-369] | [C23][c23], [CERT C][cert-c]                                     | [`CSTYLE-103-7-5-division-and-remainder-safety`](./c-code-style.md#75-division-and-remainder-safety)         |
 | Invalid effective type access              | incompatible typed lvalue used for object access          | [CWE-843][cwe-843], [CWE-758][cwe-758] | [C23][c23], [CERT C][cert-c], [MISRA C][misra-c]                 | [`CSTYLE-100-7-2-c-behavior-categories`](./c-code-style.md#72-c-behavior-categories)                         |
-| VLA with invalid bound                     | zero, negative, excessive, or untrusted VLA size          | [CWE-129][cwe-129], [CWE-789][cwe-789] | [CERT C][cert-c], [MISRA C][misra-c]                             | [`CSTYLE-108-8-2-array-initialization`](./c-code-style.md#82-array-initialization)                      |
+| VLA with invalid bound                     | zero, negative, excessive, or untrusted VLA size          | [CWE-129][cwe-129], [CWE-789][cwe-789] | [CERT C][cert-c], [MISRA C][misra-c]                             | [`CSTYLE-108-8-2-array-initialization`](./c-code-style.md#82-array-initialization)                           |
 | `longjmp` into dead frame                  | non-local jump targets expired stack context              | [CWE-758][cwe-758], [CWE-562][cwe-562] | [C23][c23], [CERT C][cert-c], [MISRA C][misra-c]                 | [`CSTYLE-053-4-1-function-design-and-control-flow`](./c-code-style.md#4-function-contracts-and-control-flow) |
 | Modified non-volatile local after `setjmp` | local value becomes indeterminate after `longjmp`         | [CWE-758][cwe-758]                     | [C23][c23], [CERT C][cert-c]                                     | [`CSTYLE-100-7-2-c-behavior-categories`](./c-code-style.md#72-c-behavior-categories)                         |
 | Recursive unbounded call chain             | stack exhaustion or non-terminating control flow          | [CWE-674][cwe-674], [CWE-835][cwe-835] | [MISRA C][misra-c], [IEC 61508][iec-61508], [DO-178C][do-178c]   | [`CSTYLE-054-4-1-1-function-size-and-complexity`](./c-code-style.md#411-function-size-and-complexity)        |
@@ -2613,6 +2613,5 @@ Use this checklist during code review:
 [iso-26262]: https://www.iso.org/publication/PUB200262.html
 [do-178c]: https://www.rtca.org/do-178/
 [posix]: https://pubs.opengroup.org/onlinepubs/9799919799/
-
 <!-- EOF -->
 

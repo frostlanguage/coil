@@ -124,10 +124,12 @@ jobs:
           directory: rhysd/actionlint/releases/download/v${{ env.ACTIONLINT_VERSION }}
 
       - name: Install actionlint
+        env:
+          ACTIONLINT_ARCHIVE: ${{ steps.actionlint_download.outputs.path }}
         run: |
           set -euo pipefail
 
-          destination="${{ steps.actionlint_download.outputs.path }}"
+          destination="${ACTIONLINT_ARCHIVE}"
 
           tar \
             --extract \
@@ -189,10 +191,12 @@ jobs:
             editorconfig-checker/editorconfig-checker/releases/download/v${{ env.EDITORCONFIG_CHECKER_VERSION }}
 
       - name: Install EditorConfig Checker
+        env:
+          EDITORCONFIG_ARCHIVE: ${{ steps.editorconfig_download.outputs.path }}
         run: |
           set -euo pipefail
 
-          destination="${{ steps.editorconfig_download.outputs.path }}"
+          destination="${EDITORCONFIG_ARCHIVE}"
           extract_dir="${RUNNER_TEMP}/editorconfig-checker"
           binary="${extract_dir}/bin/ec-linux-amd64"
 
@@ -258,12 +262,14 @@ jobs:
             biomejs/biome/releases/download/%40biomejs/biome%40${{ env.BIOME_VERSION }}
 
       - name: Install Biome
+        env:
+          BIOME_BINARY: ${{ steps.biome_download.outputs.path }}
         run: |
           set -euo pipefail
 
           install \
             --mode=0755 \
-            "${{ steps.biome_download.outputs.path }}" \
+            "${BIOME_BINARY}" \
             "${RUNNER_TEMP}/biome"
 
       - name: Find and lint all JSON files
@@ -499,6 +505,9 @@ jobs:
           directory: packages/82/19/0f2668f8f5e2452b096a2b898f2b6bcecbceb6dd0c7f75d1755ce1f18d8b
 
       - name: Install pinned Clang tools
+        env:
+          CLANG_FORMAT_PACKAGE: ${{ steps.clang_format.outputs.path }}
+          CLANG_TIDY_PACKAGE: ${{ steps.clang_tidy.outputs.path }}
         run: |
           set -euo pipefail
 
@@ -508,8 +517,8 @@ jobs:
             --disable-pip-version-check \
             --no-deps \
             --no-index \
-            "${{ steps.clang_format.outputs.path }}" \
-            "${{ steps.clang_tidy.outputs.path }}"
+            "${CLANG_FORMAT_PACKAGE}" \
+            "${CLANG_TIDY_PACKAGE}"
 
           "${RUNNER_TEMP}/coil-clang/bin/clang-format" --version
           "${RUNNER_TEMP}/coil-clang/bin/clang-tidy" --version
@@ -716,28 +725,33 @@ jobs:
 
       - name: Install pinned Lua toolchain
         if: steps.detect.outputs.found == 'true'
+        env:
+          LUA_ARCHIVE: ${{ steps.lua_download.outputs.path }}
+          SELENE_ARCHIVE: ${{ steps.selene_download.outputs.path }}
+          STYLUA_ARCHIVE: ${{ steps.stylua_download.outputs.path }}
+          LUALS_ARCHIVE: ${{ steps.luals_download.outputs.path }}
         run: |
           set -euo pipefail
 
-          lua_archive="${{ steps.lua_download.outputs.path }}"
+          lua_archive="${LUA_ARCHIVE}"
 
           tar -xzf "${lua_archive}" -C "${RUNNER_TEMP}"
           make --directory="${RUNNER_TEMP}/lua-${LUA_VERSION}" \
             --jobs="$(nproc)" all
 
-          selene_archive="${{ steps.selene_download.outputs.path }}"
+          selene_archive="${SELENE_ARCHIVE}"
 
           mkdir -p "${RUNNER_TEMP}/selene"
           unzip -q "${selene_archive}" -d "${RUNNER_TEMP}/selene"
           chmod 0755 "${RUNNER_TEMP}/selene/selene"
 
-          stylua_archive="${{ steps.stylua_download.outputs.path }}"
+          stylua_archive="${STYLUA_ARCHIVE}"
 
           mkdir -p "${RUNNER_TEMP}/stylua"
           unzip -q "${stylua_archive}" -d "${RUNNER_TEMP}/stylua"
           chmod 0755 "${RUNNER_TEMP}/stylua/stylua"
 
-          luals_archive="${{ steps.luals_download.outputs.path }}"
+          luals_archive="${LUALS_ARCHIVE}"
 
           mkdir -p "${RUNNER_TEMP}/luals"
           tar -xzf "${luals_archive}" -C "${RUNNER_TEMP}/luals"
@@ -870,16 +884,19 @@ jobs:
 
       - name: Install Python lint tools
         if: steps.detect.outputs.found == 'true'
+        env:
+          RUFF_ARCHIVE: ${{ steps.ruff_download.outputs.path }}
+          PYRIGHT_ARCHIVE: ${{ steps.pyright_download.outputs.path }}
         run: |
           set -euo pipefail
 
-          ruff_archive="${{ steps.ruff_download.outputs.path }}"
+          ruff_archive="${RUFF_ARCHIVE}"
 
           mkdir -p "${RUNNER_TEMP}/ruff"
           tar -xzf "${ruff_archive}" -C "${RUNNER_TEMP}/ruff" \
             --strip-components=1
 
-          pyright_archive="${{ steps.pyright_download.outputs.path }}"
+          pyright_archive="${PYRIGHT_ARCHIVE}"
 
           mkdir -p "${RUNNER_TEMP}/pyright"
           tar -xzf "${pyright_archive}" \
@@ -1026,10 +1043,13 @@ jobs:
 
       - name: Install ShellCheck and shfmt
         if: steps.detect.outputs.found == 'true'
+        env:
+          SHELLCHECK_ARCHIVE: ${{ steps.shellcheck_download.outputs.path }}
+          SHFMT_BINARY: ${{ steps.shfmt_download.outputs.path }}
         run: |
           set -euo pipefail
 
-          shellcheck_archive="${{ steps.shellcheck_download.outputs.path }}"
+          shellcheck_archive="${SHELLCHECK_ARCHIVE}"
 
           tar -xJf "${shellcheck_archive}" -C "${RUNNER_TEMP}"
 
@@ -1040,7 +1060,7 @@ jobs:
           shfmt_binary="${RUNNER_TEMP}/shfmt"
           install \
             --mode=0755 \
-            "${{ steps.shfmt_download.outputs.path }}" \
+            "${SHFMT_BINARY}" \
             "${shfmt_binary}"
 
       - name: Run POSIX sh and Bash checks
@@ -1188,16 +1208,19 @@ jobs:
 
       - name: Install pinned PowerShell and PSScriptAnalyzer
         if: steps.detect.outputs.found == 'true'
+        env:
+          POWERSHELL_ARCHIVE: ${{ steps.powershell_download.outputs.path }}
+          PSSCRIPTANALYZER_PACKAGE: ${{ steps.psscriptanalyzer_download.outputs.path }}
         run: |
           set -euo pipefail
 
-          pwsh_archive="${{ steps.powershell_download.outputs.path }}"
+          pwsh_archive="${POWERSHELL_ARCHIVE}"
 
           mkdir -p "${RUNNER_TEMP}/powershell"
           tar -xzf "${pwsh_archive}" -C "${RUNNER_TEMP}/powershell"
           chmod 0755 "${RUNNER_TEMP}/powershell/pwsh"
 
-          analyzer_package="${{ steps.psscriptanalyzer_download.outputs.path }}"
+          analyzer_package="${PSSCRIPTANALYZER_PACKAGE}"
 
           module_root="${RUNNER_TEMP}/modules/PSScriptAnalyzer"
           module_dir="${module_root}/${PSSCRIPTANALYZER_VERSION}"
@@ -1341,10 +1364,12 @@ jobs:
 
       - name: Install pinned Nushell and nufmt
         if: steps.detect.outputs.found == 'true'
+        env:
+          NUSHELL_ARCHIVE: ${{ steps.nushell_download.outputs.path }}
         run: |
           set -euo pipefail
 
-          nu_archive="${{ steps.nushell_download.outputs.path }}"
+          nu_archive="${NUSHELL_ARCHIVE}"
 
           mkdir -p "${RUNNER_TEMP}/nushell"
           tar -xzf "${nu_archive}" \

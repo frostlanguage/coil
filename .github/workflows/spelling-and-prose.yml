@@ -102,6 +102,8 @@ jobs:
           directory: packages/20/01/b394922252051e97aab231d416c86da3d8a6d781eeadcdca1082867de64e
 
       - name: Install codespell
+        env:
+          CODESPELL_PACKAGE: ${{ steps.codespell_download.outputs.path }}
         run: |
           set -euo pipefail
 
@@ -111,7 +113,7 @@ jobs:
             --disable-pip-version-check \
             --no-deps \
             --no-index \
-            "${{ steps.codespell_download.outputs.path }}"
+            "${CODESPELL_PACKAGE}"
 
       - name: Check spelling
         run: |
@@ -151,6 +153,8 @@ jobs:
           directory: crate-ci/typos/releases/download/v${{ env.TYPOS_VERSION }}
 
       - name: Install typos
+        env:
+          TYPOS_ARCHIVE: ${{ steps.typos_download.outputs.path }}
         run: |
           set -euo pipefail
 
@@ -159,7 +163,7 @@ jobs:
           tar \
             --extract \
             --gzip \
-            --file="${{ steps.typos_download.outputs.path }}" \
+            --file="${TYPOS_ARCHIVE}" \
             --directory="${extraction_directory}"
           install \
             --mode=0755 \
@@ -204,6 +208,8 @@ jobs:
           directory: lycheeverse/lychee/releases/download/lychee-v${{ env.LYCHEE_VERSION }}
 
       - name: Install Lychee
+        env:
+          LYCHEE_ARCHIVE: ${{ steps.lychee_download.outputs.path }}
         run: |
           set -euo pipefail
 
@@ -212,7 +218,7 @@ jobs:
           tar \
             --extract \
             --gzip \
-            --file="${{ steps.lychee_download.outputs.path }}" \
+            --file="${LYCHEE_ARCHIVE}" \
             --directory="${extraction_directory}"
           install \
             --mode=0755 \
@@ -259,13 +265,15 @@ jobs:
           directory: vale-cli/vale/releases/download/v${{ env.VALE_VERSION }}
 
       - name: Install Vale
+        env:
+          VALE_ARCHIVE: ${{ steps.vale_download.outputs.path }}
         run: |
           set -euo pipefail
 
           tar \
             --extract \
             --gzip \
-            --file="${{ steps.vale_download.outputs.path }}" \
+            --file="${VALE_ARCHIVE}" \
             --directory="${RUNNER_TEMP}" \
             vale
 

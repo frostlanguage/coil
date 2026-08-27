@@ -114,7 +114,10 @@ for _, category in ipairs(categories) do
       table.insert(words, line)
    end
 
-   local sorted_category_words = {table.unpack(category_words)}
+   local sorted_category_words = {}
+   for index, word in ipairs(category_words) do
+      sorted_category_words[index] = word
+   end
    sort_words(sorted_category_words)
    local expected = table.concat(sorted_category_words, "\n") .. "\n"
    if content ~= expected then

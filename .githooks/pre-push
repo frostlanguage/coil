@@ -45,10 +45,6 @@ local function command_output(command)
    return platform.command_output(command)
 end
 
-local function silence_stderr(command)
-   return platform.silence_stderr(command)
-end
-
 local function silence_all(command)
    return platform.silence_all(command)
 end

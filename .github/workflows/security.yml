@@ -68,13 +68,15 @@ jobs:
           directory: zizmorcore/zizmor/releases/download/v${{ env.ZIZMOR_VERSION }}
 
       - name: Install zizmor
+        env:
+          ZIZMOR_ARCHIVE: ${{ steps.zizmor_download.outputs.path }}
         run: |
           set -euo pipefail
 
           tar \
             --extract \
             --gzip \
-            --file="${{ steps.zizmor_download.outputs.path }}" \
+            --file="${ZIZMOR_ARCHIVE}" \
             --directory="${RUNNER_TEMP}" \
             zizmor
 
@@ -122,6 +124,8 @@ jobs:
           directory: gitleaks/gitleaks/releases/download/v${{ env.GITLEAKS_VERSION }}
 
       - name: Install Gitleaks
+        env:
+          GITLEAKS_ARCHIVE: ${{ steps.gitleaks_download.outputs.path }}
         run: |
           set -euo pipefail
 
@@ -131,7 +135,7 @@ jobs:
           tar \
             --extract \
             --gzip \
-            --file="${{ steps.gitleaks_download.outputs.path }}" \
+            --file="${GITLEAKS_ARCHIVE}" \
             --directory="${extraction_directory}"
 
           install \
@@ -267,12 +271,14 @@ jobs:
 
       - name: Install gittuf
         if: steps.metadata.outputs.initialized == 'true'
+        env:
+          GITTUF_BINARY: ${{ steps.gittuf_download.outputs.path }}
         run: |
           set -euo pipefail
 
           install \
             --mode=0755 \
-            "${{ steps.gittuf_download.outputs.path }}" \
+            "${GITTUF_BINARY}" \
             "${RUNNER_TEMP}/gittuf"
 
       - name: Verify gittuf policy

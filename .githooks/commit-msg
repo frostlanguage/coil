@@ -941,12 +941,11 @@ local function validate_structure(text, author_name, author_email)
       add_error(errors, "exactly one Signed-off-by: trailer is required.")
    elseif signoff_index ~= #lines then
       add_error(errors, "Signed-off-by: must be the final non-empty line.")
-   elseif signoff_index < 2 or lines[signoff_index - 1] ~= "" then
-      add_error(
-         errors,
-         "Signed-off-by: must be preceded by exactly one blank line."
-      )
-   elseif signoff_index >= 3 and lines[signoff_index - 2] == "" then
+   elseif
+      signoff_index < 2
+      or lines[signoff_index - 1] ~= ""
+      or (signoff_index >= 3 and lines[signoff_index - 2] == "")
+   then
       add_error(
          errors,
          "Signed-off-by: must be preceded by exactly one blank line."

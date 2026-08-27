@@ -173,6 +173,16 @@ jobs:
           directory: gittuf/gittuf/releases/download/v${{ env.GITTUF_VERSION }}
 
       - name: Install pinned mock-test toolchain
+        env:
+          LUA_ARCHIVE: ${{ steps.lua_download.outputs.path }}
+          LUV_ARCHIVE: ${{ steps.luv_download.outputs.path }}
+          CODESPELL_PACKAGE: ${{ steps.codespell_download.outputs.path }}
+          TYPOS_ARCHIVE: ${{ steps.typos_download.outputs.path }}
+          VALE_ARCHIVE: ${{ steps.vale_download.outputs.path }}
+          LYCHEE_ARCHIVE: ${{ steps.lychee_download.outputs.path }}
+          GITLEAKS_ARCHIVE: ${{ steps.gitleaks_download.outputs.path }}
+          GITTUF_BINARY: ${{ steps.gittuf_download.outputs.path }}
+          GIT_REMOTE_GITTUF_BINARY: ${{ steps.git_remote_gittuf_download.outputs.path }}
         run: |
           set -euo pipefail
 
@@ -182,7 +192,7 @@ jobs:
           printf '%s\n' "${bin_dir}" >> "${GITHUB_PATH}"
 
           # Lua
-          lua_destination="${{ steps.lua_download.outputs.path }}"
+          lua_destination="${LUA_ARCHIVE}"
 
           tar \
             --extract \
@@ -206,7 +216,7 @@ jobs:
             "${bin_dir}/luac"
 
           # luv: the Lua hook mocks use libuv for portable process and filesystem IO.
-          luv_destination="${{ steps.luv_download.outputs.path }}"
+          luv_destination="${LUV_ARCHIVE}"
           luv_source="${RUNNER_TEMP}/luv-${LUV_VERSION}"
           luv_build="${RUNNER_TEMP}/luv-build"
           lua_modules="${RUNNER_TEMP}/lua-modules"
@@ -262,7 +272,7 @@ jobs:
           chmod 0755 "${bin_dir}/cspell"
 
           # codespell
-          codespell_destination="${{ steps.codespell_download.outputs.path }}"
+          codespell_destination="${CODESPELL_PACKAGE}"
 
           python3 -m venv "${RUNNER_TEMP}/codespell"
 
@@ -279,7 +289,7 @@ jobs:
             "${bin_dir}/codespell"
 
           # typos
-          typos_destination="${{ steps.typos_download.outputs.path }}"
+          typos_destination="${TYPOS_ARCHIVE}"
 
           mkdir --parents "${RUNNER_TEMP}/typos-release"
 
@@ -295,7 +305,7 @@ jobs:
             "${bin_dir}/typos"
 
           # Vale
-          vale_destination="${{ steps.vale_download.outputs.path }}"
+          vale_destination="${VALE_ARCHIVE}"
 
           tar \
             --extract \
@@ -310,7 +320,7 @@ jobs:
             "${bin_dir}/vale"
 
           # Lychee
-          lychee_destination="${{ steps.lychee_download.outputs.path }}"
+          lychee_destination="${LYCHEE_ARCHIVE}"
 
           mkdir --parents "${RUNNER_TEMP}/lychee-release"
 
@@ -326,7 +336,7 @@ jobs:
             "${bin_dir}/lychee"
 
           # Gitleaks
-          gitleaks_destination="${{ steps.gitleaks_download.outputs.path }}"
+          gitleaks_destination="${GITLEAKS_ARCHIVE}"
 
           tar \
             --extract \
@@ -340,12 +350,12 @@ jobs:
           # gittuf
           install \
             --mode=0755 \
-            "${{ steps.gittuf_download.outputs.path }}" \
+            "${GITTUF_BINARY}" \
             "${bin_dir}/gittuf"
 
           install \
             --mode=0755 \
-            "${{ steps.git_remote_gittuf_download.outputs.path }}" \
+            "${GIT_REMOTE_GITTUF_BINARY}" \
             "${bin_dir}/git-remote-gittuf"
 
       - name: Show mock-test tool versions
@@ -640,12 +650,14 @@ jobs:
           directory: packages/20/01/b394922252051e97aab231d416c86da3d8a6d781eeadcdca1082867de64e
 
       - name: Install codespell
+        env:
+          CODESPELL_PACKAGE: ${{ steps.prose_codespell_download.outputs.path }}
         run: |
           set -euo pipefail
           python3 -m venv "${RUNNER_TEMP}/codespell"
           "${RUNNER_TEMP}/codespell/bin/python" -m pip install \
             --disable-pip-version-check --no-deps --no-index \
-            "${{ steps.prose_codespell_download.outputs.path }}"
+            "${CODESPELL_PACKAGE}"
 
       - name: Check commit-message spelling with codespell
         run: |
@@ -666,11 +678,13 @@ jobs:
           directory: crate-ci/typos/releases/download/v${{ env.TYPOS_VERSION }}
 
       - name: Install typos
+        env:
+          TYPOS_ARCHIVE: ${{ steps.prose_typos_download.outputs.path }}
         run: |
           set -euo pipefail
           mkdir --parents "${RUNNER_TEMP}/typos-release"
           tar --extract --gzip \
-            --file="${{ steps.prose_typos_download.outputs.path }}" \
+            --file="${TYPOS_ARCHIVE}" \
             --directory="${RUNNER_TEMP}/typos-release"
           install --mode=0755 "${RUNNER_TEMP}/typos-release/typos" \
             "${RUNNER_TEMP}/typos"
@@ -694,10 +708,12 @@ jobs:
           directory: vale-cli/vale/releases/download/v${{ env.VALE_VERSION }}
 
       - name: Install Vale
+        env:
+          VALE_ARCHIVE: ${{ steps.prose_vale_download.outputs.path }}
         run: |
           set -euo pipefail
           tar --extract --gzip \
-            --file="${{ steps.prose_vale_download.outputs.path }}" \
+            --file="${VALE_ARCHIVE}" \
             --directory="${RUNNER_TEMP}" vale
 
       - name: Check commit-message prose with Vale
@@ -719,11 +735,13 @@ jobs:
           directory: lycheeverse/lychee/releases/download/lychee-v${{ env.LYCHEE_VERSION }}
 
       - name: Install Lychee
+        env:
+          LYCHEE_ARCHIVE: ${{ steps.prose_lychee_download.outputs.path }}
         run: |
           set -euo pipefail
           mkdir --parents "${RUNNER_TEMP}/lychee-release"
           tar --extract --gzip \
-            --file="${{ steps.prose_lychee_download.outputs.path }}" \
+            --file="${LYCHEE_ARCHIVE}" \
             --directory="${RUNNER_TEMP}/lychee-release"
           install --mode=0755 \
             "${RUNNER_TEMP}/lychee-release/lychee-x86_64-unknown-linux-gnu/lychee" \

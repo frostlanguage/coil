@@ -7,7 +7,7 @@
 
 local M = {}
 
-M.is_windows = package.config:sub(1, 1) == "\\"
+M.is_windows = os.getenv("OS") == "Windows_NT"
 M.null_device = M.is_windows and "NUL" or "/dev/null"
 
 --- Quote one argument for the host command processor.

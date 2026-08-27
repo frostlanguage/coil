@@ -4,7 +4,8 @@
 -- SPDX-License-Identifier: GPL-3.0-only
 
 local uv = require("luv")
-local path_separator = package.config:sub(1, 1)
+local is_windows = os.getenv("OS") == "Windows_NT"
+local path_separator = is_windows and "\\" or "/"
 
 local DEFAULT_DIRECTORY_MODE = tonumber("755", 8)
 local PRIVATE_DIRECTORY_MODE = tonumber("700", 8)

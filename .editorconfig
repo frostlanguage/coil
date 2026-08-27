@@ -205,7 +205,17 @@ indent_size = unset
 tab_width = unset
 max_line_length = off
 
+[docs/code_style/c_language/c-code-standard.md]
+indent_size = unset
+tab_width = unset
+max_line_length = off
+
 [docs/code_style/c_language/c-common-pitfalls.md]
+indent_size = unset
+tab_width = unset
+max_line_length = off
+
+[docs/code_style/c_language/c-module-architecture.md]
 indent_size = unset
 tab_width = unset
 max_line_length = off

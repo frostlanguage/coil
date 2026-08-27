@@ -40,10 +40,6 @@ local function silence_stderr(command)
    return platform.silence_stderr(command)
 end
 
-local function silence_all(command)
-   return platform.silence_all(command)
-end
-
 --- Read one Git configuration value.
 -- @param key string: Git configuration key.
 -- @return string|nil: configured value, or nil when absent.

@@ -10,7 +10,7 @@
 # 1. Base Style — CSTYLE-015..019
 # =============================
 BasedOnStyle:                               Mozilla         # inherit Mozilla defaults only for unspecified options
-Language:                                   C               # target the dedicated clang-format 22 C parser
+Language:                                   Cpp             # use clang-format's C/C++ parser configuration
 IndentWidth:                                8               # use Linux kernel-style 8-column indentation
 ContinuationIndentWidth:                    8               # use 8 columns for continuation indentation
 TabWidth:                                   8               # interpret tabs using Linux kernel 8-column stops
