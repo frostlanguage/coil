@@ -11,7 +11,7 @@ local path_separator = is_windows and "\\" or "/"
 -- @param ... string: Path components.
 -- @return string: Joined path.
 local function join_path(...)
-   local parts = {...}
+   local parts = { ... }
    local path = tostring(parts[1] or "")
 
    for i = 2, #parts do
@@ -20,11 +20,11 @@ local function join_path(...)
       local part_has_separator = part:sub(1, 1) == "/" or part:sub(1, 1) == "\\"
 
       if path_has_separator and part_has_separator then
-         path = path..part:sub(2)
+         path = path .. part:sub(2)
       elseif path_has_separator or part_has_separator then
-         path = path..part
+         path = path .. part
       else
-         path = path..path_separator..part
+         path = path .. path_separator .. part
       end
    end
 
@@ -37,8 +37,10 @@ end
 local function read_file(path)
    local file, open_error = io.open(path, "rb")
    if not file then
-      local message =
-         "could not open file for reading: "..path..": "..tostring(open_error)
+      local message = "could not open file for reading: "
+         .. path
+         .. ": "
+         .. tostring(open_error)
       error(message)
    end
 
@@ -62,7 +64,7 @@ local function build_environment(overrides)
 
    local entries = {}
    for name, value in pairs(environment) do
-      entries[#entries + 1] = name.."="..value
+      entries[#entries + 1] = name .. "=" .. value
    end
    table.sort(entries)
    return entries
@@ -211,10 +213,8 @@ local function capture_command(arguments, options)
    capture_options.capture_stdout = true
    capture_options.stdout_to_null = false
 
-   local success, exit_code, output = execute_process(
-      arguments,
-      capture_options
-   )
+   local success, exit_code, output =
+      execute_process(arguments, capture_options)
    return output, success, exit_code
 end
 
@@ -236,25 +236,36 @@ local function remove_tree(path)
    if stat.type ~= "directory" then
       local success, unlink_error = uv.fs_unlink(path)
       if not success then
-         error("could not remove file: "..path..": "..tostring(unlink_error))
+         error(
+            "could not remove file: " .. path .. ": " .. tostring(unlink_error)
+         )
       end
       return
    end
 
    local scanner, scan_error = uv.fs_scandir(path)
    if not scanner then
-      error("could not scan directory: "..path..": "..tostring(scan_error))
+      error(
+         "could not scan directory: " .. path .. ": " .. tostring(scan_error)
+      )
    end
 
    while true do
       local name = uv.fs_scandir_next(scanner)
-      if not name then break end
+      if not name then
+         break
+      end
       remove_tree(join_path(path, name))
    end
 
    local success, remove_error = uv.fs_rmdir(path)
    if not success then
-      error("could not remove directory: "..path..": "..tostring(remove_error))
+      error(
+         "could not remove directory: "
+            .. path
+            .. ": "
+            .. tostring(remove_error)
+      )
    end
 end
 
@@ -264,13 +275,15 @@ end
 local function create_temporary_directory(suffix)
    local temporary_root, root_error = uv.os_tmpdir()
    if not temporary_root then
-      error("could not resolve the temporary directory: "..tostring(root_error))
+      error(
+         "could not resolve the temporary directory: " .. tostring(root_error)
+      )
    end
 
-   local template = join_path(temporary_root, suffix.."-XXXXXX")
+   local template = join_path(temporary_root, suffix .. "-XXXXXX")
    local directory, create_error = uv.fs_mkdtemp(template)
    if not directory then
-      error("could not create temporary directory: "..tostring(create_error))
+      error("could not create temporary directory: " .. tostring(create_error))
    end
 
    return directory
@@ -282,8 +295,10 @@ end
 local function write_file(path, contents)
    local file, open_error = io.open(path, "wb")
    if not file then
-      local message =
-         "could not open file for writing: "..path..": "..tostring(open_error)
+      local message = "could not open file for writing: "
+         .. path
+         .. ": "
+         .. tostring(open_error)
       error(message)
    end
 
@@ -291,7 +306,7 @@ local function write_file(path, contents)
    file:close()
 
    if not success then
-      error("could not write file: "..path..": "..tostring(write_error))
+      error("could not write file: " .. path .. ": " .. tostring(write_error))
    end
 end
 
@@ -300,22 +315,24 @@ end
 -- @param values table: Placeholder values.
 -- @return string: Rendered fixture.
 local function render_fixture(template, values)
-   return (template:gsub("{{([A-Z_]+)}}", function(name)
-      local value = values[name]
-      if value == nil then
-         error("missing fixture placeholder: "..name)
-      end
+   return (
+      template:gsub("{{([A-Z_]+)}}", function(name)
+         local value = values[name]
+         if value == nil then
+            error("missing fixture placeholder: " .. name)
+         end
 
-      return value
-   end))
+         return value
+      end)
+   )
 end
 
 --- Resolve the repository root from the current working directory.
 -- @return string: Absolute repository root.
 local function resolve_repository_root()
    local output, success = capture_command(
-      {"git", "rev-parse", "--show-toplevel"},
-      {stderr_to_null = true}
+      { "git", "rev-parse", "--show-toplevel" },
+      { stderr_to_null = true }
    )
 
    if not success then
@@ -336,8 +353,8 @@ end
 -- @return string: Configuration value or an empty string.
 local function git_config(repository_root, key)
    local output, success = capture_command(
-      {"git", "config", "--get", key},
-      {cwd = repository_root, stderr_to_null = true}
+      { "git", "config", "--get", key },
+      { cwd = repository_root, stderr_to_null = true }
    )
 
    if not success then
@@ -365,13 +382,13 @@ local function main()
 
    if remote == "" then
       local branch_output, branch_success = capture_command(
-         {"git", "branch", "--show-current"},
-         {cwd = repository_root, stderr_to_null = true}
+         { "git", "branch", "--show-current" },
+         { cwd = repository_root, stderr_to_null = true }
       )
       local branch = branch_success and trim(branch_output) or ""
 
       if branch ~= "" then
-         remote = git_config(repository_root, "branch."..branch..".remote")
+         remote = git_config(repository_root, "branch." .. branch .. ".remote")
       end
    end
 
@@ -380,17 +397,16 @@ local function main()
    end
 
    local remote_output, remote_success = capture_command(
-      {"git", "ls-remote", remote, "refs/heads/main"},
-      {cwd = repository_root, stderr_to_null = true}
+      { "git", "ls-remote", remote, "refs/heads/main" },
+      { cwd = repository_root, stderr_to_null = true }
    )
    local remote_main_sha = ""
    if remote_success then
       remote_main_sha = remote_output:match("^([0-9a-fA-F]+)") or ""
    end
 
-   local missing_url =
-      "https://raw.githubusercontent.com/frostlanguage/coil/main/"..
-      "__lychee_missing_test_9f371e__.md"
+   local missing_url = "https://raw.githubusercontent.com/frostlanguage/coil/main/"
+      .. "__lychee_missing_test_9f371e__.md"
 
    local fixture_values = {
       NAME = user_name,
@@ -442,8 +458,7 @@ Impact: this change affects commit metadata validation.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["03-good-breaking.txt"] =
-         [[feat(api)!: replace the legacy string interface
+      ["03-good-breaking.txt"] = [[feat(api)!: replace the legacy string interface
 
 Motivation: coil needs one stable string interface for future releases.
 
@@ -455,8 +470,7 @@ BREAKING CHANGE: callers must use the replacement string interface.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["04-good-breaking-hyphen.txt"] =
-         [[feat(api): replace a legacy entry point
+      ["04-good-breaking-hyphen.txt"] = [[feat(api): replace a legacy entry point
 
 Motivation: coil needs one stable entry point for future releases.
 
@@ -468,8 +482,7 @@ BREAKING-CHANGE: callers must use the current entry point.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["05-good-remote-commit.txt"] =
-         [[chore(policy): verify remote commit references
+      ["05-good-remote-commit.txt"] = [[chore(policy): verify remote commit references
 
 Motivation: coil needs repository citations that resolve remotely.
 
@@ -504,8 +517,7 @@ Impact: this change affects commit metadata validation.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["11-extra-subject-blank.txt"] =
-         [[ci(policy): reject extra subject separators
+      ["11-extra-subject-blank.txt"] = [[ci(policy): reject extra subject separators
 
 
 Motivation: coil needs exactly one blank line after the subject.
@@ -516,8 +528,7 @@ Impact: this change affects commit metadata validation.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["12-number-uppercase.txt"] =
-         [[ci(policy): validate the first alphabetic character
+      ["12-number-uppercase.txt"] = [[ci(policy): validate the first alphabetic character
 
 Motivation: 2026 Coil needs deterministic lowercase validation.
 
@@ -581,8 +592,7 @@ Details: add repository-local commit validation.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["19-bad-theory-reference.txt"] =
-         [[docs(policy): validate technical reference trailers
+      ["19-bad-theory-reference.txt"] = [[docs(policy): validate technical reference trailers
 
 Motivation: coil needs deterministic reference metadata.
 
@@ -594,8 +604,7 @@ Theory-reference: Conventional Commits.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["20-orphan-url.txt"] =
-         [[docs(policy): validate technical reference trailers
+      ["20-orphan-url.txt"] = [[docs(policy): validate technical reference trailers
 
 Motivation: coil needs deterministic reference metadata.
 
@@ -681,8 +690,7 @@ BREAKING-CHANGE: callers must also migrate to the replacement interface.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["27-breaking-uppercase.txt"] =
-         [[feat(api): validate breaking-change descriptions
+      ["27-breaking-uppercase.txt"] = [[feat(api): validate breaking-change descriptions
 
 Motivation: coil needs deterministic lowercase footer descriptions.
 
@@ -694,8 +702,7 @@ BREAKING CHANGE: Callers must migrate to the replacement interface.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["28-bad-ref-syntax.txt"] =
-         [[chore(policy): validate repository reference syntax
+      ["28-bad-ref-syntax.txt"] = [[chore(policy): validate repository reference syntax
 
 Motivation: coil needs machine-readable repository references.
 
@@ -707,8 +714,7 @@ Refs: something somewhere
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["29-missing-branch.txt"] =
-         [[chore(policy): reject missing remote branches
+      ["29-missing-branch.txt"] = [[chore(policy): reject missing remote branches
 
 Motivation: coil needs repository citations that resolve remotely.
 
@@ -756,8 +762,7 @@ Refs: issue #99999999
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["33-missing-pull.txt"] =
-         [[chore(policy): reject missing remote pull requests
+      ["33-missing-pull.txt"] = [[chore(policy): reject missing remote pull requests
 
 Motivation: coil needs repository citations that resolve remotely.
 
@@ -781,8 +786,7 @@ Fixes: commit deadbeefdeadbeefdeadbeefdeadbeefdeadbeef
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["35-no-signoff-separator.txt"] =
-         [[ci(policy): reject a missing DCO separator
+      ["35-no-signoff-separator.txt"] = [[ci(policy): reject a missing DCO separator
 
 Motivation: coil needs a visually isolated final DCO trailer.
 
@@ -791,8 +795,7 @@ Details: reject a sign-off without its required blank separator.
 Impact: this change affects commit metadata validation.
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["36-extra-signoff-separator.txt"] =
-         [[ci(policy): reject extra DCO separator lines
+      ["36-extra-signoff-separator.txt"] = [[ci(policy): reject extra DCO separator lines
 
 Motivation: coil needs exactly one blank line before the DCO trailer.
 
@@ -815,8 +818,7 @@ Signed-off-by: {{NAME}} <{{EMAIL}}>
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["38-no-details-separator.txt"] =
-         [[ci(policy): require section separators
+      ["38-no-details-separator.txt"] = [[ci(policy): require section separators
 
 Motivation: coil needs visually separated commit sections.
 Details: reject a missing blank line before the details section.
@@ -825,8 +827,7 @@ Impact: this change affects commit metadata validation.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["39-no-impact-separator.txt"] =
-         [[ci(policy): require section separators
+      ["39-no-impact-separator.txt"] = [[ci(policy): require section separators
 
 Motivation: coil needs visually separated commit sections.
 
@@ -888,8 +889,7 @@ URL: {{MISSING_URL}}
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["45-extra-details-separator.txt"] =
-         [[ci(policy): reject extra section separators
+      ["45-extra-details-separator.txt"] = [[ci(policy): reject extra section separators
 
 Motivation: coil needs exactly one blank line between sections.
 
@@ -900,8 +900,7 @@ Impact: this change affects commit metadata validation.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["46-extra-impact-separator.txt"] =
-         [[ci(policy): reject extra section separators
+      ["46-extra-impact-separator.txt"] = [[ci(policy): reject extra section separators
 
 Motivation: coil needs exactly one blank line between sections.
 
@@ -933,13 +932,13 @@ Signed-off-by: {{NAME}} <{{EMAIL}}>
    local function run_hook(file_name)
       local file_path = join_path(test_directory, file_name)
       return run_command(
-         {lua_bin, hook_path, file_path},
-         {cwd = repository_root}
+         { lua_bin, hook_path, file_path },
+         { cwd = repository_root }
       )
    end
 
    local function expect_pass(name, file_name)
-      header("EXPECT PASS: "..name)
+      header("EXPECT PASS: " .. name)
 
       if run_hook(file_name) then
          print("RESULT: PASS as expected")
@@ -952,7 +951,7 @@ Signed-off-by: {{NAME}} <{{EMAIL}}>
    end
 
    local function expect_fail(name, file_name)
-      header("EXPECT FAIL: "..name)
+      header("EXPECT FAIL: " .. name)
 
       if run_hook(file_name) then
          print("RESULT: UNEXPECTED PASS")
@@ -1026,10 +1025,7 @@ Signed-off-by: {{NAME}} <{{EMAIL}}>
       "missing blank line before Details",
       "38-no-details-separator.txt"
    )
-   expect_fail(
-      "missing blank line before Impact",
-      "39-no-impact-separator.txt"
-   )
+   expect_fail("missing blank line before Impact", "39-no-impact-separator.txt")
    expect_fail("CSpell unknown word", "40-cspell.txt")
    expect_fail("codespell common misspelling", "41-codespell.txt")
    expect_fail("typos typographical error", "42-typos.txt")
@@ -1071,6 +1067,5 @@ if not success then
 end
 
 os.exit(result)
-
 
 -- EOF

@@ -14,7 +14,7 @@ local PRIVATE_DIRECTORY_MODE = tonumber("700", 8)
 -- @param ... string: Path components.
 -- @return string: Joined path.
 local function join_path(...)
-   local parts = {...}
+   local parts = { ... }
    local path = tostring(parts[1] or "")
 
    for i = 2, #parts do
@@ -23,11 +23,11 @@ local function join_path(...)
       local part_has_separator = part:sub(1, 1) == "/" or part:sub(1, 1) == "\\"
 
       if path_has_separator and part_has_separator then
-         path = path..part:sub(2)
+         path = path .. part:sub(2)
       elseif path_has_separator or part_has_separator then
-         path = path..part
+         path = path .. part
       else
-         path = path..path_separator..part
+         path = path .. path_separator .. part
       end
    end
 
@@ -40,8 +40,10 @@ end
 local function read_file(path)
    local file, open_error = io.open(path, "rb")
    if not file then
-      local message =
-         "could not open file for reading: "..path..": "..tostring(open_error)
+      local message = "could not open file for reading: "
+         .. path
+         .. ": "
+         .. tostring(open_error)
       error(message)
    end
 
@@ -65,7 +67,7 @@ local function build_environment(overrides)
 
    local entries = {}
    for name, value in pairs(environment) do
-      entries[#entries + 1] = name.."="..value
+      entries[#entries + 1] = name .. "=" .. value
    end
    table.sort(entries)
    return entries
@@ -206,18 +208,18 @@ end
 -- @param arguments table: Program followed by its arguments.
 -- @param options table|nil: Process execution options.
 local function require_command(arguments, options)
-   local success, exit_code, _, process_error = execute_process(
-      arguments,
-      options
-   )
+   local success, exit_code, _, process_error =
+      execute_process(arguments, options)
    if success then
       return
    end
 
-   local detail = process_error and ": "..process_error or ""
-   local message =
-      "command failed with exit code "..tostring(exit_code)..": "..
-      table.concat(arguments, " ")..detail
+   local detail = process_error and ": " .. process_error or ""
+   local message = "command failed with exit code "
+      .. tostring(exit_code)
+      .. ": "
+      .. table.concat(arguments, " ")
+      .. detail
    error(message)
 end
 
@@ -233,10 +235,8 @@ local function capture_command(arguments, options)
    capture_options.capture_stdout = true
    capture_options.stdout_to_null = false
 
-   local success, exit_code, output = execute_process(
-      arguments,
-      capture_options
-   )
+   local success, exit_code, output =
+      execute_process(arguments, capture_options)
    return output, success, exit_code
 end
 
@@ -252,16 +252,16 @@ local function require_capture(arguments, options)
    capture_options.capture_stdout = true
    capture_options.stdout_to_null = false
 
-   local success, exit_code, output, process_error = execute_process(
-      arguments,
-      capture_options
-   )
+   local success, exit_code, output, process_error =
+      execute_process(arguments, capture_options)
    if not success then
-      local detail = process_error and ": "..process_error or ""
-      local message =
-      "command failed with exit code "..tostring(exit_code)..": "..
-      table.concat(arguments, " ")..detail
-   error(message)
+      local detail = process_error and ": " .. process_error or ""
+      local message = "command failed with exit code "
+         .. tostring(exit_code)
+         .. ": "
+         .. table.concat(arguments, " ")
+         .. detail
+      error(message)
    end
 
    return output
@@ -278,13 +278,16 @@ end
 -- @param path string: Directory path whose parent already exists.
 -- @param mode number|nil: POSIX mode; ignored as appropriate by the platform.
 local function make_directory(path, mode)
-   local success, create_error = uv.fs_mkdir(
-      path,
-      mode or DEFAULT_DIRECTORY_MODE
-   )
+   local success, create_error =
+      uv.fs_mkdir(path, mode or DEFAULT_DIRECTORY_MODE)
 
    if not success then
-      error("could not create directory: "..path..": "..tostring(create_error))
+      error(
+         "could not create directory: "
+            .. path
+            .. ": "
+            .. tostring(create_error)
+      )
    end
 end
 
@@ -299,25 +302,36 @@ local function remove_tree(path)
    if stat.type ~= "directory" then
       local success, unlink_error = uv.fs_unlink(path)
       if not success then
-         error("could not remove file: "..path..": "..tostring(unlink_error))
+         error(
+            "could not remove file: " .. path .. ": " .. tostring(unlink_error)
+         )
       end
       return
    end
 
    local scanner, scan_error = uv.fs_scandir(path)
    if not scanner then
-      error("could not scan directory: "..path..": "..tostring(scan_error))
+      error(
+         "could not scan directory: " .. path .. ": " .. tostring(scan_error)
+      )
    end
 
    while true do
       local name = uv.fs_scandir_next(scanner)
-      if not name then break end
+      if not name then
+         break
+      end
       remove_tree(join_path(path, name))
    end
 
    local success, remove_error = uv.fs_rmdir(path)
    if not success then
-      error("could not remove directory: "..path..": "..tostring(remove_error))
+      error(
+         "could not remove directory: "
+            .. path
+            .. ": "
+            .. tostring(remove_error)
+      )
    end
 end
 
@@ -327,13 +341,15 @@ end
 local function create_temporary_directory(suffix)
    local temporary_root, root_error = uv.os_tmpdir()
    if not temporary_root then
-      error("could not resolve the temporary directory: "..tostring(root_error))
+      error(
+         "could not resolve the temporary directory: " .. tostring(root_error)
+      )
    end
 
-   local template = join_path(temporary_root, suffix.."-XXXXXX")
+   local template = join_path(temporary_root, suffix .. "-XXXXXX")
    local directory, create_error = uv.fs_mkdtemp(template)
    if not directory then
-      error("could not create temporary directory: "..tostring(create_error))
+      error("could not create temporary directory: " .. tostring(create_error))
    end
 
    return directory
@@ -345,9 +361,10 @@ end
 local function copy_file(source_path, destination_path)
    local source, source_error = io.open(source_path, "rb")
    if not source then
-      local message =
-         "could not open source file: "..source_path..": "..
-         tostring(source_error)
+      local message = "could not open source file: "
+         .. source_path
+         .. ": "
+         .. tostring(source_error)
       error(message)
    end
 
@@ -356,9 +373,10 @@ local function copy_file(source_path, destination_path)
 
    local destination, destination_error = io.open(destination_path, "wb")
    if not destination then
-      local message =
-         "could not open destination file: "..destination_path..": "..
-         tostring(destination_error)
+      local message = "could not open destination file: "
+         .. destination_path
+         .. ": "
+         .. tostring(destination_error)
       error(message)
    end
 
@@ -366,9 +384,10 @@ local function copy_file(source_path, destination_path)
    destination:close()
 
    if not success then
-      local message =
-         "could not copy file to: "..destination_path..": "..
-         tostring(write_error)
+      local message = "could not copy file to: "
+         .. destination_path
+         .. ": "
+         .. tostring(write_error)
       error(message)
    end
 end
@@ -379,8 +398,10 @@ end
 local function write_file(path, contents)
    local file, open_error = io.open(path, "wb")
    if not file then
-      local message =
-         "could not open file for writing: "..path..": "..tostring(open_error)
+      local message = "could not open file for writing: "
+         .. path
+         .. ": "
+         .. tostring(open_error)
       error(message)
    end
 
@@ -388,7 +409,7 @@ local function write_file(path, contents)
    file:close()
 
    if not success then
-      error("could not write file: "..path..": "..tostring(write_error))
+      error("could not write file: " .. path .. ": " .. tostring(write_error))
    end
 end
 
@@ -396,8 +417,8 @@ end
 -- @return string: Absolute repository root.
 local function resolve_repository_root()
    local output, success = capture_command(
-      {"git", "rev-parse", "--show-toplevel"},
-      {stderr_to_null = true}
+      { "git", "rev-parse", "--show-toplevel" },
+      { stderr_to_null = true }
    )
 
    if not success then
@@ -441,34 +462,34 @@ local function run_test_suite(repository_root, temporary_root)
 
    make_directory(gnupg_home, PRIVATE_DIRECTORY_MODE)
 
-   require_command(
-      {
-         "gpg",
-         "--batch",
-         "--passphrase",
-         "",
-         "--quick-gen-key",
-         "Coil Ref Test <coil-ref-test@example.org>",
-         "ed25519",
-         "sign",
-         "1d",
-      },
-      {env = environment, stdout_to_null = true, stderr_to_null = true}
-   )
+   require_command({
+      "gpg",
+      "--batch",
+      "--passphrase",
+      "",
+      "--quick-gen-key",
+      "Coil Ref Test <coil-ref-test@example.org>",
+      "ed25519",
+      "sign",
+      "1d",
+   }, { env = environment, stdout_to_null = true, stderr_to_null = true })
 
    local secret_keys = require_capture(
-      {"gpg", "--batch", "--with-colons", "--list-secret-keys"},
-      {env = environment, stderr_to_null = true}
+      { "gpg", "--batch", "--with-colons", "--list-secret-keys" },
+      { env = environment, stderr_to_null = true }
    )
    local signing_key = find_secret_key(secret_keys)
    if not signing_key then
       error("could not resolve the generated GnuPG signing key")
    end
 
-   require_command({"git", "init", "--bare", remote}, {stdout_to_null = true})
    require_command(
-      {"git", "init", "-b", "main", repository},
-      {stdout_to_null = true}
+      { "git", "init", "--bare", remote },
+      { stdout_to_null = true }
+   )
+   require_command(
+      { "git", "init", "-b", "main", repository },
+      { stdout_to_null = true }
    )
 
    make_directory(join_path(repository, ".githooks"))
@@ -509,7 +530,7 @@ local function run_test_suite(repository_root, temporary_root)
    }
 
    local function git(arguments, silent)
-      local command = {"git"}
+      local command = { "git" }
       for _, argument in ipairs(arguments) do
          command[#command + 1] = argument
       end
@@ -518,7 +539,7 @@ local function run_test_suite(repository_root, temporary_root)
    end
 
    local function capture_git(arguments)
-      local command = {"git"}
+      local command = { "git" }
       for _, argument in ipairs(arguments) do
          command[#command + 1] = argument
       end
@@ -526,39 +547,36 @@ local function run_test_suite(repository_root, temporary_root)
       return trim(require_capture(command, command_options))
    end
 
-   git({"config", "user.name", "Coil Ref Test"})
-   git({"config", "user.email", "coil-ref-test@example.org"})
-   git({"config", "commit.gpgSign", "true"})
-   git({"config", "gpg.format", "openpgp"})
-   git({"config", "user.signingkey", signing_key})
-   git({"remote", "add", "origin", remote})
+   git({ "config", "user.name", "Coil Ref Test" })
+   git({ "config", "user.email", "coil-ref-test@example.org" })
+   git({ "config", "commit.gpgSign", "true" })
+   git({ "config", "gpg.format", "openpgp" })
+   git({ "config", "user.signingkey", signing_key })
+   git({ "remote", "add", "origin", remote })
 
    write_file(join_path(repository, "README.md"), "initial\n")
-   git({"add", "README.md"})
-   git(
-      {
-         "commit",
-         "--no-verify",
-         "-S",
-         "-m",
-         "chore(repo): create reference test repository",
-         "-m",
-         "Motivation: coil needs a repository for reference policy tests.",
-         "-m",
-         "Details: create deterministic branch and tag fixtures.",
-         "-m",
-         "Impact: this change affects only the local policy test harness.",
-         "-m",
-         "Signed-off-by: Coil Ref Test <coil-ref-test@example.org>",
-      },
-      true
-   )
+   git({ "add", "README.md" })
+   git({
+      "commit",
+      "--no-verify",
+      "-S",
+      "-m",
+      "chore(repo): create reference test repository",
+      "-m",
+      "Motivation: coil needs a repository for reference policy tests.",
+      "-m",
+      "Details: create deterministic branch and tag fixtures.",
+      "-m",
+      "Impact: this change affects only the local policy test harness.",
+      "-m",
+      "Signed-off-by: Coil Ref Test <coil-ref-test@example.org>",
+   }, true)
 
-   git({"branch", "develop"})
-   git({"push", "--no-verify", "origin", "main", "develop"}, true)
+   git({ "branch", "develop" })
+   git({ "push", "--no-verify", "origin", "main", "develop" }, true)
 
-   local signed_commit = capture_git({"rev-parse", "HEAD"})
-   local remote_main = capture_git({"rev-parse", "HEAD"})
+   local signed_commit = capture_git({ "rev-parse", "HEAD" })
+   local remote_main = capture_git({ "rev-parse", "HEAD" })
    local zero = string.rep("0", 40)
    local pre_push_input = join_path(temporary_root, "pre-push-input.txt")
    local passed = 0
@@ -566,7 +584,7 @@ local function run_test_suite(repository_root, temporary_root)
 
    local function expect_pass(name, action)
       print("")
-      print("EXPECT PASS: "..name)
+      print("EXPECT PASS: " .. name)
 
       if action() then
          print("RESULT: PASS as expected")
@@ -580,7 +598,7 @@ local function run_test_suite(repository_root, temporary_root)
 
    local function expect_fail(name, action)
       print("")
-      print("EXPECT FAIL: "..name)
+      print("EXPECT FAIL: " .. name)
 
       if action() then
          print("RESULT: UNEXPECTED PASS")
@@ -594,35 +612,32 @@ local function run_test_suite(repository_root, temporary_root)
 
    local function run_pre_commit()
       return run_command(
-         {lua_bin, join_path(repository, ".githooks", "pre-commit")},
+         { lua_bin, join_path(repository, ".githooks", "pre-commit") },
          command_options
       )
    end
 
    local function run_pre_push(input)
-      write_file(pre_push_input, input.."\n")
-      return run_command(
-         {
-            lua_bin,
-            join_path(repository, ".githooks", "pre-push"),
-            "origin",
-            remote,
-         },
-         {
-            cwd = repository,
-            env = environment,
-            stdin_path = pre_push_input,
-         }
-      )
+      write_file(pre_push_input, input .. "\n")
+      return run_command({
+         lua_bin,
+         join_path(repository, ".githooks", "pre-push"),
+         "origin",
+         remote,
+      }, {
+         cwd = repository,
+         env = environment,
+         stdin_path = pre_push_input,
+      })
    end
 
    local function switch_branch(name)
-      git({"switch", name}, true)
+      git({ "switch", name }, true)
    end
 
    local function create_branch(base, name)
       switch_branch(base)
-      git({"switch", "-c", name}, true)
+      git({ "switch", "-c", name }, true)
    end
 
    local function expect_pre_push_pass(name, input)
@@ -632,7 +647,13 @@ local function run_test_suite(repository_root, temporary_root)
    end
 
    local function update_line(local_ref, local_sha, remote_ref, remote_sha)
-      return local_ref.." "..local_sha.." "..remote_ref.." "..remote_sha
+      return local_ref
+         .. " "
+         .. local_sha
+         .. " "
+         .. remote_ref
+         .. " "
+         .. remote_sha
    end
 
    local function expect_pre_push_fail(name, input)
@@ -721,7 +742,7 @@ local function run_test_suite(repository_root, temporary_root)
 
    expect_pre_push_pass(
       "SemVer 1.2.3 tag",
-      "refs/tags/1.2.3 "..signed_commit.." refs/tags/1.2.3 "..zero
+      "refs/tags/1.2.3 " .. signed_commit .. " refs/tags/1.2.3 " .. zero
    )
    expect_pre_push_pass(
       "SemVer pre-release and build tag",
@@ -734,27 +755,30 @@ local function run_test_suite(repository_root, temporary_root)
    )
    expect_pre_push_pass(
       "SemVer zero major tag",
-      "refs/tags/0.1.0 "..signed_commit.." refs/tags/0.1.0 "..zero
+      "refs/tags/0.1.0 " .. signed_commit .. " refs/tags/0.1.0 " .. zero
    )
    expect_pre_push_fail(
       "v-prefixed tag",
-      "refs/tags/v1.2.3 "..signed_commit.." refs/tags/v1.2.3 "..zero
+      "refs/tags/v1.2.3 " .. signed_commit .. " refs/tags/v1.2.3 " .. zero
    )
    expect_pre_push_fail(
       "leading zero in MAJOR",
-      "refs/tags/01.2.3 "..signed_commit.." refs/tags/01.2.3 "..zero
+      "refs/tags/01.2.3 " .. signed_commit .. " refs/tags/01.2.3 " .. zero
    )
    expect_pre_push_fail(
       "leading zero in MINOR",
-      "refs/tags/1.02.3 "..signed_commit.." refs/tags/1.02.3 "..zero
+      "refs/tags/1.02.3 " .. signed_commit .. " refs/tags/1.02.3 " .. zero
    )
    expect_pre_push_fail(
       "leading zero in PATCH",
-      "refs/tags/1.2.03 "..signed_commit.." refs/tags/1.2.03 "..zero
+      "refs/tags/1.2.03 " .. signed_commit .. " refs/tags/1.2.03 " .. zero
    )
    expect_pre_push_fail(
       "numeric pre-release leading zero",
-      "refs/tags/1.2.3-rc.01 "..signed_commit.." refs/tags/1.2.3-rc.01 "..zero
+      "refs/tags/1.2.3-rc.01 "
+         .. signed_commit
+         .. " refs/tags/1.2.3-rc.01 "
+         .. zero
    )
    expect_pre_push_fail(
       "empty pre-release identifier",
@@ -777,15 +801,15 @@ local function run_test_suite(repository_root, temporary_root)
 
    local other_object_path = join_path(temporary_root, "other-object.txt")
    write_file(other_object_path, "other\n")
-   local other_object = capture_git({"hash-object", "-w", other_object_path})
+   local other_object = capture_git({ "hash-object", "-w", other_object_path })
 
    expect_pre_push_fail(
       "published SemVer tag update",
-      "refs/tags/1.2.3 "..signed_commit.." refs/tags/1.2.3 "..other_object
+      "refs/tags/1.2.3 " .. signed_commit .. " refs/tags/1.2.3 " .. other_object
    )
    expect_pre_push_fail(
       "published SemVer tag deletion",
-      "refs/tags/1.2.3 "..zero.." refs/tags/1.2.3 "..signed_commit
+      "refs/tags/1.2.3 " .. zero .. " refs/tags/1.2.3 " .. signed_commit
    )
 
    print("")

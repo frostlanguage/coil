@@ -31,6 +31,9 @@ control flow, ownership, concurrency, and safety rules through stable
 `CSTYLE-*` controls. [Common C Pitfalls](./c-common-pitfalls.md) catalogs the
 failure modes that those controls prevent. This document applies both sets of
 controls to module boundaries and adds stable `CMOD-*` architecture rules.
+External CWE, OWASP, CAPEC, CISA KEV, CVE, CVSS, and ISO traceability remains
+in the pitfall catalog. Architecture rules consume that evidence through stable
+`CPIT-*` links instead of duplicating vulnerability records here.
 
 A Data Transfer Object (DTO) carries value data across an approved boundary.
 
@@ -2349,6 +2352,12 @@ A conforming CI pipeline must reject a change when any condition below fails:
 [ ] static archives contain no accidental public-looking symbols
 [ ] release artifacts omit debug metadata that the shipped product does not need
 [ ] final linker map is generated for release inspection when the platform supports it
+[ ] each external trust boundary has a named validation/authentication/authorization owner
+[ ] production variants reject unsafe debug, factory, maintenance, and fallback configuration
+[ ] third-party dependencies are inventoried, pinned, and checked against current vulnerability policy
+[ ] downloaded/build/update artifacts use approved origin and integrity/authenticity verification
+[ ] runtime loader and plugin search paths exclude untrusted writable locations
+[ ] security-relevant dependency exposure is reviewed against CVE and CISA KEV inputs
 ```
 
 ---
@@ -2400,3 +2409,200 @@ The build follows this flow:
 Minimum visibility governs the architecture. Each module exposes only the
 symbols, types, data, headers, and binary metadata required by its runtime
 contract.
+
+---
+
+## 19. Security Boundary and Supply-Chain Architecture
+
+These rules extend module ownership to security-sensitive application and supply
+chain boundaries. Existing `CMOD-001` through `CMOD-081` IDs remain unchanged.
+
+### 19.1 One Module Owns Each External Trust Boundary
+
+**Rule ID:** `CMOD-082-19-1-trust-boundary-ownership`
+
+**Related C standard rules:**
+
+- [`CSTYLE-059-untrusted-input-validation`](./c-code-standard.md#untrusted-input-validation)
+- [`CSTYLE-110-10-2-authentication-and-authorization-gates`](./c-code-standard.md#102-authentication-and-authorization-gates)
+- [`CSTYLE-111-10-3-untrusted-structured-input-and-file-ingress`](./c-code-standard.md#103-untrusted-structured-input-and-file-ingress)
+- [`CSTYLE-113-10-5-resource-budgets-and-throttling`](./c-code-standard.md#105-resource-budgets-and-throttling)
+
+**Related pitfalls:**
+
+- [CPIT-094](./c-common-pitfalls.md#cpit-094-tainted-size-trusted)
+- [CPIT-105](./c-common-pitfalls.md#cpit-105-improper-access-control)
+- [CPIT-110](./c-common-pitfalls.md#cpit-110-unrestricted-dangerous-file-upload)
+- [CPIT-111](./c-common-pitfalls.md#cpit-111-deserialization-of-untrusted-data)
+- [CPIT-115](./c-common-pitfalls.md#cpit-115-unbounded-resource-consumption)
+
+Every external trust boundary has one architectural owner.
+
+Examples include:
+
+```text
+network request -> protocol/input adapter -> validated DTO -> module API
+file/update      -> ingress verifier       -> validated artifact -> owner
+IPC/CLI          -> boundary adapter       -> validated command -> owner
+```
+
+The owning boundary must define:
+
+- accepted representation and version
+- maximum bytes, elements, nesting, work, and lifetime
+- authentication requirement
+- authorization/capability requirement
+- semantic validation
+- destination/output encoding when another interpreter is involved
+- failure behavior and audit event policy
+
+Peer modules must consume validated boundary DTOs or capabilities instead of
+reimplementing a different security decision for the same ingress path.
+
+---
+
+### 19.2 Production Security Configuration Is a Controlled Artifact
+
+**Rule ID:** `CMOD-083-19-2-production-security-configuration`
+
+**Related C standard rules:**
+
+- [`CSTYLE-107-8-1-variable-initialization`](./c-code-standard.md#81-variable-initialization)
+- [`CSTYLE-114-10-6-security-exception-and-fail-closed-behavior`](./c-code-standard.md#106-security-exception-and-fail-closed-behavior)
+
+**Related pitfalls:**
+
+- [CPIT-096](./c-common-pitfalls.md#cpit-096-hardcoded-secret)
+- [CPIT-116](./c-common-pitfalls.md#cpit-116-security-misconfiguration-or-active-debug-mode)
+- [CPIT-120](./c-common-pitfalls.md#cpit-120-fail-open-or-sensitive-error-disclosure)
+
+Production behavior must not depend on a developer remembering to disable an
+unsafe mode manually.
+
+Rules:
+
+- production, test, factory, and development variants are explicit build/runtime
+  profiles
+- production defaults use the least-privileged valid state
+- test/debug bypasses are absent from production when practical; otherwise they
+  require the normal authorization policy and are disabled by default
+- default credentials and embedded production secrets are forbidden
+- security-relevant configuration is validated before activation
+- an invalid or missing security setting does not silently select a permissive
+  fallback
+- release CI verifies the production configuration profile
+
+Configuration ownership belongs to a module or composition-layer policy owner;
+it must not be duplicated across unrelated modules.
+
+---
+
+### 19.3 Dependency and Artifact Integrity Is Part of Module Ownership
+
+**Rule ID:** `CMOD-084-19-3-dependency-and-artifact-integrity`
+
+**Related C standard rules:**
+
+- [`CSTYLE-029-2-1-4-external-dependency-wrappers`](./c-code-standard.md#214-external-dependency-wrappers)
+- [`CSTYLE-059-untrusted-input-validation`](./c-code-standard.md#untrusted-input-validation)
+- [`CSTYLE-115-10-7-loader-and-search-path-safety`](./c-code-standard.md#107-loader-and-search-path-safety)
+
+**Related pitfalls:**
+
+- [CPIT-101](./c-common-pitfalls.md#cpit-101-missing-firmware-signature-check)
+- [CPIT-102](./c-common-pitfalls.md#cpit-102-missing-anti-rollback)
+- [CPIT-117](./c-common-pitfalls.md#cpit-117-software-supply-chain-dependency-failure)
+- [CPIT-118](./c-common-pitfalls.md#cpit-118-untrusted-component-or-plugin-inclusion)
+
+Each third-party dependency, generated tool, downloaded binary, firmware image,
+plugin, or release artifact must have an owner and an integrity policy.
+
+The project must maintain, as applicable:
+
+- dependency name, version, source, license, and owning module/tool
+- a reproducible lock or pin for build inputs
+- a software bill of materials or equivalent inventory for shipped components
+- approved source locations
+- hash/signature/provenance verification for externally obtained artifacts
+- a policy for CVE and CISA KEV review
+- an upgrade, replacement, or removal path for unsupported dependencies
+- update authenticity and anti-rollback controls for deployed executable content
+
+A wrapper around a library isolates its API. It does not by itself establish
+that the library version or artifact is trustworthy.
+
+---
+
+### 19.4 Privileged Capabilities Stay With Their Security Owner
+
+**Rule ID:** `CMOD-085-19-4-privileged-capability-separation`
+
+**Related C standard rules:**
+
+- [`CSTYLE-110-10-2-authentication-and-authorization-gates`](./c-code-standard.md#102-authentication-and-authorization-gates)
+- [`CSTYLE-112-10-4-outbound-request-destination-validation`](./c-code-standard.md#104-outbound-request-destination-validation)
+
+**Related pitfalls:**
+
+- [CPIT-105](./c-common-pitfalls.md#cpit-105-improper-access-control)
+- [CPIT-112](./c-common-pitfalls.md#cpit-112-missing-authentication-for-critical-function)
+- [CPIT-113](./c-common-pitfalls.md#cpit-113-incorrect-authorization-or-user-controlled-object-key)
+- [CPIT-114](./c-common-pitfalls.md#cpit-114-server-side-request-forgery)
+
+A peer module should not receive broader authority than the operation it needs.
+
+Prefer:
+
+```text
+request -> auth boundary -> narrow authorized capability -> module
+```
+
+over:
+
+```text
+request -> module receives global credential/root handle -> decides everything
+```
+
+Rules:
+
+- the security owner performs authentication and policy lookup
+- authorization is checked against the concrete operation and resource
+- peer callbacks expose the narrowest capability required by the consumer
+- credentials, root handles, unrestricted filesystem objects, and global network
+  clients are not passed merely for convenience
+- adapters must not broaden authority while translating a DTO or callback
+
+This extends minimum visibility from symbols to runtime authority.
+
+---
+
+### 19.5 Runtime Loaders and Plugins Are Explicit Trust Boundaries
+
+**Rule ID:** `CMOD-086-19-5-runtime-loader-and-plugin-boundary`
+
+**Related C standard rules:**
+
+- [`CSTYLE-115-10-7-loader-and-search-path-safety`](./c-code-standard.md#107-loader-and-search-path-safety)
+
+**Related pitfalls:**
+
+- [CPIT-118](./c-common-pitfalls.md#cpit-118-untrusted-component-or-plugin-inclusion)
+- [CPIT-121](./c-common-pitfalls.md#cpit-121-untrusted-search-path-or-environment-controlled-loader)
+
+A module that loads executable components owns a security boundary, not only a
+filesystem convenience API.
+
+The loader module must own:
+
+- allowed component identities and versions
+- trusted search roots
+- file ownership/permission expectations
+- authenticity/integrity verification when required
+- ABI compatibility checks
+- lifecycle and unload policy
+- failure behavior
+
+Do not let peer modules call `dlopen`, `LoadLibrary`, script loaders, or an
+application plugin loader independently. Route those operations through one
+owned adapter so search paths and trust decisions remain consistent.
+

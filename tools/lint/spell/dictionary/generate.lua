@@ -145,9 +145,7 @@ local function emit(path, content)
       end
       if current ~= content then
          io.stderr:write(
-            "error: generated spelling adapter is stale: "
-               .. path
-               .. "\n"
+            "error: generated spelling adapter is stale: " .. path .. "\n"
          )
          stale = true
       end
@@ -178,9 +176,11 @@ local function replace_generated_section(
    local start_position = current:find(start_marker, 1, true)
    local end_position = current:find(end_marker, 1, true)
 
-   if not start_position
+   if
+      not start_position
       or not end_position
-      or end_position <= start_position then
+      or end_position <= start_position
+   then
       error(path .. ": generated-section markers are missing or invalid")
    end
 

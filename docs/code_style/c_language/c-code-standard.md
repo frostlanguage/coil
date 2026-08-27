@@ -66,6 +66,10 @@ defines local C rules and stable `CSTYLE-*` controls. The
 build, callback, and symbol boundaries with stable `CMOD-*` controls.
 [Common C Pitfalls](./c-common-pitfalls.md) maps failure modes to the controls
 that prevent or constrain them.
+The pitfall catalog also owns external CWE, OWASP, CAPEC, CISA KEV, CVE,
+CVSS, and ISO vulnerability traceability. This standard remains the source of
+normative `CSTYLE-*` implementation controls so field evidence does not rename
+or destabilize coding-rule IDs.
 
 ```mermaid
 flowchart TD
@@ -2137,6 +2141,7 @@ NETWORK_sendPacket(packet);
 **Related pitfalls:**
 
 - [CPIT-097: Secret logged](./c-common-pitfalls.md#cpit-097-secret-logged)
+- [CPIT-119: Log injection or insufficient security logging](./c-common-pitfalls.md#cpit-119-log-injection-or-insufficient-security-logging)
 
 Use logging and assertions for different purposes.
 
@@ -2147,6 +2152,11 @@ Rules:
 - do not use `assert` for normal runtime error handling
 - do not place side effects inside `assert`
 - log messages must add context that helps diagnosis
+- untrusted log fields must be encoded or structured so they cannot forge
+  records, line boundaries, or field delimiters
+- authentication, authorization, update, configuration, and integrity
+  failures must be observable when the product security policy requires it
+- logs must not contain secrets or raw sensitive payloads
 
 Prefer:
 
@@ -4171,29 +4181,224 @@ status_t status_array[STATUS_MAX] =
 
 ---
 
-## 9. Summary
+## 9. Security Boundary Practices
 
-Use these section boundaries during final review:
+This section adds application, service, parser, and runtime-loader controls found
+while tracing the pitfall catalog against current CWE, OWASP, CAPEC, KEV/CVE,
+and ISO security references. Existing `CSTYLE-001` through `CSTYLE-108` IDs are
+unchanged.
 
-- `Style Practices`: keep names, layout, and local code style consistent
-- `Interface and Header Practices`: keep module boundaries explicit and safe
-- `Preprocessor and Macro Practices`: keep macro behavior predictable
-- `Function Contracts and Control Flow`: keep API behavior and logic explicit
-- `Memory, Strings, and Ownership`: keep lifetime, buffers, and ownership
-  explicit
-- `State, Concurrency, and Type Safety`: keep shared state and conversions
-  controlled
-- `Arithmetic, Bitwise, and Undefined Behavior Safety`: keep low-level logic
-  defined and reviewable
-- `Initialization Practices`: declare and initialize predictably
+### 9.1 Downstream Interpreter Boundaries
 
-If a change improves readability but breaks one of these rules, prefer
-consistency with the standard unless the module already defines a stricter local
-convention.
+**Rule ID:** `CSTYLE-109-10-1-downstream-interpreter-boundaries`
 
-After the standard review, use the
-[Common C Pitfalls review checklist](./c-common-pitfalls.md#review-checklist)
-to trace failure modes to their primary `CSTYLE-*` controls.
+**Related pitfalls:**
+
+- [CPIT-095: Format string injection](./c-common-pitfalls.md#cpit-095-format-string-injection)
+- [CPIT-103: Command injection](./c-common-pitfalls.md#cpit-103-command-injection)
+- [CPIT-106: SQL injection](./c-common-pitfalls.md#cpit-106-sql-injection)
+- [CPIT-107: Cross-site scripting output injection](./c-common-pitfalls.md#cpit-107-cross-site-scripting-output-injection)
+- [CPIT-109: Code injection or dynamic evaluation](./c-common-pitfalls.md#cpit-109-code-injection-or-dynamic-evaluation)
+
+Untrusted data must remain data when passed to another interpreter or language.
+
+Rules:
+
+- do not build SQL by concatenating or formatting untrusted values
+- bind SQL values through the database driver's parameter interface
+- do not build shell command strings from untrusted values
+- when process launch is required, use a fixed executable and structured argv
+- encode browser output for its exact HTML, attribute, URL, CSS, or script context
+- do not pass untrusted text to dynamic evaluators, expression engines, or JITs
+  unless that interpreter is an explicit isolated product feature
+- format strings remain literals or otherwise trusted program data
+- input validation does not replace interpreter-specific parameterization or
+  output encoding
+
+The same value can be safe in one context and unsafe in another. Validate the
+value's domain first, then use the destination API that preserves the data/code
+boundary.
+
+---
+
+### 9.2 Authentication and Authorization Gates
+
+**Rule ID:** `CSTYLE-110-10-2-authentication-and-authorization-gates`
+
+**Related pitfalls:**
+
+- [CPIT-105: Improper access control](./c-common-pitfalls.md#cpit-105-improper-access-control)
+- [CPIT-108: Cross-site request forgery](./c-common-pitfalls.md#cpit-108-cross-site-request-forgery)
+- [CPIT-112: Missing authentication for critical function](./c-common-pitfalls.md#cpit-112-missing-authentication-for-critical-function)
+- [CPIT-113: Incorrect authorization or user-controlled object key](./c-common-pitfalls.md#cpit-113-incorrect-authorization-or-user-controlled-object-key)
+
+Critical operations must authenticate and authorize at the trusted boundary.
+
+Rules:
+
+- authentication establishes caller identity; authorization is a separate check
+- deny privileged operations by default when required context is missing
+- check the requested object/resource as well as the requested operation
+- a valid user-controlled object ID does not prove authority over that object
+- debug, factory, diagnostic, calibration, update, and secret-management paths
+  follow the same authorization model as normal privileged APIs
+- do not rely on UI visibility, network location, symbol hiding, or a magic value
+  as the authorization decision
+- state-changing cookie-authenticated web operations must use the project's
+  approved request-intent/anti-CSRF mechanism
+- authorization failure must leave protected state unchanged
+
+Prefer narrow capability/context inputs over global implicit privilege state.
+
+---
+
+### 9.3 Untrusted Structured Input and File Ingress
+
+**Rule ID:** `CSTYLE-111-10-3-untrusted-structured-input-and-file-ingress`
+
+**Related pitfalls:**
+
+- [CPIT-094: Tainted size trusted](./c-common-pitfalls.md#cpit-094-tainted-size-trusted)
+- [CPIT-110: Unrestricted dangerous file upload](./c-common-pitfalls.md#cpit-110-unrestricted-dangerous-file-upload)
+- [CPIT-111: Deserialization of untrusted data](./c-common-pitfalls.md#cpit-111-deserialization-of-untrusted-data)
+- [CPIT-122: XML external entity or recursive entity expansion](./c-common-pitfalls.md#cpit-122-xml-external-entity-or-recursive-entity-expansion)
+
+Decode untrusted structured input into explicit semantic data before it can
+become runtime state.
+
+Rules:
+
+- enforce a total byte limit before parsing
+- enforce field lengths, collection counts, nesting depth, and recursion limits
+- validate schema/protocol version before constructing runtime objects
+- decode into initialized DTOs; do not deserialize raw C object representations
+- never restore pointers, function pointers, allocator metadata, or privileged
+  state directly from untrusted bytes
+- uploaded files need a content/format allowlist, size limit, generated storage
+  name, and a non-executable/non-search-path destination
+- do not trust client-supplied filename extensions or MIME labels as proof of
+  content type
+- disable XML external entities, DTD entity expansion, and network/file entity
+  resolution unless the protocol explicitly requires and constrains them
+- validate semantic relationships after syntactic parsing succeeds
+
+A parser success status does not by itself make decoded data trusted.
+
+---
+
+### 9.4 Outbound Request Destination Validation
+
+**Rule ID:** `CSTYLE-112-10-4-outbound-request-destination-validation`
+
+**Related pitfalls:**
+
+- [CPIT-114: Server-side request forgery](./c-common-pitfalls.md#cpit-114-server-side-request-forgery)
+
+Externally influenced outbound requests require an explicit destination policy.
+
+Rules:
+
+- allow only required schemes/protocols
+- constrain hosts, address ranges, and ports to the product contract
+- reject loopback, link-local, metadata, management, multicast, and internal
+  destinations unless they are explicitly required
+- validate the resolved destination, not only the original textual hostname
+- apply redirect limits and revalidate each redirect destination
+- do not pass caller-controlled proxy configuration or credentials implicitly
+- set connection, read, response-size, and redirect budgets
+
+A URL parser validates syntax. It does not establish that a destination is safe.
+
+---
+
+### 9.5 Resource Budgets and Throttling
+
+**Rule ID:** `CSTYLE-113-10-5-resource-budgets-and-throttling`
+
+**Related pitfalls:**
+
+- [CPIT-045: Recursive function without bound](./c-common-pitfalls.md#cpit-045-recursive-unbounded-call-chain)
+- [CPIT-046: Infinite loop without progress guarantee](./c-common-pitfalls.md#cpit-046-infinite-loop-without-progress)
+- [CPIT-083: Unbounded blocking](./c-common-pitfalls.md#cpit-083-unbounded-blocking)
+- [CPIT-093: Dynamic allocation in critical path](./c-common-pitfalls.md#cpit-093-dynamic-allocation-in-critical-path)
+- [CPIT-115: Unbounded resource consumption](./c-common-pitfalls.md#cpit-115-unbounded-resource-consumption)
+
+Every externally influenced resource needs a hard engineering budget.
+
+Budget as applicable:
+
+- input and output bytes
+- allocation size and total live allocation
+- object, element, and file counts
+- parser nesting and recursion depth
+- queue depth and outstanding requests
+- thread/task/process count
+- retries and redirects
+- open file/socket/handle count
+- CPU/work units and wall-clock time
+
+Checking arithmetic overflow is necessary but not sufficient. A mathematically
+valid size can still exceed the product's safe resource budget.
+
+---
+
+### 9.6 Security Exception and Fail-Closed Behavior
+
+**Rule ID:** `CSTYLE-114-10-6-security-exception-and-fail-closed-behavior`
+
+**Related pitfalls:**
+
+- [CPIT-068: Ignored return value](./c-common-pitfalls.md#cpit-068-ignored-return-value)
+- [CPIT-088: Unsafe default state](./c-common-pitfalls.md#cpit-088-unsafe-default-state)
+- [CPIT-120: Fail-open or sensitive error disclosure](./c-common-pitfalls.md#cpit-120-fail-open-or-sensitive-error-disclosure)
+
+Security-sensitive failures must preserve the protected state.
+
+Rules:
+
+- failed authentication, authorization, integrity, signature, freshness,
+  configuration, or policy checks deny the protected operation
+- timeout, parser failure, storage failure, or missing context must not silently
+  select a more permissive path
+- initialize security state to the least-privileged valid state
+- do not continue an update or privileged state transition after a failed check
+- externally visible errors use stable status codes and minimal required detail
+- do not expose secrets, raw pointers, stack data, internal paths, keys, or
+  security-policy internals in error text
+- preserve enough internal diagnostics for approved incident/support workflows
+
+Fail-closed behavior must still satisfy safety requirements; when security and
+safety responses differ, the module contract must define the safe degraded state.
+
+---
+
+### 9.7 Loader and Search-Path Safety
+
+**Rule ID:** `CSTYLE-115-10-7-loader-and-search-path-safety`
+
+**Related pitfalls:**
+
+- [CPIT-118: Untrusted component or plugin inclusion](./c-common-pitfalls.md#cpit-118-untrusted-component-or-plugin-inclusion)
+- [CPIT-121: Untrusted search path or environment-controlled loader](./c-common-pitfalls.md#cpit-121-untrusted-search-path-or-environment-controlled-loader)
+
+Runtime code and privileged tools must not let untrusted search state choose
+executable content.
+
+Rules:
+
+- use absolute or application-controlled locations for shared libraries, plugins,
+  helpers, configuration, and executable resources
+- do not search the current working directory for privileged/runtime components
+- sanitize or ignore inherited loader/search environment variables when the
+  security model does not trust the launching environment
+- allowlist plugin/component identities and versions
+- verify signatures, hashes, or another approved authenticity/integrity property
+  before loading when required by the product threat model
+- do not make a writable data/upload directory an executable/plugin search path
+- keep loader policy centralized behind one adapter rather than scattered calls
+
+See the [C Module Architecture](./c-module-architecture.md) for dependency,
+artifact, and runtime-plugin boundary ownership.
 
 ---
 

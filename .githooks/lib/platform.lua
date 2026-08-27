@@ -19,10 +19,10 @@ function M.shell_quote(value)
    if M.is_windows then
       value = value:gsub("%%", "%%%%")
       value = value:gsub('"', '\\"')
-      return '"'..value..'"'
+      return '"' .. value .. '"'
    end
 
-   return "'"..value:gsub("'", "'\\''").."'"
+   return "'" .. value:gsub("'", "'\\''") .. "'"
 end
 
 --- Run one shell command and report whether it succeeded.
@@ -62,26 +62,26 @@ end
 -- @param command string: command string.
 -- @return string: command with stderr suppressed.
 function M.silence_stderr(command)
-   return command.." 2>"..M.shell_quote(M.null_device)
+   return command .. " 2>" .. M.shell_quote(M.null_device)
 end
 
 --- Append host-native stdout and stderr redirection to the null device.
 -- @param command string: command string.
 -- @return string: command with all output suppressed.
 function M.silence_all(command)
-   return command.." >"..M.shell_quote(M.null_device).." 2>&1"
+   return command .. " >" .. M.shell_quote(M.null_device) .. " 2>&1"
 end
 
 --- Return only a stderr redirection fragment.
 -- @return string: host-native redirection fragment.
 function M.stderr_redirect()
-   return "2>"..M.shell_quote(M.null_device)
+   return "2>" .. M.shell_quote(M.null_device)
 end
 
 --- Return a stdout and stderr redirection fragment.
 -- @return string: host-native redirection fragment.
 function M.all_redirect()
-   return ">"..M.shell_quote(M.null_device).." 2>&1"
+   return ">" .. M.shell_quote(M.null_device) .. " 2>&1"
 end
 
 --- Check whether an executable is available through PATH.
@@ -91,9 +91,9 @@ function M.command_exists(name)
    local probe
 
    if M.is_windows then
-      probe = "where.exe "..M.shell_quote(name)
+      probe = "where.exe " .. M.shell_quote(name)
    else
-      probe = "command -v "..M.shell_quote(name)
+      probe = "command -v " .. M.shell_quote(name)
    end
 
    return M.command_succeeded(M.silence_all(probe))
@@ -104,8 +104,7 @@ end
 -- @return boolean: true for an absolute path.
 function M.is_absolute_path(path)
    if M.is_windows then
-      return path:match("^%a:[/\\]") ~= nil
-         or path:match("^[/\\][/\\]") ~= nil
+      return path:match("^%a:[/\\]") ~= nil or path:match("^[/\\][/\\]") ~= nil
    end
 
    return path:sub(1, 1) == "/"
