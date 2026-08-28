@@ -2,29 +2,12 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 ---
-name: REUSE
+name: Reusable REUSE
 
 on:
-  push:
-    branches:
-      - "**"
-    tags:
-      - "**"
-
-  pull_request:
-    branches:
-      - "**"
-
-  merge_group: {}
-
-  workflow_dispatch: {}
+  workflow_call: {}
 
 permissions: {}
-
-concurrency:
-  group: >-
-    ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
-  cancel-in-progress: true
 
 defaults:
   run:

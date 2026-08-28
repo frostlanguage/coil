@@ -2,26 +2,17 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 ---
-name: Spelling and Prose
+name: Reusable Spelling and Prose
 
 on:
-  push:
-    branches:
-      - "**"
-    tags:
-      - "**"
-  pull_request:
-    branches:
-      - "**"
-  merge_group: {}
-  workflow_dispatch: {}
+  workflow_call:
+    inputs:
+      repository:
+        description: Run repository spelling and prose checks.
+        required: true
+        type: boolean
 
 permissions: {}
-
-concurrency:
-  group: >-
-    ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
-  cancel-in-progress: true
 
 defaults:
   run:
@@ -39,6 +30,7 @@ env:
 
 jobs:
   cspell:
+    if: inputs.repository
     name: CSpell
     runs-on: >-
       ${{
@@ -68,6 +60,7 @@ jobs:
           use_cspell_files: true
 
   codespell:
+    if: inputs.repository
     name: codespell
     runs-on: >-
       ${{
@@ -119,6 +112,7 @@ jobs:
             .
 
   typos:
+    if: inputs.repository
     name: typos
     runs-on: >-
       ${{
@@ -174,6 +168,7 @@ jobs:
             .
 
   lychee:
+    if: inputs.repository
     name: Lychee
     runs-on: >-
       ${{
@@ -259,6 +254,7 @@ jobs:
             'tools/lint/spell/lychee/**') }}
 
   vale:
+    if: inputs.repository
     name: Vale
     runs-on: >-
       ${{
@@ -308,5 +304,206 @@ jobs:
             --no-global \
             --config tools/lint/spell/vale/.vale.ini \
             .
+
+  prose:
+    name: Commit message spelling and prose
+    runs-on: >-
+      ${{
+        github.event_name == 'pull_request' &&
+        'ubuntu-24.04' ||
+        vars.COIL_CI_RUNNER ||
+        'ubuntu-24.04'
+      }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Export commit messages
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          MERGE_BASE_SHA: ${{ github.event.merge_group.base_sha }}
+          MERGE_HEAD_SHA: ${{ github.event.merge_group.head_sha }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+
+          head_sha="${GITHUB_SHA}"
+          base_sha=''
+
+          case "${EVENT_NAME}" in
+            pull_request)
+              base_sha="${PR_BASE_SHA}"
+              head_sha="${PR_HEAD_SHA}"
+              ;;
+            merge_group)
+              base_sha="${MERGE_BASE_SHA}"
+              head_sha="${MERGE_HEAD_SHA}"
+              ;;
+            push)
+              if [[ -n "${BEFORE_SHA}" && ! "${BEFORE_SHA}" =~ ^0+$ ]]; then
+                base_sha="${BEFORE_SHA}"
+              else
+                git fetch --no-tags origin \
+                  "refs/heads/${DEFAULT_BRANCH}:refs/remotes/origin/${DEFAULT_BRANCH}"
+                base_sha="$(git merge-base "${head_sha}" "origin/${DEFAULT_BRANCH}")"
+              fi
+              ;;
+            workflow_dispatch)
+              base_sha="${head_sha}^"
+              ;;
+          esac
+
+          mkdir --parents .commit-policy/messages
+          index=0
+
+          while IFS= read -r sha; do
+            index=$((index + 1))
+            printf -v filename '.commit-policy/messages/commit-%04d.md' "${index}"
+            git show -s --format=%B "${sha}" > "${filename}"
+          done < <(git rev-list --reverse "${base_sha}..${head_sha}")
+
+          if ! compgen -G '.commit-policy/messages/*.md' >/dev/null; then
+            git show -s --format=%B "${head_sha}" \
+              > .commit-policy/messages/commit-0001.md
+          fi
+
+      - name: Check commit-message spelling with CSpell
+        uses: streetsidesoftware/cspell-action@e0668cf020899e887ee8ad4d173c31738a79eae8 # v9.0.1
+        with:
+          check_dot_files: true
+          config: tools/lint/spell/cspell/cspell.jsonc
+          files: .commit-policy/messages/**/*.md
+          incremental_files_only: false
+          root: .
+          strict: true
+          summary: true
+          use_cspell_files: false
+
+      - name: Restore codespell wheel
+        id: prose_codespell_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: codespell
+          version: ${{ env.CODESPELL_VERSION }}
+          filename: codespell-${{ env.CODESPELL_VERSION }}-py3-none-any.whl
+          sha256: ${{ env.CODESPELL_SHA256 }}
+          origin: https://files.pythonhosted.org
+          directory: packages/20/01/b394922252051e97aab231d416c86da3d8a6d781eeadcdca1082867de64e
+
+      - name: Install codespell
+        env:
+          CODESPELL_PACKAGE: ${{ steps.prose_codespell_download.outputs.path }}
+        run: |
+          set -euo pipefail
+          python3 -m venv "${RUNNER_TEMP}/codespell"
+          "${RUNNER_TEMP}/codespell/bin/python" -m pip install \
+            --disable-pip-version-check --no-deps --no-index \
+            "${CODESPELL_PACKAGE}"
+
+      - name: Check commit-message spelling with codespell
+        run: |
+          set -euo pipefail
+          "${RUNNER_TEMP}/codespell/bin/codespell" \
+            --config tools/lint/spell/codespell/.codespellrc \
+            .commit-policy/messages
+
+      - name: Restore typos archive
+        id: prose_typos_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: typos
+          version: ${{ env.TYPOS_VERSION }}
+          filename: typos-v${{ env.TYPOS_VERSION }}-x86_64-unknown-linux-musl.tar.gz
+          sha256: ${{ env.TYPOS_SHA256 }}
+          origin: https://github.com
+          directory: crate-ci/typos/releases/download/v${{ env.TYPOS_VERSION }}
+
+      - name: Install typos
+        env:
+          TYPOS_ARCHIVE: ${{ steps.prose_typos_download.outputs.path }}
+        run: |
+          set -euo pipefail
+          mkdir --parents "${RUNNER_TEMP}/typos-release"
+          tar --extract --gzip \
+            --file="${TYPOS_ARCHIVE}" \
+            --directory="${RUNNER_TEMP}/typos-release"
+          install --mode=0755 "${RUNNER_TEMP}/typos-release/typos" \
+            "${RUNNER_TEMP}/typos"
+
+      - name: Check commit-message spelling with typos
+        run: |
+          set -euo pipefail
+          "${RUNNER_TEMP}/typos" \
+            --config tools/lint/spell/typos/typos.toml \
+            .commit-policy/messages
+
+      - name: Restore Vale archive
+        id: prose_vale_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: vale
+          version: ${{ env.VALE_VERSION }}
+          filename: vale_${{ env.VALE_VERSION }}_Linux_64-bit.tar.gz
+          sha256: ${{ env.VALE_SHA256 }}
+          origin: https://github.com
+          directory: vale-cli/vale/releases/download/v${{ env.VALE_VERSION }}
+
+      - name: Install Vale
+        env:
+          VALE_ARCHIVE: ${{ steps.prose_vale_download.outputs.path }}
+        run: |
+          set -euo pipefail
+          tar --extract --gzip \
+            --file="${VALE_ARCHIVE}" \
+            --directory="${RUNNER_TEMP}" vale
+
+      - name: Check commit-message prose with Vale
+        run: |
+          set -euo pipefail
+          "${RUNNER_TEMP}/vale" --no-global \
+            --config tools/lint/spell/vale/.vale.ini \
+            .commit-policy/messages
+
+      - name: Restore Lychee archive
+        id: prose_lychee_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: lychee
+          version: ${{ env.LYCHEE_VERSION }}
+          filename: lychee-x86_64-unknown-linux-gnu.tar.gz
+          sha256: ${{ env.LYCHEE_SHA256 }}
+          origin: https://github.com
+          directory: lycheeverse/lychee/releases/download/lychee-v${{ env.LYCHEE_VERSION }}
+
+      - name: Install Lychee
+        env:
+          LYCHEE_ARCHIVE: ${{ steps.prose_lychee_download.outputs.path }}
+        run: |
+          set -euo pipefail
+          mkdir --parents "${RUNNER_TEMP}/lychee-release"
+          tar --extract --gzip \
+            --file="${LYCHEE_ARCHIVE}" \
+            --directory="${RUNNER_TEMP}/lychee-release"
+          install --mode=0755 \
+            "${RUNNER_TEMP}/lychee-release/lychee-x86_64-unknown-linux-gnu/lychee" \
+            "${RUNNER_TEMP}/lychee"
+
+      - name: Check commit-message links with Lychee
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          "${RUNNER_TEMP}/lychee" \
+            --config tools/lint/spell/lychee/lychee.toml \
+            .commit-policy/messages
 
 # EOF

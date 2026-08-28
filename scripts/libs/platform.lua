@@ -197,11 +197,7 @@ end
 -- @param arguments table: command arguments.
 function M.run_in_directory(directory, arguments)
    if not M.command_succeeded_in_directory(directory, arguments) then
-      error(
-         "command failed: "
-            .. M.in_directory(directory, arguments),
-         2
-      )
+      error("command failed: " .. M.in_directory(directory, arguments), 2)
    end
 end
 

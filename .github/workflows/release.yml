@@ -70,8 +70,8 @@ jobs:
           {
             printf '%s\n' '### Coil release boundary'
             printf '\n'
-            printf 'Release tag: `%s`\n' "${RELEASE_TAG}"
-            printf 'Source commit: `%s`\n' "${GITHUB_SHA}"
+            printf 'Release tag: %s\n' "${RELEASE_TAG}"
+            printf 'Source commit: %s\n' "${GITHUB_SHA}"
             printf '\n'
             printf '%s\n' \
               'CI validation is performed by the tag-push workflows.'

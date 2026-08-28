@@ -6,16 +6,10 @@
 -- defined.
 
 local raw_script = tostring(arg[0] or ""):gsub("\\", "/")
-local script_dir = raw_script:match("^(.*)/[^/]+$") or "."
-local repo_root = "."
-
-if script_dir == "ci" then
-   repo_root = "."
-elseif script_dir:sub(-3) == "/ci" then
-   repo_root = script_dir:sub(1, -4)
-end
-
-local library_root = repo_root == "." and "libs" or repo_root .. "/libs"
+local script_dir = raw_script:match("^(.*)/[^/]+$") or "scripts/ci"
+local scripts_root = script_dir:match("^(.*)/ci$") or "scripts"
+local repo_root = scripts_root:match("^(.*)/scripts$") or "."
+local library_root = scripts_root .. "/libs"
 local paths = dofile(library_root .. "/paths.lua")
 local platform = dofile(paths.join(library_root, "platform.lua"))
 local git_module = dofile(paths.join(library_root, "git.lua"))
@@ -31,10 +25,7 @@ local function fail(message)
    os.exit(1)
 end
 
-local policy_file = io.open(
-   paths.join(repo_root, architecture_policy),
-   "rb"
-)
+local policy_file = io.open(paths.join(repo_root, architecture_policy), "rb")
 if not policy_file then
    fail("module architecture policy is missing: " .. architecture_policy)
 end
@@ -73,11 +64,7 @@ for _, source in ipairs(translation_units) do
    arguments[#arguments + 1] = source
 end
 
-local ok, message = pcall(
-   platform.run_in_directory,
-   repo_root,
-   arguments
-)
+local ok, message = pcall(platform.run_in_directory, repo_root, arguments)
 if not ok then
    fail(message)
 end

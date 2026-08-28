@@ -97,7 +97,7 @@ function M.ends_with(value, suffix)
    return text:sub(-#expected) == expected
 end
 
---- Resolve the scripts directory from one scripts/ci entrypoint path.
+--- Resolve the repository root from one ci entrypoint path.
 -- @param script_path string: arg[0] from a CI script.
 -- @return string: path to the scripts directory.
 function M.scripts_root(script_path)

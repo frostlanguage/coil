@@ -1,0 +1,107 @@
+# SPDX-FileCopyrightText: © 2026 Rafael V. Volkmer <rafael.v.volkmer@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-only
+
+---
+name: Detect changed areas
+description: Run the repository change classifier with the pinned Lua runtime.
+
+inputs:
+  base:
+    description: Base Git revision.
+    required: false
+    default: ""
+  head:
+    description: Head Git revision.
+    required: false
+    default: HEAD
+  force-all:
+    description: Force every CI category to true.
+    required: false
+    default: "false"
+
+outputs:
+  actions:
+    value: ${{ steps.detect.outputs.actions }}
+  bazel:
+    value: ${{ steps.detect.outputs.bazel }}
+  c:
+    value: ${{ steps.detect.outputs.c }}
+  ci:
+    value: ${{ steps.detect.outputs.ci }}
+  hooks:
+    value: ${{ steps.detect.outputs.hooks }}
+  json:
+    value: ${{ steps.detect.outputs.json }}
+  lua:
+    value: ${{ steps.detect.outputs.lua }}
+  markdown:
+    value: ${{ steps.detect.outputs.markdown }}
+  nushell:
+    value: ${{ steps.detect.outputs.nushell }}
+  powershell:
+    value: ${{ steps.detect.outputs.powershell }}
+  python:
+    value: ${{ steps.detect.outputs.python }}
+  security:
+    value: ${{ steps.detect.outputs.security }}
+  shell:
+    value: ${{ steps.detect.outputs.shell }}
+  spelling:
+    value: ${{ steps.detect.outputs.spelling }}
+  toml:
+    value: ${{ steps.detect.outputs.toml }}
+  yaml:
+    value: ${{ steps.detect.outputs.yaml }}
+
+runs:
+  using: composite
+  steps:
+    - name: Read pinned Lua identity
+      id: toolchain
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        python3 - <<'PY'
+        import os
+        import pathlib
+        import re
+        import tomllib
+
+        data = tomllib.loads(pathlib.Path("scripts/ci/toolchain.lock.toml").read_text())
+        lua = data["tools"]["lua"]
+        version = str(lua["version"])
+        sha256 = str(lua["sha256"])
+
+        if not re.fullmatch(r"[0-9A-Za-z._+-]+", version):
+            raise SystemExit("invalid Lua version in scripts/ci/toolchain.lock.toml")
+        if not re.fullmatch(r"[0-9a-f]{64}", sha256):
+            raise SystemExit("invalid Lua SHA-256 in scripts/ci/toolchain.lock.toml")
+
+        with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+            handle.write(f"version={version}\n")
+            handle.write(f"sha256={sha256}\n")
+        PY
+
+    - name: Setup pinned Lua
+      id: lua
+      uses: ./.github/actions/setup-lua
+      with:
+        version: ${{ steps.toolchain.outputs.version }}
+        sha256: ${{ steps.toolchain.outputs.sha256 }}
+
+    - name: Classify repository changes
+      id: detect
+      shell: bash
+      env:
+        BASE_SHA: ${{ inputs.base }}
+        HEAD_SHA: ${{ inputs.head }}
+        FORCE_ALL: ${{ inputs.force-all }}
+        LUA: ${{ steps.lua.outputs.lua }}
+      run: |
+        set -euo pipefail
+
+        "${LUA}" scripts/ci/changed_areas.lua \
+          --base "${BASE_SHA}" \
+          --head "${HEAD_SHA}" \
+          --force-all "${FORCE_ALL}"

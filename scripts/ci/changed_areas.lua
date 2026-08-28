@@ -5,16 +5,10 @@
 -- Full validation can be forced for trusted integration and release events.
 
 local raw_script = tostring(arg[0] or ""):gsub("\\", "/")
-local script_dir = raw_script:match("^(.*)/[^/]+$") or "."
-local repo_root = "."
-
-if script_dir == "ci" then
-   repo_root = "."
-elseif script_dir:sub(-3) == "/ci" then
-   repo_root = script_dir:sub(1, -4)
-end
-
-local library_root = repo_root == "." and "libs" or repo_root .. "/libs"
+local script_dir = raw_script:match("^(.*)/[^/]+$") or "scripts/ci"
+local scripts_root = script_dir:match("^(.*)/ci$") or "scripts"
+local repo_root = scripts_root:match("^(.*)/scripts$") or "."
+local library_root = scripts_root .. "/libs"
 local paths = dofile(library_root .. "/paths.lua")
 local platform = dofile(paths.join(library_root, "platform.lua"))
 local git_module = dofile(paths.join(library_root, "git.lua"))
@@ -73,9 +67,7 @@ local function parse_arguments()
          local parsed = policy.parse_boolean(arg[index])
          if parsed == nil then
             fail(
-               "expected boolean value, got '"
-                  .. tostring(arg[index])
-                  .. "'."
+               "expected boolean value, got '" .. tostring(arg[index]) .. "'."
             )
          end
          force_all = parsed
@@ -99,10 +91,13 @@ local function classify(input)
       return
    end
 
-   if path:match("^%.github/actions/verified%-download/")
+   if
+      path:match("^%.github/actions/verified%-download/")
       or path:match("^%.github/actions/setup%-lua/")
+      or path:match("^%.github/actions/detect%-changes/")
       or path:match("^libs/")
-      or path == "ci/changed_areas.lua"
+      or path == "scripts/ci/changed_areas.lua"
+      or path == "scripts/ci/toolchain.lock.toml"
    then
       changed.mark_all()
       return
@@ -112,7 +107,15 @@ local function classify(input)
       changed.mark("actions")
       changed.mark("ci")
       changed.mark("yaml")
-      if path == ".github/workflows/commit-policy.yml" then
+
+      if
+         path == ".github/workflows/ci.yml"
+         or path == ".github/workflows/_lint.yml"
+      then
+         changed.mark_all()
+      elseif path == ".github/workflows/_spelling.yml" then
+         changed.mark("spelling")
+      elseif path == ".github/workflows/commit-policy.yml" then
          changed.mark("hooks")
       end
    elseif path:match("^%.github/actions/") then
@@ -125,11 +128,9 @@ local function classify(input)
       changed.mark("ci")
       changed.mark("lua")
 
-      if path == "ci/check_hooks.lua" then
+      if path == "scripts/ci/check_hooks.lua" then
          changed.mark("hooks")
-      elseif path == "ci/check_c.lua"
-         or path == "ci/check_modules.lua"
-      then
+      elseif path == "scripts/ci/check_c.lua" or path == "scripts/ci/check_modules.lua" then
          changed.mark("c")
       end
    end
@@ -171,7 +172,8 @@ local function classify(input)
       changed.mark("c")
    elseif path:match("^tools/lint/code/python/") then
       changed.mark("python")
-   elseif path:match("^tools/lint/code/shell/bash/")
+   elseif
+      path:match("^tools/lint/code/shell/bash/")
       or path:match("^tools/lint/code/shell/posix/")
    then
       changed.mark("shell")
@@ -191,7 +193,8 @@ local function classify(input)
       end
    end
 
-   if paths.ends_with(path, ".c")
+   if
+      paths.ends_with(path, ".c")
       or paths.ends_with(path, ".h")
       or paths.ends_with(path, ".i")
    then
@@ -207,7 +210,8 @@ local function classify(input)
    elseif paths.ends_with(path, ".sh") or paths.ends_with(path, ".bash") then
       changed.mark("shell")
       changed.mark("spelling")
-   elseif paths.ends_with(path, ".ps1")
+   elseif
+      paths.ends_with(path, ".ps1")
       or paths.ends_with(path, ".psm1")
       or paths.ends_with(path, ".psd1")
    then
@@ -216,9 +220,7 @@ local function classify(input)
    elseif paths.ends_with(path, ".nu") then
       changed.mark("nushell")
       changed.mark("spelling")
-   elseif paths.ends_with(path, ".json")
-      or paths.ends_with(path, ".jsonc")
-   then
+   elseif paths.ends_with(path, ".json") or paths.ends_with(path, ".jsonc") then
       changed.mark("json")
       changed.mark("spelling")
    elseif paths.ends_with(path, ".yml") or paths.ends_with(path, ".yaml") then
@@ -227,14 +229,15 @@ local function classify(input)
    elseif paths.ends_with(path, ".toml") then
       changed.mark("toml")
       changed.mark("spelling")
-   elseif paths.ends_with(path, ".md")
-      or paths.ends_with(path, ".markdown")
+   elseif
+      paths.ends_with(path, ".md") or paths.ends_with(path, ".markdown")
    then
       changed.mark("markdown")
       changed.mark("spelling")
    end
 
-   if path == "MODULE.bazel"
+   if
+      path == "MODULE.bazel"
       or path == "WORKSPACE"
       or path == "WORKSPACE.bazel"
       or path:match("%.bazel$")

@@ -3,26 +3,69 @@
 
 ---
 
-name: Repository Lint
+name: Reusable Lint
 
 on:
-  push:
-    branches:
-      - "**"
-    tags:
-      - "**"
-  pull_request:
-    branches:
-      - "**"
-  merge_group: {}
-  workflow_dispatch: {}
+  workflow_call:
+    inputs:
+      actions:
+        description: Run the actions lint area.
+        required: true
+        type: boolean
+      bazel:
+        description: Run the bazel lint area.
+        required: true
+        type: boolean
+      c:
+        description: Run the c lint area.
+        required: true
+        type: boolean
+      ci:
+        description: Run the ci lint area.
+        required: true
+        type: boolean
+      hooks:
+        description: Run Git hook policy mock tests.
+        required: true
+        type: boolean
+      json:
+        description: Run the json lint area.
+        required: true
+        type: boolean
+      lua:
+        description: Run the lua lint area.
+        required: true
+        type: boolean
+      markdown:
+        description: Run the markdown lint area.
+        required: true
+        type: boolean
+      nushell:
+        description: Run the nushell lint area.
+        required: true
+        type: boolean
+      powershell:
+        description: Run the powershell lint area.
+        required: true
+        type: boolean
+      python:
+        description: Run the python lint area.
+        required: true
+        type: boolean
+      shell:
+        description: Run the shell lint area.
+        required: true
+        type: boolean
+      toml:
+        description: Run the toml lint area.
+        required: true
+        type: boolean
+      yaml:
+        description: Run the yaml lint area.
+        required: true
+        type: boolean
 
 permissions: {}
-
-concurrency:
-  group: >-
-    ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
-  cancel-in-progress: true
 
 defaults:
   run:
@@ -66,70 +109,26 @@ env:
   NUSHELL_VERSION: "0.115.1"
   NUSHELL_SHA256: "d11d825241f6504a3617c535fa725a9dd6d009c86d7b19fb3168b47635b9d8b0"
   NUFMT_REVISION: "7cfd3b7eacf5a9feb22777230e3076038f2e9e8d"
+  LUV_VERSION: "1.52.1-0"
+  LUV_SHA256: "3e6eb820a3aee034f85f9cce9bd77b5d42f34d128a1ccec877adf28c913577c7"
+  CODESPELL_VERSION: "2.4.1"
+  CODESPELL_SHA256: "3dadafa67df7e4a3dbf51e0d7315061b80d265f9552ebd699b3dd6834b47e425"
+  LYCHEE_VERSION: "0.24.1"
+  LYCHEE_SHA256: "3ecad9a6e5ec42efaa9cdbdbad2406fdeef11ee38f7774aaf038f981d3248684"
+  TYPOS_VERSION: "1.46.0"
+  TYPOS_SHA256: "c62a626df385c96574743fd4974aeb271a41a67d080a0398e36e1a42782f614a"
+  VALE_VERSION: "3.18.0"
+  VALE_SHA256: "a6f71a75a12fe689345b754f2412b90367fe33648abb7d200fa19eaadc2dbf6d"
+  GITLEAKS_VERSION: "8.30.1"
+  GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+  GITTUF_VERSION: "0.15.0"
+  GITTUF_SHA256: "e60629e4d165bf47ac450fde834af20d7c5ff1f08f15d685980c37b9d522ae1d"
+  GIT_REMOTE_GITTUF_SHA256: "7029c8f026b574622087110162dff27a3cb15d73161fdecee9ef65c76e50dedf"
 
 jobs:
-  changes:
-    name: Changed areas
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    permissions:
-      contents: read
-    outputs:
-      actions: ${{ steps.detect.outputs.actions }}
-      bazel: ${{ steps.detect.outputs.bazel }}
-      c: ${{ steps.detect.outputs.c }}
-      ci: ${{ steps.detect.outputs.ci }}
-      json: ${{ steps.detect.outputs.json }}
-      lua: ${{ steps.detect.outputs.lua }}
-      markdown: ${{ steps.detect.outputs.markdown }}
-      nushell: ${{ steps.detect.outputs.nushell }}
-      powershell: ${{ steps.detect.outputs.powershell }}
-      python: ${{ steps.detect.outputs.python }}
-      shell: ${{ steps.detect.outputs.shell }}
-      toml: ${{ steps.detect.outputs.toml }}
-      yaml: ${{ steps.detect.outputs.yaml }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Setup pinned Lua
-        id: lua
-        uses: ./.github/actions/setup-lua
-        with:
-          version: ${{ env.LUA_VERSION }}
-          sha256: ${{ env.LUA_SHA256 }}
-
-      - name: Detect changed areas
-        id: detect
-        env:
-          BASE_SHA: >-
-            ${{ github.event.pull_request.base.sha || github.event.before || '' }}
-          FORCE_ALL: >-
-            ${{
-              github.event_name == 'merge_group' ||
-              github.event_name == 'workflow_dispatch' ||
-              startsWith(github.ref, 'refs/tags/') ||
-              (github.event_name == 'push' &&
-              github.ref_name == github.event.repository.default_branch)
-            }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          LUA: ${{ steps.lua.outputs.lua }}
-        run: |
-          set -euo pipefail
-
-          "${LUA}" ci/changed_areas.lua \
-            --base "${BASE_SHA}" \
-            --head "${HEAD_SHA}" \
-            --force-all "${FORCE_ALL}"
-
   cache-plane:
     name: CI cache plane
-    needs:
-      - changes
-    if: needs.changes.outputs.ci == 'true'
+    if: inputs.ci
     runs-on: >-
       ${{
         github.event_name == 'pull_request' &&
@@ -151,9 +150,7 @@ jobs:
 
   actionlint:
     name: GitHub Actions
-    needs:
-      - changes
-    if: needs.changes.outputs.actions == 'true'
+    if: inputs.actions
     runs-on: >-
       ${{
         github.event_name == 'pull_request' &&
@@ -291,9 +288,7 @@ jobs:
 
   json:
     name: JSON and JSONC
-    needs:
-      - changes
-    if: needs.changes.outputs.json == 'true'
+    if: inputs.json
     runs-on: >-
       ${{
         github.event_name == 'pull_request' &&
@@ -357,9 +352,7 @@ jobs:
 
   yamllint:
     name: YAML
-    needs:
-      - changes
-    if: needs.changes.outputs.yaml == 'true'
+    if: inputs.yaml
     runs-on: >-
       ${{
         github.event_name == 'pull_request' &&
@@ -411,9 +404,7 @@ jobs:
 
   taplo:
     name: TOML
-    needs:
-      - changes
-    if: needs.changes.outputs.toml == 'true'
+    if: inputs.toml
     runs-on: >-
       ${{
         github.event_name == 'pull_request' &&
@@ -479,9 +470,7 @@ jobs:
 
   markdownlint:
     name: Markdown
-    needs:
-      - changes
-    if: needs.changes.outputs.markdown == 'true'
+    if: inputs.markdown
     runs-on: >-
       ${{
         github.event_name == 'pull_request' &&
@@ -534,9 +523,7 @@ jobs:
 
   c:
     name: C
-    needs:
-      - changes
-    if: needs.changes.outputs.c == 'true'
+    if: inputs.c
     runs-on: >-
       ${{
         github.event_name == 'pull_request' &&
@@ -611,15 +598,13 @@ jobs:
         run: |
           set -euo pipefail
 
-          "${COIL_LUA}" ci/check_c.lua
-          "${COIL_LUA}" ci/check_modules.lua
+          "${COIL_LUA}" scripts/ci/check_c.lua
+          "${COIL_LUA}" scripts/ci/check_modules.lua
 
 
   bazel:
     name: Bazel
-    needs:
-      - changes
-    if: needs.changes.outputs.bazel == 'true'
+    if: inputs.bazel
     runs-on: >-
       ${{
         github.event_name == 'pull_request' &&
@@ -673,9 +658,7 @@ jobs:
 
   lua:
     name: Lua
-    needs:
-      - changes
-    if: needs.changes.outputs.lua == 'true'
+    if: inputs.lua
     runs-on: >-
       ${{
         github.event_name == 'pull_request' &&
@@ -815,13 +798,11 @@ jobs:
         run: |
           set -euo pipefail
 
-          "${COIL_LUA}" ci/check_lua.lua
+          "${COIL_LUA}" scripts/ci/check_lua.lua
 
   python:
     name: Python
-    needs:
-      - changes
-    if: needs.changes.outputs.python == 'true'
+    if: inputs.python
     runs-on: >-
       ${{
         github.event_name == 'pull_request' &&
@@ -986,9 +967,7 @@ jobs:
 
   shell:
     name: POSIX sh and Bash
-    needs:
-      - changes
-    if: needs.changes.outputs.shell == 'true'
+    if: inputs.shell
     runs-on: >-
       ${{
         github.event_name == 'pull_request' &&
@@ -1151,9 +1130,7 @@ jobs:
 
   powershell:
     name: PowerShell 7
-    needs:
-      - changes
-    if: needs.changes.outputs.powershell == 'true'
+    if: inputs.powershell
     runs-on: >-
       ${{
         github.event_name == 'pull_request' &&
@@ -1323,9 +1300,7 @@ jobs:
 
   nushell:
     name: Nushell
-    needs:
-      - changes
-    if: needs.changes.outputs.nushell == 'true'
+    if: inputs.nushell
     runs-on: >-
       ${{
         github.event_name == 'pull_request' &&
@@ -1450,5 +1425,344 @@ jobs:
           else
             echo "Optional nu-lint executable not installed; skipping."
           fi
+
+  git-hook-mocks:
+    name: Git hook mock tests
+    if: inputs.hooks
+    runs-on: >-
+      ${{
+        github.event_name == 'pull_request' &&
+        'ubuntu-24.04' ||
+        vars.COIL_CI_RUNNER ||
+        'ubuntu-24.04'
+      }}
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate mock test sources
+        run: |
+          set -euo pipefail
+
+          test -f tests/mock/git_hooks/coil-hook-test-suite.lua
+          test -f tests/mock/git_hooks/coil-ref-policy-test-suite.lua
+
+      - name: Restore Lua source archive
+        id: lua_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: lua
+          version: ${{ env.LUA_VERSION }}
+          filename: lua-${{ env.LUA_VERSION }}.tar.gz
+          sha256: ${{ env.LUA_SHA256 }}
+          origin: https://www.lua.org
+          directory: ftp
+
+      - name: Restore luv source archive
+        id: luv_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: luv
+          version: ${{ env.LUV_VERSION }}
+          filename: luv-${{ env.LUV_VERSION }}.tar.gz
+          sha256: ${{ env.LUV_SHA256 }}
+          origin: https://github.com
+          directory: luvit/luv/releases/download/${{ env.LUV_VERSION }}
+
+      - name: Restore codespell wheel
+        id: codespell_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: codespell
+          version: ${{ env.CODESPELL_VERSION }}
+          filename: codespell-${{ env.CODESPELL_VERSION }}-py3-none-any.whl
+          sha256: ${{ env.CODESPELL_SHA256 }}
+          origin: https://files.pythonhosted.org
+          directory: packages/20/01/b394922252051e97aab231d416c86da3d8a6d781eeadcdca1082867de64e
+
+      - name: Restore typos archive
+        id: typos_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: typos
+          version: ${{ env.TYPOS_VERSION }}
+          filename: typos-v${{ env.TYPOS_VERSION }}-x86_64-unknown-linux-musl.tar.gz
+          sha256: ${{ env.TYPOS_SHA256 }}
+          origin: https://github.com
+          directory: crate-ci/typos/releases/download/v${{ env.TYPOS_VERSION }}
+
+      - name: Restore Vale archive
+        id: vale_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: vale
+          version: ${{ env.VALE_VERSION }}
+          filename: vale_${{ env.VALE_VERSION }}_Linux_64-bit.tar.gz
+          sha256: ${{ env.VALE_SHA256 }}
+          origin: https://github.com
+          directory: vale-cli/vale/releases/download/v${{ env.VALE_VERSION }}
+
+      - name: Restore Lychee archive
+        id: lychee_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: lychee
+          version: ${{ env.LYCHEE_VERSION }}
+          filename: lychee-x86_64-unknown-linux-gnu.tar.gz
+          sha256: ${{ env.LYCHEE_SHA256 }}
+          origin: https://github.com
+          directory: lycheeverse/lychee/releases/download/lychee-v${{ env.LYCHEE_VERSION }}
+
+      - name: Restore Gitleaks archive
+        id: gitleaks_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: gitleaks
+          version: ${{ env.GITLEAKS_VERSION }}
+          filename: gitleaks_${{ env.GITLEAKS_VERSION }}_linux_x64.tar.gz
+          sha256: ${{ env.GITLEAKS_SHA256 }}
+          origin: https://github.com
+          directory: gitleaks/gitleaks/releases/download/v${{ env.GITLEAKS_VERSION }}
+
+      - name: Restore gittuf binary
+        id: gittuf_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: gittuf
+          version: ${{ env.GITTUF_VERSION }}
+          filename: gittuf_${{ env.GITTUF_VERSION }}_linux_amd64
+          sha256: ${{ env.GITTUF_SHA256 }}
+          origin: https://github.com
+          directory: gittuf/gittuf/releases/download/v${{ env.GITTUF_VERSION }}
+
+      - name: Restore git-remote-gittuf binary
+        id: git_remote_gittuf_download
+        uses: ./.github/actions/verified-download
+        with:
+          name: git-remote-gittuf
+          version: ${{ env.GITTUF_VERSION }}
+          filename: git-remote-gittuf_${{ env.GITTUF_VERSION }}_linux_amd64
+          sha256: ${{ env.GIT_REMOTE_GITTUF_SHA256 }}
+          origin: https://github.com
+          directory: gittuf/gittuf/releases/download/v${{ env.GITTUF_VERSION }}
+
+      - name: Install pinned mock-test toolchain
+        env:
+          LUA_ARCHIVE: ${{ steps.lua_download.outputs.path }}
+          LUV_ARCHIVE: ${{ steps.luv_download.outputs.path }}
+          CODESPELL_PACKAGE: ${{ steps.codespell_download.outputs.path }}
+          TYPOS_ARCHIVE: ${{ steps.typos_download.outputs.path }}
+          VALE_ARCHIVE: ${{ steps.vale_download.outputs.path }}
+          LYCHEE_ARCHIVE: ${{ steps.lychee_download.outputs.path }}
+          GITLEAKS_ARCHIVE: ${{ steps.gitleaks_download.outputs.path }}
+          GITTUF_BINARY: ${{ steps.gittuf_download.outputs.path }}
+          GIT_REMOTE_GITTUF_BINARY: ${{ steps.git_remote_gittuf_download.outputs.path }}
+        run: |
+          set -euo pipefail
+
+          bin_dir="${RUNNER_TEMP}/coil-mock-bin"
+          mkdir --parents "${bin_dir}"
+
+          printf '%s\n' "${bin_dir}" >> "${GITHUB_PATH}"
+
+          # Lua
+          lua_destination="${LUA_ARCHIVE}"
+
+          tar \
+            --extract \
+            --gzip \
+            --file="${lua_destination}" \
+            --directory="${RUNNER_TEMP}"
+
+          make \
+            --directory="${RUNNER_TEMP}/lua-${LUA_VERSION}" \
+            --jobs="$(nproc)" \
+            all
+
+          install \
+            --mode=0755 \
+            "${RUNNER_TEMP}/lua-${LUA_VERSION}/src/lua" \
+            "${bin_dir}/lua"
+
+          install \
+            --mode=0755 \
+            "${RUNNER_TEMP}/lua-${LUA_VERSION}/src/luac" \
+            "${bin_dir}/luac"
+
+          # luv: the Lua hook mocks use libuv for portable process and filesystem IO.
+          luv_destination="${LUV_ARCHIVE}"
+          luv_source="${RUNNER_TEMP}/luv-${LUV_VERSION}"
+          luv_build="${RUNNER_TEMP}/luv-build"
+          lua_modules="${RUNNER_TEMP}/lua-modules"
+
+          mkdir --parents "${luv_source}" "${lua_modules}"
+
+          tar \
+            --extract \
+            --gzip \
+            --strip-components=1 \
+            --file="${luv_destination}" \
+            --directory="${luv_source}"
+
+          cmake \
+            -S "${luv_source}" \
+            -B "${luv_build}" \
+            -DBUILD_MODULE=ON \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DBUILD_STATIC_LIBS=OFF \
+            -DWITH_LUA_ENGINE=Lua \
+            -DLUA="${bin_dir}/lua" \
+            -DLUA_INCDIR="${RUNNER_TEMP}/lua-${LUA_VERSION}/src" \
+            -DLUA_LIBDIR="${RUNNER_TEMP}/lua-${LUA_VERSION}/src" \
+            -DLUA_LIBFILE=liblua.a \
+            -DLIBDIR="${lua_modules}" \
+            -DLUADIR="${lua_modules}"
+
+          cmake --build "${luv_build}" --parallel "$(nproc)"
+          cmake --install "${luv_build}"
+
+          printf 'LUA_CPATH=%s\n' \
+            "${lua_modules}/?.so;;" \
+            >> "${GITHUB_ENV}"
+
+          # CSpell integration stub. The dedicated spelling workflow executes
+          # the real pinned CSpell action; this suite only verifies hook wiring.
+          cat > "${bin_dir}/cspell" <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+
+          if [[ "${1:-}" == "--version" ]]; then
+            echo "coil-cspell-hook-mock"
+            exit 0
+          fi
+
+          input="$(cat)"
+
+          if [[ "${input}" == *qxylophoniczz* ]]; then
+            exit 1
+          fi
+          EOF
+
+          chmod 0755 "${bin_dir}/cspell"
+
+          # codespell
+          codespell_destination="${CODESPELL_PACKAGE}"
+
+          python3 -m venv "${RUNNER_TEMP}/codespell"
+
+          "${RUNNER_TEMP}/codespell/bin/python" \
+            -m pip install \
+            --disable-pip-version-check \
+            --no-deps \
+            --no-index \
+            "${codespell_destination}"
+
+          ln \
+            --symbolic \
+            "${RUNNER_TEMP}/codespell/bin/codespell" \
+            "${bin_dir}/codespell"
+
+          # typos
+          typos_destination="${TYPOS_ARCHIVE}"
+
+          mkdir --parents "${RUNNER_TEMP}/typos-release"
+
+          tar \
+            --extract \
+            --gzip \
+            --file="${typos_destination}" \
+            --directory="${RUNNER_TEMP}/typos-release"
+
+          install \
+            --mode=0755 \
+            "${RUNNER_TEMP}/typos-release/typos" \
+            "${bin_dir}/typos"
+
+          # Vale
+          vale_destination="${VALE_ARCHIVE}"
+
+          tar \
+            --extract \
+            --gzip \
+            --file="${vale_destination}" \
+            --directory="${RUNNER_TEMP}" \
+            vale
+
+          install \
+            --mode=0755 \
+            "${RUNNER_TEMP}/vale" \
+            "${bin_dir}/vale"
+
+          # Lychee
+          lychee_destination="${LYCHEE_ARCHIVE}"
+
+          mkdir --parents "${RUNNER_TEMP}/lychee-release"
+
+          tar \
+            --extract \
+            --gzip \
+            --file="${lychee_destination}" \
+            --directory="${RUNNER_TEMP}/lychee-release"
+
+          install \
+            --mode=0755 \
+            "${RUNNER_TEMP}/lychee-release/lychee-x86_64-unknown-linux-gnu/lychee" \
+            "${bin_dir}/lychee"
+
+          # Gitleaks
+          gitleaks_destination="${GITLEAKS_ARCHIVE}"
+
+          tar \
+            --extract \
+            --gzip \
+            --file="${gitleaks_destination}" \
+            --directory="${bin_dir}" \
+            gitleaks
+
+          chmod 0755 "${bin_dir}/gitleaks"
+
+          # gittuf
+          install \
+            --mode=0755 \
+            "${GITTUF_BINARY}" \
+            "${bin_dir}/gittuf"
+
+          install \
+            --mode=0755 \
+            "${GIT_REMOTE_GITTUF_BINARY}" \
+            "${bin_dir}/git-remote-gittuf"
+
+      - name: Show mock-test tool versions
+        run: |
+          set -euo pipefail
+
+          lua -v
+          lua -e 'require("luv"); print("luv OK")'
+          cspell --version
+          codespell --version
+          typos --version
+          vale --version
+          lychee --version
+          gitleaks version
+          gittuf version
+
+      - name: Run Git hook mock suites
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          chmod 0755 \
+            .githooks/pre-commit \
+            .githooks/commit-msg \
+            .githooks/pre-push
+
+          lua scripts/ci/check_hooks.lua
 
 # EOF
