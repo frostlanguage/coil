@@ -65,12 +65,13 @@ local function parse_arguments()
       elseif option == "--force-all" then
          index = index + 1
          local parsed = policy.parse_boolean(arg[index])
-         if parsed == nil then
+         if type(parsed) == "boolean" then
+            force_all = parsed
+         else
             fail(
                "expected boolean value, got '" .. tostring(arg[index]) .. "'."
             )
          end
-         force_all = parsed
       else
          fail("unknown option '" .. tostring(option) .. "'.")
       end
@@ -289,12 +290,12 @@ else
       changed.mark_all()
    else
       local files = git.changed_files(base, head)
-      if files == nil then
+      if type(files) ~= "table" then
          fail("git diff failed for '" .. base .. ".." .. head .. "'.")
-      end
-
-      for _, path in ipairs(files) do
-         classify(path)
+      else
+         for _, path in ipairs(files) do
+            classify(path)
+         end
       end
    end
 end

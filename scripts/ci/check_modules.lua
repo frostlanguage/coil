@@ -26,17 +26,19 @@ local function fail(message)
 end
 
 local policy_file = io.open(paths.join(repo_root, architecture_policy), "rb")
-if not policy_file then
+if policy_file == nil then
    fail("module architecture policy is missing: " .. architecture_policy)
+else
+   policy_file:close()
 end
-policy_file:close()
 
 local tracked = git.tracked_files()
-if tracked == nil then
+if type(tracked) ~= "table" then
    fail("git ls-files failed.")
 end
 
 local translation_units = {}
+assert(type(tracked) == "table")
 for _, path in ipairs(tracked) do
    if paths.ends_with(path, ".c") or paths.ends_with(path, ".i") then
       translation_units[#translation_units + 1] = path

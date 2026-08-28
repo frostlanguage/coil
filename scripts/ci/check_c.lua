@@ -87,13 +87,14 @@ then
 end
 
 local tracked = git.tracked_files()
-if tracked == nil then
+if type(tracked) ~= "table" then
    fail("git ls-files failed.")
 end
 
 local format_files = {}
 local translation_units = {}
 
+assert(type(tracked) == "table")
 for _, path in ipairs(tracked) do
    if
       paths.ends_with(path, ".c")

@@ -86,11 +86,12 @@ local function run_batched(prefix, files)
 end
 
 local tracked = git.tracked_files()
-if tracked == nil then
+if type(tracked) ~= "table" then
    fail("git ls-files failed.")
 end
 
 local files = {}
+assert(type(tracked) == "table")
 for _, path in ipairs(tracked) do
    if is_lua_source(path) then
       files[#files + 1] = path
