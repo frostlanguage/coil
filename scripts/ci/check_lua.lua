@@ -91,7 +91,7 @@ if type(tracked) ~= "table" then
 end
 
 local files = {}
-assert(type(tracked) == "table")
+assert(type(tracked) == "table", "git ls-files must return a table.")
 for _, path in ipairs(tracked) do
    if is_lua_source(path) then
       files[#files + 1] = path

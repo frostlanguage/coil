@@ -94,7 +94,7 @@ end
 local format_files = {}
 local translation_units = {}
 
-assert(type(tracked) == "table")
+assert(type(tracked) == "table", "git ls-files must return a table.")
 for _, path in ipairs(tracked) do
    if
       paths.ends_with(path, ".c")

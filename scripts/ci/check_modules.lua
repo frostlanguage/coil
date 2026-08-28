@@ -38,7 +38,7 @@ if type(tracked) ~= "table" then
 end
 
 local translation_units = {}
-assert(type(tracked) == "table")
+assert(type(tracked) == "table", "git ls-files must return a table.")
 for _, path in ipairs(tracked) do
    if paths.ends_with(path, ".c") or paths.ends_with(path, ".i") then
       translation_units[#translation_units + 1] = path

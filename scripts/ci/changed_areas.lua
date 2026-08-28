@@ -96,7 +96,7 @@ local function classify(input)
       path:match("^%.github/actions/verified%-download/")
       or path:match("^%.github/actions/setup%-lua/")
       or path:match("^%.github/actions/detect%-changes/")
-      or path:match("^libs/")
+      or path:match("^scripts/libs/")
       or path == "scripts/ci/changed_areas.lua"
       or path == "scripts/ci/toolchain.lock.toml"
    then
@@ -125,7 +125,7 @@ local function classify(input)
       changed.mark("yaml")
    end
 
-   if path:match("^ci/") then
+   if path:match("^scripts/ci/") then
       changed.mark("ci")
       changed.mark("lua")
 
