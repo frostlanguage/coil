@@ -4190,7 +4190,7 @@ unchanged.
 
 ### 9.1 Downstream Interpreter Boundaries
 
-**Rule ID:** `CSTYLE-109-10-1-downstream-interpreter-boundaries`
+**Rule ID:** `CSTYLE-109-9-1-downstream-interpreter-boundaries`
 
 **Related pitfalls:**
 
@@ -4223,7 +4223,7 @@ boundary.
 
 ### 9.2 Authentication and Authorization Gates
 
-**Rule ID:** `CSTYLE-110-10-2-authentication-and-authorization-gates`
+**Rule ID:** `CSTYLE-110-9-2-authentication-and-authorization-gates`
 
 **Related pitfalls:**
 
@@ -4254,7 +4254,7 @@ Prefer narrow capability/context inputs over global implicit privilege state.
 
 ### 9.3 Untrusted Structured Input and File Ingress
 
-**Rule ID:** `CSTYLE-111-10-3-untrusted-structured-input-and-file-ingress`
+**Rule ID:** `CSTYLE-111-9-3-untrusted-structured-input-and-file-ingress`
 
 **Related pitfalls:**
 
@@ -4288,7 +4288,7 @@ A parser success status does not by itself make decoded data trusted.
 
 ### 9.4 Outbound Request Destination Validation
 
-**Rule ID:** `CSTYLE-112-10-4-outbound-request-destination-validation`
+**Rule ID:** `CSTYLE-112-9-4-outbound-request-destination-validation`
 
 **Related pitfalls:**
 
@@ -4313,7 +4313,7 @@ A URL parser validates syntax. It does not establish that a destination is safe.
 
 ### 9.5 Resource Budgets and Throttling
 
-**Rule ID:** `CSTYLE-113-10-5-resource-budgets-and-throttling`
+**Rule ID:** `CSTYLE-113-9-5-resource-budgets-and-throttling`
 
 **Related pitfalls:**
 
@@ -4344,7 +4344,7 @@ valid size can still exceed the product's safe resource budget.
 
 ### 9.6 Security Exception and Fail-Closed Behavior
 
-**Rule ID:** `CSTYLE-114-10-6-security-exception-and-fail-closed-behavior`
+**Rule ID:** `CSTYLE-114-9-6-security-exception-and-fail-closed-behavior`
 
 **Related pitfalls:**
 
@@ -4374,7 +4374,7 @@ safety responses differ, the module contract must define the safe degraded state
 
 ### 9.7 Loader and Search-Path Safety
 
-**Rule ID:** `CSTYLE-115-10-7-loader-and-search-path-safety`
+**Rule ID:** `CSTYLE-115-9-7-loader-and-search-path-safety`
 
 **Related pitfalls:**
 

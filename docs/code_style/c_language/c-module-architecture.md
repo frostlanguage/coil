@@ -2424,9 +2424,9 @@ chain boundaries. Existing `CMOD-001` through `CMOD-081` IDs remain unchanged.
 **Related C standard rules:**
 
 - [`CSTYLE-059-untrusted-input-validation`](./c-code-standard.md#untrusted-input-validation)
-- [`CSTYLE-110-10-2-authentication-and-authorization-gates`](./c-code-standard.md#102-authentication-and-authorization-gates)
-- [`CSTYLE-111-10-3-untrusted-structured-input-and-file-ingress`](./c-code-standard.md#103-untrusted-structured-input-and-file-ingress)
-- [`CSTYLE-113-10-5-resource-budgets-and-throttling`](./c-code-standard.md#105-resource-budgets-and-throttling)
+- [`CSTYLE-110-9-2-authentication-and-authorization-gates`](./c-code-standard.md#92-authentication-and-authorization-gates)
+- [`CSTYLE-111-9-3-untrusted-structured-input-and-file-ingress`](./c-code-standard.md#93-untrusted-structured-input-and-file-ingress)
+- [`CSTYLE-113-9-5-resource-budgets-and-throttling`](./c-code-standard.md#95-resource-budgets-and-throttling)
 
 **Related pitfalls:**
 
@@ -2468,7 +2468,7 @@ reimplementing a different security decision for the same ingress path.
 **Related C standard rules:**
 
 - [`CSTYLE-107-8-1-variable-initialization`](./c-code-standard.md#81-variable-initialization)
-- [`CSTYLE-114-10-6-security-exception-and-fail-closed-behavior`](./c-code-standard.md#106-security-exception-and-fail-closed-behavior)
+- [`CSTYLE-114-9-6-security-exception-and-fail-closed-behavior`](./c-code-standard.md#96-security-exception-and-fail-closed-behavior)
 
 **Related pitfalls:**
 
@@ -2505,7 +2505,7 @@ it must not be duplicated across unrelated modules.
 
 - [`CSTYLE-029-2-1-4-external-dependency-wrappers`](./c-code-standard.md#214-external-dependency-wrappers)
 - [`CSTYLE-059-untrusted-input-validation`](./c-code-standard.md#untrusted-input-validation)
-- [`CSTYLE-115-10-7-loader-and-search-path-safety`](./c-code-standard.md#107-loader-and-search-path-safety)
+- [`CSTYLE-115-9-7-loader-and-search-path-safety`](./c-code-standard.md#97-loader-and-search-path-safety)
 
 **Related pitfalls:**
 
@@ -2539,8 +2539,8 @@ that the library version or artifact is trustworthy.
 
 **Related C standard rules:**
 
-- [`CSTYLE-110-10-2-authentication-and-authorization-gates`](./c-code-standard.md#102-authentication-and-authorization-gates)
-- [`CSTYLE-112-10-4-outbound-request-destination-validation`](./c-code-standard.md#104-outbound-request-destination-validation)
+- [`CSTYLE-110-9-2-authentication-and-authorization-gates`](./c-code-standard.md#92-authentication-and-authorization-gates)
+- [`CSTYLE-112-9-4-outbound-request-destination-validation`](./c-code-standard.md#94-outbound-request-destination-validation)
 
 **Related pitfalls:**
 
@@ -2582,7 +2582,7 @@ This extends minimum visibility from symbols to runtime authority.
 
 **Related C standard rules:**
 
-- [`CSTYLE-115-10-7-loader-and-search-path-safety`](./c-code-standard.md#107-loader-and-search-path-safety)
+- [`CSTYLE-115-9-7-loader-and-search-path-safety`](./c-code-standard.md#97-loader-and-search-path-safety)
 
 **Related pitfalls:**
 
@@ -2605,4 +2605,3 @@ The loader module must own:
 Do not let peer modules call `dlopen`, `LoadLibrary`, script loaders, or an
 application plugin loader independently. Route those operations through one
 owned adapter so search paths and trust decisions remain consistent.
-

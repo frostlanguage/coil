@@ -13,10 +13,7 @@ local function hook_directory(path)
    return path:match("^(.*)[/\\][^/\\]+$") or ".githooks"
 end
 
-local platform = dofile(
-   hook_directory(arg[0] or "").."/lib/platform.lua"
-)
-
+local platform = dofile(hook_directory(arg[0] or "") .. "/lib/platform.lua")
 
 local function shell_quote(value)
    return platform.shell_quote(value)
@@ -44,9 +41,7 @@ end
 -- @param key string: Git configuration key.
 -- @return string|nil: configured value, or nil when absent.
 local function git_config(key)
-   local command = silence_stderr(
-      "git config --get "..shell_quote(key)
-   )
+   local command = silence_stderr("git config --get " .. shell_quote(key))
    local output = command_output(command)
 
    if not output then
@@ -101,13 +96,10 @@ local function valid_gitflow_version(version)
    end
 
    local function valid_number(value)
-      return value == "0"
-         or (value:match("^[1-9]%d*$") ~= nil)
+      return value == "0" or (value:match("^[1-9]%d*$") ~= nil)
    end
 
-   return valid_number(major)
-      and valid_number(minor)
-      and valid_number(patch)
+   return valid_number(major) and valid_number(minor) and valid_number(patch)
 end
 
 --- Validate a Coil Gitflow branch name.
@@ -125,44 +117,43 @@ local function validate_branch_name(branch)
    if not prefix then
       return false,
          "branch must be 'main', 'develop', 'feature/<kebab-name>', "
-            .."'release/<MAJOR.MINOR.PATCH>', "
-            .."'hotfix/<MAJOR.MINOR.PATCH>', or "
-            .."'support/<MAJOR.MINOR.PATCH>'."
+            .. "'release/<MAJOR.MINOR.PATCH>', "
+            .. "'hotfix/<MAJOR.MINOR.PATCH>', or "
+            .. "'support/<MAJOR.MINOR.PATCH>'."
    end
 
    if prefix == "feature" then
       if not valid_feature_name(suffix) then
          return false,
             "feature branch suffix must be lowercase alphanumeric "
-               .."kebab-case."
+               .. "kebab-case."
       end
 
       return true, nil
    end
 
-   if prefix == "release"
-      or prefix == "hotfix"
-      or prefix == "support" then
+   if prefix == "release" or prefix == "hotfix" or prefix == "support" then
       if not valid_gitflow_version(suffix) then
          return false,
-            prefix.." branch suffix must be a stable Semantic Versioning "
-               .."core in MAJOR.MINOR.PATCH form without leading zeroes."
+            prefix
+               .. " branch suffix must be a stable Semantic Versioning "
+               .. "core in MAJOR.MINOR.PATCH form without leading zeroes."
       end
 
       return true, nil
    end
 
    return false,
-      "unsupported Gitflow branch prefix '"..prefix
-         .."'; use feature/, release/, hotfix/, or support/."
+      "unsupported Gitflow branch prefix '"
+         .. prefix
+         .. "'; use feature/, release/, hotfix/, or support/."
 end
 
 --- Read the current branch name.
 -- @return string|nil: short branch name, or nil for detached HEAD.
 local function current_branch()
-   local output = command_output(
-      silence_stderr("git symbolic-ref --quiet --short HEAD")
-   )
+   local output =
+      command_output(silence_stderr("git symbolic-ref --quiet --short HEAD"))
 
    if not output then
       return nil
@@ -192,16 +183,15 @@ local function validate_current_branch()
    local valid, diagnostic = validate_branch_name(branch)
 
    if not valid then
-      fail("invalid branch '"..branch.."': "..diagnostic)
+      fail("invalid branch '" .. branch .. "': " .. diagnostic)
    end
 end
 
 --- Return the absolute repository root.
 -- @return string|nil: repository root, or nil outside a work tree.
 local function repository_root()
-   local output = command_output(
-      silence_stderr("git rev-parse --show-toplevel")
-   )
+   local output =
+      command_output(silence_stderr("git rev-parse --show-toplevel"))
 
    if not output then
       return nil
@@ -234,14 +224,14 @@ end
 --- Print a fatal hook diagnostic and terminate.
 -- @param message string: diagnostic text.
 fail = function(message)
-   io.stderr:write("coil pre-commit: error: "..message.."\n")
+   io.stderr:write("coil pre-commit: error: " .. message .. "\n")
    os.exit(1)
 end
 
 --- Print a non-fatal hook diagnostic.
 -- @param message string: diagnostic text.
 warn = function(message)
-   io.stderr:write("coil pre-commit: warning: "..message.."\n")
+   io.stderr:write("coil pre-commit: warning: " .. message .. "\n")
 end
 
 --- Check whether an executable is available through PATH.
@@ -261,10 +251,12 @@ local function validate_openpgp_configuration()
 
    gpg_sign = gpg_sign:lower()
 
-   if gpg_sign ~= "true"
+   if
+      gpg_sign ~= "true"
       and gpg_sign ~= "yes"
       and gpg_sign ~= "on"
-      and gpg_sign ~= "1" then
+      and gpg_sign ~= "1"
+   then
       fail("commit.gpgSign must be enabled.")
    end
 
@@ -283,7 +275,7 @@ local function validate_openpgp_configuration()
    local gpg_program = git_config("gpg.program") or "gpg"
 
    if not command_exists(gpg_program) then
-      fail("OpenPGP program '"..gpg_program.."' is not available in PATH.")
+      fail("OpenPGP program '" .. gpg_program .. "' is not available in PATH.")
    end
 
    local command = table.concat({
@@ -295,7 +287,7 @@ local function validate_openpgp_configuration()
    }, " ")
 
    if not command_succeeded(command) then
-      fail("no secret OpenPGP key is available for '"..signing_key.."'.")
+      fail("no secret OpenPGP key is available for '" .. signing_key .. "'.")
    end
 end
 
@@ -304,8 +296,8 @@ end
 local function scan_staged_secrets()
    if not command_exists("gitleaks") then
       warn(
-         "optional tool 'gitleaks' is not installed; bypassing local "..
-            "secret scan."
+         "optional tool 'gitleaks' is not installed; bypassing local "
+            .. "secret scan."
       )
       return
    end
@@ -317,18 +309,20 @@ local function scan_staged_secrets()
    end
 
    local relative_config = "tools/security/git/gitleaks.toml"
-   local config = root.."/"..relative_config
+   local config = root .. "/" .. relative_config
 
    if not file_exists(config) then
       fail(
-         "Gitleaks is installed but its configuration is missing: "..
-            relative_config
+         "Gitleaks is installed but its configuration is missing: "
+            .. relative_config
       )
    end
 
    local command = table.concat({
-      "gitleaks", "git",
-      "--config", shell_quote(config),
+      "gitleaks",
+      "git",
+      "--config",
+      shell_quote(config),
       "--pre-commit",
       "--redact",
       "--staged",

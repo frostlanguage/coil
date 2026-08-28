@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 ---
-base: lua53
+base: lua51
 
 globals:
   io.lines:
@@ -16,5 +16,17 @@ globals:
     args:
       - required: false
         type: "..."
+  utf8.codes:
+    args:
+      - type: string
+    must_use: true
+  utf8.len:
+    args:
+      - type: string
+      - required: false
+        type: number
+      - required: false
+        type: number
+    must_use: true
 
 # EOF

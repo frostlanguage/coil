@@ -20,9 +20,11 @@ exceptions:
   - BANNED
   - C23
   - C28719
+  - CAPEC
   - CBAN
   - CERT
   - CI
+  - CISA
   - CLI
   - CMake
   - CPIT
@@ -30,6 +32,7 @@ exceptions:
   - CPUs
   - CSS
   - CSTYLE
+  - CVEs
   - CWE
   - DCO
   - DMA
@@ -56,6 +59,7 @@ exceptions:
   - IPC
   - ISO
   - ISR
+  - JITs
   - JPL
   - JSON
   - JSONC
@@ -79,6 +83,7 @@ exceptions:
   - README
   - RNG
   - ROM
+  - RTLD
   - SAST
   - SDL
   - SEI

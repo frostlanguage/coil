@@ -45,29 +45,28 @@ records can use this catalog for implementation-level evidence.
 
 ---
 
-
 ## External Security Reference Model
 
 The catalog keeps weakness, attack, vulnerability, exploitation, and severity
 concepts separate. They are related, but they are not interchangeable.
 
-| Source | What it represents | How this catalog uses it |
-| --- | --- | --- |
-| [MITRE CWE][cwe] | weakness taxonomy | root-cause and failure-mode mapping |
-| [CWE Top 25:2025][cwe-top25-2025] | prevalence/severity-ranked weakness set | coverage target and gap analysis |
-| [OWASP Top 10:2025][owasp-top10-2025] | application-security risk categories | trust-boundary and service-facing context |
-| [MITRE CAPEC][capec] | adversary attack patterns | exploitation mechanism and threat-model context |
-| [CISA KEV][cisa-kev] | vulnerabilities known to be exploited in the wild | prioritization evidence for representative CVEs |
-| [CVE][cve] | concrete publicly disclosed vulnerabilities | representative real-world examples |
-| [CVSS v4.0][cvss-v4] | vulnerability severity framework | score/vector reference for concrete CVEs only |
-| [ISO/IEC 9899:2024][c23] | C language syntax and semantics | language-level correctness and defined behavior |
-| [ISO/IEC TS 17961:2013][ts-17961] | C secure coding rules | secure-C diagnostic and prevention context |
-| [ISO/IEC 24772-1:2024][iso-24772-1] | language-independent vulnerability guidance | general vulnerability model |
-| [ISO/IEC TR 24772-3:2020][iso-24772-3] | C-specific vulnerability manifestations | C-focused vulnerability guidance |
-| [ISO/IEC 27034-1:2011][iso-27034-1] | application-security concepts and process | application boundary and lifecycle context |
-| [ISO/IEC 27036-3:2023][iso-27036-3] | hardware/software/services supply-chain security | dependency and artifact integrity context |
-| [ISO/IEC 15408-1:2026][iso-15408] | IT security evaluation model | security-property and assurance context |
-| [ISO/SAE 21434:2021][iso-sae-21434] | road-vehicle cybersecurity engineering | automotive cybersecurity lifecycle context |
+| Source                                 | What it represents                                | How this catalog uses it                        |
+| -------------------------------------- | ------------------------------------------------- | ----------------------------------------------- |
+| [MITRE CWE][cwe]                       | weakness taxonomy                                 | root-cause and failure-mode mapping             |
+| [CWE Top 25:2025][cwe-top25-2025]      | prevalence/severity-ranked weakness set           | coverage target and gap analysis                |
+| [OWASP Top 10:2025][owasp-top10-2025]  | application-security risk categories              | trust-boundary and service-facing context       |
+| [MITRE CAPEC][capec]                   | adversary attack patterns                         | exploitation mechanism and threat-model context |
+| [CISA KEV][cisa-kev]                   | vulnerabilities known to be exploited in the wild | prioritization evidence for representative CVEs |
+| [CVE][cve]                             | concrete publicly disclosed vulnerabilities       | representative real-world examples              |
+| [CVSS v4.0][cvss-v4]                   | vulnerability severity framework                  | score/vector reference for concrete CVEs only   |
+| [ISO/IEC 9899:2024][c23]               | C language syntax and semantics                   | language-level correctness and defined behavior |
+| [ISO/IEC TS 17961:2013][ts-17961]      | C secure coding rules                             | secure-C diagnostic and prevention context      |
+| [ISO/IEC 24772-1:2024][iso-24772-1]    | language-independent vulnerability guidance       | general vulnerability model                     |
+| [ISO/IEC TR 24772-3:2020][iso-24772-3] | C-specific vulnerability manifestations           | C-focused vulnerability guidance                |
+| [ISO/IEC 27034-1:2011][iso-27034-1]    | application-security concepts and process         | application boundary and lifecycle context      |
+| [ISO/IEC 27036-3:2023][iso-27036-3]    | hardware/software/services supply-chain security  | dependency and artifact integrity context       |
+| [ISO/IEC 15408-1:2026][iso-15408]      | IT security evaluation model                      | security-property and assurance context         |
+| [ISO/SAE 21434:2021][iso-sae-21434]    | road-vehicle cybersecurity engineering            | automotive cybersecurity lifecycle context      |
 
 A `CPIT-*` entry is a generic engineering failure mode. A CVE is a concrete
 vulnerability in a product. CISA KEV adds evidence of known exploitation to a
@@ -81,33 +80,33 @@ The 2025 CWE Top 25 is used as a coverage target, not as the complete scope of
 this catalog. Existing low-level C pitfalls remain even when they are outside
 that list.
 
-| Rank | CWE | Weakness | Catalog coverage |
-| ---: | --- | --- | --- |
-| 1 | [CWE-79][cwe-79] | Cross-site scripting | [CPIT-107](#cpit-107-cross-site-scripting-output-injection) |
-| 2 | [CWE-89][cwe-89] | SQL injection | [CPIT-106](#cpit-106-sql-injection) |
-| 3 | [CWE-352][cwe-352] | Cross-site request forgery | [CPIT-108](#cpit-108-cross-site-request-forgery) |
-| 4 | [CWE-862][cwe-862] | Missing authorization | [CPIT-105](#cpit-105-improper-access-control), [CPIT-113](#cpit-113-incorrect-authorization-or-user-controlled-object-key) |
-| 5 | [CWE-787][cwe-787] | Out-of-bounds write | [CPIT-013](#cpit-013-out-of-bounds-write) |
-| 6 | [CWE-22][cwe-22] | Path traversal | [CPIT-104](#cpit-104-path-traversal) |
-| 7 | [CWE-416][cwe-416] | Use-after-free | [CPIT-002](#cpit-002-use-after-free) |
-| 8 | [CWE-125][cwe-125] | Out-of-bounds read | [CPIT-014](#cpit-014-out-of-bounds-read) |
-| 9 | [CWE-78][cwe-78] | OS command injection | [CPIT-103](#cpit-103-command-injection) |
-| 10 | [CWE-94][cwe-94] | Code injection | [CPIT-109](#cpit-109-code-injection-or-dynamic-evaluation) |
-| 11 | [CWE-120][cwe-120] | Classic buffer overflow | [CPIT-013](#cpit-013-out-of-bounds-write), [CPIT-059](#cpit-059-strcpystrcat-unbounded-copy) |
-| 12 | [CWE-434][cwe-434] | Dangerous file upload | [CPIT-110](#cpit-110-unrestricted-dangerous-file-upload) |
-| 13 | [CWE-476][cwe-476] | NULL pointer dereference | [CPIT-011](#cpit-011-null-pointer-dereference) |
-| 14 | [CWE-121][cwe-121] | Stack-based buffer overflow | [CPIT-013](#cpit-013-out-of-bounds-write) |
-| 15 | [CWE-502][cwe-502] | Deserialization of untrusted data | [CPIT-111](#cpit-111-deserialization-of-untrusted-data) |
-| 16 | [CWE-122][cwe-122] | Heap-based buffer overflow | [CPIT-013](#cpit-013-out-of-bounds-write) |
-| 17 | [CWE-863][cwe-863] | Incorrect authorization | [CPIT-113](#cpit-113-incorrect-authorization-or-user-controlled-object-key) |
-| 18 | [CWE-20][cwe-20] | Improper input validation | [CPIT-094](#cpit-094-tainted-size-trusted), [CPIT-111](#cpit-111-deserialization-of-untrusted-data) |
-| 19 | [CWE-284][cwe-284] | Improper access control | [CPIT-105](#cpit-105-improper-access-control) |
-| 20 | [CWE-200][cwe-200] | Sensitive information exposure | [CPIT-097](#cpit-097-secret-logged), [CPIT-120](#cpit-120-fail-open-or-sensitive-error-disclosure) |
-| 21 | [CWE-306][cwe-306] | Missing authentication for critical function | [CPIT-112](#cpit-112-missing-authentication-for-critical-function) |
-| 22 | [CWE-918][cwe-918] | Server-side request forgery | [CPIT-114](#cpit-114-server-side-request-forgery) |
-| 23 | [CWE-77][cwe-77] | Command injection | [CPIT-103](#cpit-103-command-injection) |
-| 24 | [CWE-639][cwe-639] | Authorization bypass through user-controlled key | [CPIT-113](#cpit-113-incorrect-authorization-or-user-controlled-object-key) |
-| 25 | [CWE-770][cwe-770] | Resource allocation without limits | [CPIT-115](#cpit-115-unbounded-resource-consumption) |
+| Rank | CWE                | Weakness                                         | Catalog coverage                                                                                                           |
+| ---: | ------------------ | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+|    1 | [CWE-79][cwe-79]   | Cross-site scripting                             | [CPIT-107](#cpit-107-cross-site-scripting-output-injection)                                                                |
+|    2 | [CWE-89][cwe-89]   | SQL injection                                    | [CPIT-106](#cpit-106-sql-injection)                                                                                        |
+|    3 | [CWE-352][cwe-352] | Cross-site request forgery                       | [CPIT-108](#cpit-108-cross-site-request-forgery)                                                                           |
+|    4 | [CWE-862][cwe-862] | Missing authorization                            | [CPIT-105](#cpit-105-improper-access-control), [CPIT-113](#cpit-113-incorrect-authorization-or-user-controlled-object-key) |
+|    5 | [CWE-787][cwe-787] | Out-of-bounds write                              | [CPIT-013](#cpit-013-out-of-bounds-write)                                                                                  |
+|    6 | [CWE-22][cwe-22]   | Path traversal                                   | [CPIT-104](#cpit-104-path-traversal)                                                                                       |
+|    7 | [CWE-416][cwe-416] | Use-after-free                                   | [CPIT-002](#cpit-002-use-after-free)                                                                                       |
+|    8 | [CWE-125][cwe-125] | Out-of-bounds read                               | [CPIT-014](#cpit-014-out-of-bounds-read)                                                                                   |
+|    9 | [CWE-78][cwe-78]   | OS command injection                             | [CPIT-103](#cpit-103-command-injection)                                                                                    |
+|   10 | [CWE-94][cwe-94]   | Code injection                                   | [CPIT-109](#cpit-109-code-injection-or-dynamic-evaluation)                                                                 |
+|   11 | [CWE-120][cwe-120] | Classic buffer overflow                          | [CPIT-013](#cpit-013-out-of-bounds-write), [CPIT-059](#cpit-059-strcpystrcat-unbounded-copy)                               |
+|   12 | [CWE-434][cwe-434] | Dangerous file upload                            | [CPIT-110](#cpit-110-unrestricted-dangerous-file-upload)                                                                   |
+|   13 | [CWE-476][cwe-476] | NULL pointer dereference                         | [CPIT-011](#cpit-011-null-pointer-dereference)                                                                             |
+|   14 | [CWE-121][cwe-121] | Stack-based buffer overflow                      | [CPIT-013](#cpit-013-out-of-bounds-write)                                                                                  |
+|   15 | [CWE-502][cwe-502] | Deserialization of untrusted data                | [CPIT-111](#cpit-111-deserialization-of-untrusted-data)                                                                    |
+|   16 | [CWE-122][cwe-122] | Heap-based buffer overflow                       | [CPIT-013](#cpit-013-out-of-bounds-write)                                                                                  |
+|   17 | [CWE-863][cwe-863] | Incorrect authorization                          | [CPIT-113](#cpit-113-incorrect-authorization-or-user-controlled-object-key)                                                |
+|   18 | [CWE-20][cwe-20]   | Improper input validation                        | [CPIT-094](#cpit-094-tainted-size-trusted), [CPIT-111](#cpit-111-deserialization-of-untrusted-data)                        |
+|   19 | [CWE-284][cwe-284] | Improper access control                          | [CPIT-105](#cpit-105-improper-access-control)                                                                              |
+|   20 | [CWE-200][cwe-200] | Sensitive information exposure                   | [CPIT-097](#cpit-097-secret-logged), [CPIT-120](#cpit-120-fail-open-or-sensitive-error-disclosure)                         |
+|   21 | [CWE-306][cwe-306] | Missing authentication for critical function     | [CPIT-112](#cpit-112-missing-authentication-for-critical-function)                                                         |
+|   22 | [CWE-918][cwe-918] | Server-side request forgery                      | [CPIT-114](#cpit-114-server-side-request-forgery)                                                                          |
+|   23 | [CWE-77][cwe-77]   | Command injection                                | [CPIT-103](#cpit-103-command-injection)                                                                                    |
+|   24 | [CWE-639][cwe-639] | Authorization bypass through user-controlled key | [CPIT-113](#cpit-113-incorrect-authorization-or-user-controlled-object-key)                                                |
+|   25 | [CWE-770][cwe-770] | Resource allocation without limits               | [CPIT-115](#cpit-115-unbounded-resource-consumption)                                                                       |
 
 ### OWASP Top 10:2025 coverage
 
@@ -115,18 +114,18 @@ OWASP is application-security oriented. These mappings apply when C code
 implements or supports the corresponding web, service, update, parser,
 management, or trust-boundary behavior.
 
-| OWASP category | Primary catalog coverage |
-| --- | --- |
-| [A01 Broken Access Control][owasp-a01] | CPIT-104, CPIT-105, CPIT-108, CPIT-113, CPIT-114 |
-| [A02 Security Misconfiguration][owasp-a02] | CPIT-096, CPIT-116, CPIT-120, CPIT-121, CPIT-122 |
-| [A03 Software Supply Chain Failures][owasp-a03] | CPIT-101, CPIT-102, CPIT-117, CPIT-118 |
-| [A04 Cryptographic Failures][owasp-a04] | CPIT-096, CPIT-098, CPIT-099, CPIT-100 |
-| [A05 Injection][owasp-a05] | CPIT-095, CPIT-103, CPIT-106, CPIT-107, CPIT-109 |
-| [A06 Insecure Design][owasp-a06] | CPIT-094, CPIT-110, CPIT-115, CPIT-116 |
-| [A07 Authentication Failures][owasp-a07] | CPIT-096, CPIT-100, CPIT-112 |
-| [A08 Software or Data Integrity Failures][owasp-a08] | CPIT-101, CPIT-102, CPIT-111, CPIT-118 |
-| [A09 Security Logging and Alerting Failures][owasp-a09] | CPIT-097, CPIT-119 |
-| [A10 Mishandling of Exceptional Conditions][owasp-a10] | CPIT-011, CPIT-036, CPIT-051, CPIT-068, CPIT-088, CPIT-120 |
+| OWASP category                                          | Primary catalog coverage                                   |
+| ------------------------------------------------------- | ---------------------------------------------------------- |
+| [A01 Broken Access Control][owasp-a01]                  | CPIT-104, CPIT-105, CPIT-108, CPIT-113, CPIT-114           |
+| [A02 Security Misconfiguration][owasp-a02]              | CPIT-096, CPIT-116, CPIT-120, CPIT-121, CPIT-122           |
+| [A03 Software Supply Chain Failures][owasp-a03]         | CPIT-101, CPIT-102, CPIT-117, CPIT-118                     |
+| [A04 Cryptographic Failures][owasp-a04]                 | CPIT-096, CPIT-098, CPIT-099, CPIT-100                     |
+| [A05 Injection][owasp-a05]                              | CPIT-095, CPIT-103, CPIT-106, CPIT-107, CPIT-109           |
+| [A06 Insecure Design][owasp-a06]                        | CPIT-094, CPIT-110, CPIT-115, CPIT-116                     |
+| [A07 Authentication Failures][owasp-a07]                | CPIT-096, CPIT-100, CPIT-112                               |
+| [A08 Software or Data Integrity Failures][owasp-a08]    | CPIT-101, CPIT-102, CPIT-111, CPIT-118                     |
+| [A09 Security Logging and Alerting Failures][owasp-a09] | CPIT-097, CPIT-119                                         |
+| [A10 Mishandling of Exceptional Conditions][owasp-a10]  | CPIT-011, CPIT-036, CPIT-051, CPIT-068, CPIT-088, CPIT-120 |
 
 ### Representative KEV, CVE, and CVSS evidence
 
@@ -134,15 +133,15 @@ The examples below demonstrate why the catalog keeps links from generic failure
 modes to concrete field evidence. They are examples, not a vulnerability list
 for the project.
 
-| Catalog entry | CISA KEV evidence | CVE record | Published CVSS |
-| --- | --- | --- | --- |
-| [CPIT-002](#cpit-002-use-after-free) | [CVE-2025-24085 in KEV][kev-cve-2025-24085] | [CVE-2025-24085][cve-2025-24085] | see CVE record |
-| [CPIT-013](#cpit-013-out-of-bounds-write) | [CVE-2025-0282 mitigation/KEV evidence][kev-cve-2025-0282] | [CVE-2025-0282][cve-2025-0282] | CVSS 3.1 9.0 in CVE record |
-| [CPIT-103](#cpit-103-command-injection) | [CVE-2025-59689 in KEV][kev-2025-09-29] | [CVE-2025-59689][cve-2025-59689] | see CVE record |
-| [CPIT-104](#cpit-104-path-traversal) | [CVE-2025-8088 in KEV][kev-2025-08-12] | [CVE-2025-8088][cve-2025-8088] | see CVE record |
-| [CPIT-106](#cpit-106-sql-injection) | [CVE-2024-29824 in KEV][kev-cve-2024-29824] | [CVE-2024-29824][cve-2024-29824] | see CVE record |
-| [CPIT-111](#cpit-111-deserialization-of-untrusted-data) | [CVE-2025-10035 in KEV][kev-2025-09-29] | [CVE-2025-10035][cve-2025-10035] | CVSS 3.1 10.0 in CVE record |
-| [CPIT-114](#cpit-114-server-side-request-forgery) | [CVE-2021-21311 in KEV][kev-2025-09-29] | [CVE-2021-21311][cve-2021-21311] | CVSS 3.1 7.2 in CVE record |
+| Catalog entry                                           | CISA KEV evidence                                          | CVE record                       | Published CVSS              |
+| ------------------------------------------------------- | ---------------------------------------------------------- | -------------------------------- | --------------------------- |
+| [CPIT-002](#cpit-002-use-after-free)                    | [CVE-2025-24085 in KEV][kev-cve-2025-24085]                | [CVE-2025-24085][cve-2025-24085] | see CVE record              |
+| [CPIT-013](#cpit-013-out-of-bounds-write)               | [CVE-2025-0282 mitigation/KEV evidence][kev-cve-2025-0282] | [CVE-2025-0282][cve-2025-0282]   | CVSS 3.1 9.0 in CVE record  |
+| [CPIT-103](#cpit-103-command-injection)                 | [CVE-2025-59689 in KEV][kev-2025-09-29]                    | [CVE-2025-59689][cve-2025-59689] | see CVE record              |
+| [CPIT-104](#cpit-104-path-traversal)                    | [CVE-2025-8088 in KEV][kev-2025-08-12]                     | [CVE-2025-8088][cve-2025-8088]   | see CVE record              |
+| [CPIT-106](#cpit-106-sql-injection)                     | [CVE-2024-29824 in KEV][kev-cve-2024-29824]                | [CVE-2024-29824][cve-2024-29824] | see CVE record              |
+| [CPIT-111](#cpit-111-deserialization-of-untrusted-data) | [CVE-2025-10035 in KEV][kev-2025-09-29]                    | [CVE-2025-10035][cve-2025-10035] | CVSS 3.1 10.0 in CVE record |
+| [CPIT-114](#cpit-114-server-side-request-forgery)       | [CVE-2021-21311 in KEV][kev-2025-09-29]                    | [CVE-2021-21311][cve-2021-21311] | CVSS 3.1 7.2 in CVE record  |
 
 The `Published CVSS` column intentionally preserves the version published in
 the CVE record. Use [CVSS v4.0][cvss-v4] for new project scoring when a concrete
@@ -185,15 +184,15 @@ contains reverse links for the rules used by this catalog.
 
 ## Reading path
 
-| Step | Area                                                                          | Review focus                                           |
-| ---- | ----------------------------------------------------------------------------- | ------------------------------------------------------ |
-| 1    | [Memory and pointer pitfalls](#memory-and-pointer-pitfalls)                   | ownership, lifetime, bounds, provenance, allocation    |
-| 2    | [Undefined behavior pitfalls](#undefined-behavior-pitfalls)                   | invalid C semantics, object rules, shifts, aliasing    |
-| 3    | [Integer and arithmetic pitfalls](#integer-and-arithmetic-pitfalls)           | overflow, truncation, sizes, shifts, division          |
-| 4    | [Standard library pitfalls](#standard-library-pitfalls)                       | libc preconditions, strings, parsing, process APIs     |
-| 5    | [Concurrency and execution pitfalls](#concurrency-and-execution-pitfalls)     | races, locks, threads, ISR, signals, timing            |
-| 6    | [Embedded and hardware pitfalls](#embedded-and-hardware-pitfalls)             | MMIO, DMA, watchdogs, persistent state, safety outputs |
-| 7    | [Security and trust-boundary pitfalls](#security-and-trust-boundary-pitfalls) | tainted input, secrets, firmware, paths, commands      |
+| Step | Area                                                                                              | Review focus                                           |
+| ---- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| 1    | [Memory and pointer pitfalls](#memory-and-pointer-pitfalls)                                       | ownership, lifetime, bounds, provenance, allocation    |
+| 2    | [Undefined behavior pitfalls](#undefined-behavior-pitfalls)                                       | invalid C semantics, object rules, shifts, aliasing    |
+| 3    | [Integer and arithmetic pitfalls](#integer-and-arithmetic-pitfalls)                               | overflow, truncation, sizes, shifts, division          |
+| 4    | [Standard library pitfalls](#standard-library-pitfalls)                                           | libc preconditions, strings, parsing, process APIs     |
+| 5    | [Concurrency and execution pitfalls](#concurrency-and-execution-pitfalls)                         | races, locks, threads, ISR, signals, timing            |
+| 6    | [Embedded and hardware pitfalls](#embedded-and-hardware-pitfalls)                                 | MMIO, DMA, watchdogs, persistent state, safety outputs |
+| 7    | [Security and trust-boundary pitfalls](#security-and-trust-boundary-pitfalls)                     | tainted input, secrets, firmware, paths, commands      |
 | 8    | [Application, service, and supply-chain pitfalls](#application-service-and-supply-chain-pitfalls) | injection, auth, parsers, dependencies, resource abuse |
 
 Use the [Review Checklist](#review-checklist) after the category review. A
@@ -201,21 +200,22 @@ failed checklist item should point to one category, one `CPIT-*`, and one
 primary `CSTYLE-*` control.
 
 ---
+
 Normative reference sections contain intentional requirement keywords,
 identifiers, API names, standards names, and compact table cells. Spelling,
 acronym, and prose checks scan this content with the rest of the document.
 
 ## Pitfall Index
 
-| Area                                                                          | Primary risk                                                  | Main references                                                                          |
-| ----------------------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| [Memory and pointer pitfalls](#memory-and-pointer-pitfalls)                   | object lifetime, ownership, aliasing, bounds, provenance      | [CERT C][cert-c], [MISRA C][misra-c], [TS 17961][ts-17961], [CWE][cwe]                   |
-| [Undefined behavior pitfalls](#undefined-behavior-pitfalls)                   | non-portable or invalid C execution semantics                 | [C23][c23], [CERT C][cert-c], [MISRA C][misra-c], [ISO/IEC 24772][iso-24772]             |
-| [Integer and arithmetic pitfalls](#integer-and-arithmetic-pitfalls)           | overflow, truncation, invalid shifts, divide-by-zero          | [CERT C][cert-c], [TS 17961][ts-17961], [CWE][cwe]                                       |
-| [Standard library pitfalls](#standard-library-pitfalls)                       | libc precondition violations and unsafe APIs                  | [CERT C][cert-c], [MISRA C][misra-c], [CWE][cwe]                                         |
-| [Concurrency and execution pitfalls](#concurrency-and-execution-pitfalls)     | races, improper locking, ISR/signal misuse, timing            | [CERT C][cert-c], [IEC 61508][iec-61508], [ISO 26262][iso-26262], [DO-178C][do-178c]     |
-| [Embedded and hardware pitfalls](#embedded-and-hardware-pitfalls)             | MMIO, DMA, watchdogs, persistent state, safety outputs        | [IEC 61508][iec-61508], [ISO 26262][iso-26262], [IEC 62443][iec-62443], domain standards |
-| [Security and trust-boundary pitfalls](#security-and-trust-boundary-pitfalls) | tainted input, format strings, secrets, firmware update risks | [IEC 62443][iec-62443], [CWE][cwe], [CERT C][cert-c], [ISO/IEC 15408][iso-15408]         |
+| Area                                                                                              | Primary risk                                                       | Main references                                                                                                                                          |
+| ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Memory and pointer pitfalls](#memory-and-pointer-pitfalls)                                       | object lifetime, ownership, aliasing, bounds, provenance           | [CERT C][cert-c], [MISRA C][misra-c], [TS 17961][ts-17961], [CWE][cwe]                                                                                   |
+| [Undefined behavior pitfalls](#undefined-behavior-pitfalls)                                       | non-portable or invalid C execution semantics                      | [C23][c23], [CERT C][cert-c], [MISRA C][misra-c], [ISO/IEC 24772][iso-24772]                                                                             |
+| [Integer and arithmetic pitfalls](#integer-and-arithmetic-pitfalls)                               | overflow, truncation, invalid shifts, divide-by-zero               | [CERT C][cert-c], [TS 17961][ts-17961], [CWE][cwe]                                                                                                       |
+| [Standard library pitfalls](#standard-library-pitfalls)                                           | libc precondition violations and unsafe APIs                       | [CERT C][cert-c], [MISRA C][misra-c], [CWE][cwe]                                                                                                         |
+| [Concurrency and execution pitfalls](#concurrency-and-execution-pitfalls)                         | races, improper locking, ISR/signal misuse, timing                 | [CERT C][cert-c], [IEC 61508][iec-61508], [ISO 26262][iso-26262], [DO-178C][do-178c]                                                                     |
+| [Embedded and hardware pitfalls](#embedded-and-hardware-pitfalls)                                 | MMIO, DMA, watchdogs, persistent state, safety outputs             | [IEC 61508][iec-61508], [ISO 26262][iso-26262], [IEC 62443][iec-62443], domain standards                                                                 |
+| [Security and trust-boundary pitfalls](#security-and-trust-boundary-pitfalls)                     | tainted input, format strings, secrets, firmware update risks      | [IEC 62443][iec-62443], [CWE][cwe], [CERT C][cert-c], [ISO/IEC 15408][iso-15408]                                                                         |
 | [Application, service, and supply-chain pitfalls](#application-service-and-supply-chain-pitfalls) | interpreters, authentication, authorization, parsing, dependencies | [OWASP Top 10:2025][owasp-top10-2025], [CWE Top 25:2025][cwe-top25-2025], [CAPEC][capec], [ISO/IEC 27034-1][iso-27034-1], [ISO/IEC 27036-3][iso-27036-3] |
 
 ---
@@ -226,8 +226,8 @@ All pointer, buffer, allocation, object-lifetime, and ownership problems live in
 this section. Memory rules are centralized here so allocator and GC reviews do
 not scatter pointer safety across unrelated sections.
 
-| Pitfall                                   | Failure mode                                                       | [CWE][cwe] mapping                     | Standards / rules                                                  | Primary project control                                                                                                          |
-| ----------------------------------------- | ------------------------------------------------------------------ | -------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| Pitfall                                   | Failure mode                                                       | [CWE][cwe] mapping                     | Standards / rules                                                  | Primary project control                                                                                                         |
+| ----------------------------------------- | ------------------------------------------------------------------ | -------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
 | Dangling pointer                          | pointer names storage whose lifetime has ended                     | [CWE-825][cwe-825], [CWE-416][cwe-416] | [CERT C][cert-c], [MISRA C][misra-c], [ISO/IEC 24772][iso-24772]   | [`CSTYLE-084-5-1-8-local-memory-lifetime`](./c-code-standard.md#518-local-memory-lifetime)                                      |
 | Use-after-free                            | read or write through freed heap object                            | [CWE-416][cwe-416]                     | [CERT C][cert-c], [TS 17961][ts-17961], [ISO/IEC 24772][iso-24772] | [`CSTYLE-082-5-1-6-ownership-rules`](./c-code-standard.md#516-ownership-rules)                                                  |
 | Double free                               | same allocation released twice                                     | [CWE-415][cwe-415]                     | [CERT C][cert-c], [TS 17961][ts-17961]                             | [`CSTYLE-082-5-1-6-ownership-rules`](./c-code-standard.md#516-ownership-rules)                                                  |
@@ -1023,8 +1023,8 @@ void EX_badMmioDmaAsHeap(volatile uint32_t *register_ptr)
 These are C execution-semantics hazards. They often pass tests until compiler,
 optimization level, CPU, ABI, or input data changes.
 
-| Pitfall                                    | Failure mode                                              | [CWE][cwe] mapping                     | Standards / rules                                                | Primary project control                                                                                          |
-| ------------------------------------------ | --------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Pitfall                                    | Failure mode                                              | [CWE][cwe] mapping                     | Standards / rules                                                | Primary project control                                                                                         |
+| ------------------------------------------ | --------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | Unsequenced modification                   | expression modifies and reads same scalar without order   | [CWE-758][cwe-758]                     | [C23][c23], [CERT C][cert-c], [MISRA C][misra-c]                 | [`CSTYLE-061-4-1-4-no-side-effects-in-conditions`](./c-code-standard.md#414-no-side-effects-in-conditions)      |
 | Indeterminate value read                   | automatic object, padding, or invalid representation read | [CWE-457][cwe-457], [CWE-758][cwe-758] | [C23][c23], [CERT C][cert-c], [MISRA C][misra-c]                 | [`CSTYLE-107-8-1-variable-initialization`](./c-code-standard.md#81-variable-initialization)                     |
 | Trap representation                        | invalid object representation read as typed value         | [CWE-758][cwe-758]                     | [C23][c23], [CERT C][cert-c]                                     | [`CSTYLE-100-7-2-c-behavior-categories`](./c-code-standard.md#72-c-behavior-categories)                         |
@@ -1301,8 +1301,8 @@ void EX_badInfiniteLoopWithoutProgress(void)
 
 ## Integer and Arithmetic Pitfalls
 
-| Pitfall                            | Failure mode                                             | [CWE][cwe] mapping                     | Standards / rules                                                  | Primary project control                                                                                  |
-| ---------------------------------- | -------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| Pitfall                            | Failure mode                                             | [CWE][cwe] mapping                     | Standards / rules                                                  | Primary project control                                                                                 |
+| ---------------------------------- | -------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
 | Allocation multiplication overflow | `count * sizeof(*ptr)` wraps to a smaller allocation     | [CWE-190][cwe-190], [CWE-131][cwe-131] | [CERT C][cert-c], [TS 17961][ts-17961], [CWE][cwe]                 | [`CSTYLE-102-7-4-checked-integer-arithmetic`](./c-code-standard.md#74-checked-integer-arithmetic)       |
 | Header plus payload overflow       | protocol or allocator size calculation wraps             | [CWE-190][cwe-190], [CWE-680][cwe-680] | [CERT C][cert-c], [TS 17961][ts-17961]                             | [`CSTYLE-102-7-4-checked-integer-arithmetic`](./c-code-standard.md#74-checked-integer-arithmetic)       |
 | Offset plus size overflow          | range validation accepts invalid slice                   | [CWE-190][cwe-190], [CWE-787][cwe-787] | [CERT C][cert-c], [TS 17961][ts-17961]                             | [`CSTYLE-102-7-4-checked-integer-arithmetic`](./c-code-standard.md#74-checked-integer-arithmetic)       |
@@ -1502,8 +1502,8 @@ size_t EX_badFloatingPointInAllocator(double count)
 Every libc call has preconditions. Violating those preconditions is often UB,
 even when the function looks harmless.
 
-| Pitfall                           | Failure mode                                          | [CWE][cwe] mapping                     | Standards / rules                        | Primary project control                                                                        |
-| --------------------------------- | ----------------------------------------------------- | -------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Pitfall                           | Failure mode                                          | [CWE][cwe] mapping                     | Standards / rules                        | Primary project control                                                                       |
+| --------------------------------- | ----------------------------------------------------- | -------------------------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------- |
 | `memcpy` with overlap             | overlapping source and destination passed to `memcpy` | [CWE-475][cwe-475], [CWE-758][cwe-758] | [CERT C][cert-c], [C23][c23]             | [`CSTYLE-086-standard-library-policy`](./c-code-standard.md#521-standard-library-policy)      |
 | `memcpy`/`memset` invalid pointer | null or invalid pointer used with non-zero size       | [CWE-476][cwe-476], [CWE-787][cwe-787] | [CERT C][cert-c], [TS 17961][ts-17961]   | [`CSTYLE-058-4-1-3-argument-validation`](./c-code-standard.md#413-argument-validation)        |
 | `strlen` on unterminated data     | scans beyond object                                   | [CWE-126][cwe-126], [CWE-125][cwe-125] | [CERT C][cert-c], [MISRA C][misra-c]     | [`CSTYLE-087-5-3-string-handling`](./c-code-standard.md#53-string-handling)                   |
@@ -1783,8 +1783,8 @@ void EX_badIgnoredReturnValue(FILE *file, const void *buffer)
 
 ## Concurrency and Execution Pitfalls
 
-| Pitfall                          | Failure mode                                           | [CWE][cwe] mapping                     | Standards / rules                                                  | Primary project control                                                                                          |
-| -------------------------------- | ------------------------------------------------------ | -------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| Pitfall                          | Failure mode                                           | [CWE][cwe] mapping                     | Standards / rules                                                  | Primary project control                                                                                         |
+| -------------------------------- | ------------------------------------------------------ | -------------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
 | Data race                        | concurrent unsynchronized access to shared object      | [CWE-362][cwe-362], [CWE-366][cwe-366] | [CERT C][cert-c], [IEC 61508][iec-61508], [ISO 26262][iso-26262]   | [`CSTYLE-092-6-5-synchronization-rules`](./c-code-standard.md#65-synchronization-rules)                         |
 | Improper locking                 | wrong lock, missing lock, unlock by non-owner          | [CWE-667][cwe-667]                     | [CERT C][cert-c], [IEC 61508][iec-61508]                           | [`CSTYLE-092-6-5-synchronization-rules`](./c-code-standard.md#65-synchronization-rules)                         |
 | Deadlock                         | cyclic wait or inconsistent lock ordering              | [CWE-833][cwe-833]                     | [CERT C][cert-c], [IEC 61508][iec-61508]                           | [`CSTYLE-092-6-5-synchronization-rules`](./c-code-standard.md#65-synchronization-rules)                         |
@@ -2142,8 +2142,8 @@ void EX_badUnboundedBlocking(void)
 
 ## Embedded and Hardware Pitfalls
 
-| Pitfall                             | Failure mode                                            | [CWE][cwe] mapping                       | Standards / rules                                                                              | Primary project control                                                                                                          |
-| ----------------------------------- | ------------------------------------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Pitfall                             | Failure mode                                            | [CWE][cwe] mapping                       | Standards / rules                                                                              | Primary project control                                                                                                         |
+| ----------------------------------- | ------------------------------------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | Reserved register bits clobbered    | write corrupts undocumented or reserved hardware state  | [CWE-664][cwe-664], [CWE-758][cwe-758]   | [IEC 61508][iec-61508], [ISO 26262][iso-26262], [MISRA C][misra-c]                             | [`CSTYLE-105-7-7-hardware-register-read-modify-write-rules`](./c-code-standard.md#77-hardware-register-read-modify-write-rules) |
 | Read-clear register mishandled      | status bit lost by careless read-modify-write           | [CWE-664][cwe-664]                       | [IEC 61508][iec-61508], [ISO 26262][iso-26262]                                                 | [`CSTYLE-105-7-7-hardware-register-read-modify-write-rules`](./c-code-standard.md#77-hardware-register-read-modify-write-rules) |
 | DMA cache coherency failure         | CPU and peripheral observe different memory             | [CWE-667][cwe-667], [CWE-664][cwe-664]   | [IEC 61508][iec-61508], [ISO 26262][iso-26262]                                                 | [`CSTYLE-089-6-2-volatile-rules`](./c-code-standard.md#62-volatile-rules)                                                       |
@@ -2362,20 +2362,20 @@ void *EX_badDynamicAllocationInCriticalPath(size_t size)
 
 ## Security and Trust-Boundary Pitfalls
 
-| Pitfall | Failure mode | [CWE][cwe] mapping | External security context | Standards / rules | Primary project control |
-| --- | --- | --- | --- | --- | --- |
-| Tainted size trusted | file, network, CLI, IPC, or fuzzer value used unchecked | [CWE-20][cwe-20], [CWE-129][cwe-129] | [CWE Top 25:2025][cwe-top25-2025], [OWASP A06][owasp-a06] | [CERT C][cert-c], [TS 17961][ts-17961], [ISO/IEC TR 24772-3][iso-24772-3], [IEC 62443][iec-62443] | [`CSTYLE-059-untrusted-input-validation`](./c-code-standard.md#untrusted-input-validation) |
-| Format string injection | external input controls format string | [CWE-134][cwe-134] | [OWASP A05][owasp-a05] | [CERT C][cert-c], [TS 17961][ts-17961], [ISO/IEC TR 24772-3][iso-24772-3] | [`CSTYLE-068-format-string-safety`](./c-code-standard.md#format-string-safety) |
-| Hardcoded secret | credential or key embedded in source or firmware | [CWE-798][cwe-798] | [OWASP A02][owasp-a02], [OWASP A04][owasp-a04], [OWASP A07][owasp-a07] | [IEC 62443][iec-62443], [ISO/IEC 15408][iso-15408], [ISO/SAE 21434][iso-sae-21434] | [`CSTYLE-086-standard-library-policy`](./c-code-standard.md#521-standard-library-policy) |
-| Secret logged | token, key, password, PII, or private data reaches log | [CWE-532][cwe-532] | [OWASP A09][owasp-a09] | [IEC 62443][iec-62443], [ISO/IEC 15408][iso-15408] | [`CSTYLE-067-4-1-10-logging-and-assertions`](./c-code-standard.md#4110-logging-and-assertions) |
-| Missing secure erase | secret remains in memory after use | [CWE-226][cwe-226] | [OWASP A04][owasp-a04] | [IEC 62443][iec-62443], [ISO/IEC 15408][iso-15408] | [`CSTYLE-086-standard-library-policy`](./c-code-standard.md#521-standard-library-policy) |
-| Homegrown cryptography | custom crypto is used instead of reviewed primitive | [CWE-327][cwe-327] | [OWASP A04][owasp-a04] | [IEC 62443][iec-62443], [ISO/IEC 15408][iso-15408], [ISO/SAE 21434][iso-sae-21434] | [`CSTYLE-029-2-1-4-external-dependency-wrappers`](./c-code-standard.md#214-external-dependency-wrappers) |
-| Weak random number | predictable token, nonce, key, or challenge | [CWE-338][cwe-338] | [OWASP A04][owasp-a04], [OWASP A07][owasp-a07] | [IEC 62443][iec-62443], [ISO/IEC 15408][iso-15408] | [`CSTYLE-086-standard-library-policy`](./c-code-standard.md#521-standard-library-policy) |
-| Missing firmware signature check | untrusted firmware image is accepted | [CWE-347][cwe-347], [CWE-494][cwe-494] | [OWASP A08][owasp-a08] | [IEC 62443][iec-62443], [ISO/IEC 15408][iso-15408], [ISO/SAE 21434][iso-sae-21434] | [`CSTYLE-059-untrusted-input-validation`](./c-code-standard.md#untrusted-input-validation) |
-| Missing anti-rollback | old vulnerable firmware or config can be restored | [CWE-693][cwe-693] | [OWASP A08][owasp-a08] | [IEC 62443][iec-62443], [ISO/IEC 15408][iso-15408], [ISO/SAE 21434][iso-sae-21434] | [`CSTYLE-059-untrusted-input-validation`](./c-code-standard.md#untrusted-input-validation) |
-| Command injection | external input reaches shell or command interpreter | [CWE-78][cwe-78], [CWE-77][cwe-77] | [OWASP A05][owasp-a05], [CAPEC-88][capec-88], [CISA KEV][cisa-kev] | [CERT C][cert-c], [TS 17961][ts-17961], [ISO/IEC 27034-1][iso-27034-1] | [`CSTYLE-109-10-1-downstream-interpreter-boundaries`](./c-code-standard.md#101-downstream-interpreter-boundaries) |
-| Path traversal | external path escapes allowed directory | [CWE-22][cwe-22] | [OWASP A01][owasp-a01], [CAPEC-126][capec-126], [CISA KEV][cisa-kev] | [CERT C][cert-c], [ISO/IEC 27034-1][iso-27034-1] | [`CSTYLE-059-untrusted-input-validation`](./c-code-standard.md#untrusted-input-validation) |
-| Improper access control | API permits operation without authorization check | [CWE-284][cwe-284] | [OWASP A01][owasp-a01], [CWE Top 25:2025][cwe-top25-2025] | [IEC 62443][iec-62443], [ISO/IEC 15408][iso-15408], [ISO/SAE 21434][iso-sae-21434] | [`CSTYLE-110-10-2-authentication-and-authorization-gates`](./c-code-standard.md#102-authentication-and-authorization-gates) |
+| Pitfall                          | Failure mode                                            | [CWE][cwe] mapping                     | External security context                                              | Standards / rules                                                                                 | Primary project control                                                                                                   |
+| -------------------------------- | ------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Tainted size trusted             | file, network, CLI, IPC, or fuzzer value used unchecked | [CWE-20][cwe-20], [CWE-129][cwe-129]   | [CWE Top 25:2025][cwe-top25-2025], [OWASP A06][owasp-a06]              | [CERT C][cert-c], [TS 17961][ts-17961], [ISO/IEC TR 24772-3][iso-24772-3], [IEC 62443][iec-62443] | [`CSTYLE-059-untrusted-input-validation`](./c-code-standard.md#untrusted-input-validation)                                |
+| Format string injection          | external input controls format string                   | [CWE-134][cwe-134]                     | [OWASP A05][owasp-a05]                                                 | [CERT C][cert-c], [TS 17961][ts-17961], [ISO/IEC TR 24772-3][iso-24772-3]                         | [`CSTYLE-068-format-string-safety`](./c-code-standard.md#format-string-safety)                                            |
+| Hardcoded secret                 | credential or key embedded in source or firmware        | [CWE-798][cwe-798]                     | [OWASP A02][owasp-a02], [OWASP A04][owasp-a04], [OWASP A07][owasp-a07] | [IEC 62443][iec-62443], [ISO/IEC 15408][iso-15408], [ISO/SAE 21434][iso-sae-21434]                | [`CSTYLE-086-standard-library-policy`](./c-code-standard.md#521-standard-library-policy)                                  |
+| Secret logged                    | token, key, password, PII, or private data reaches log  | [CWE-532][cwe-532]                     | [OWASP A09][owasp-a09]                                                 | [IEC 62443][iec-62443], [ISO/IEC 15408][iso-15408]                                                | [`CSTYLE-067-4-1-10-logging-and-assertions`](./c-code-standard.md#4110-logging-and-assertions)                            |
+| Missing secure erase             | secret remains in memory after use                      | [CWE-226][cwe-226]                     | [OWASP A04][owasp-a04]                                                 | [IEC 62443][iec-62443], [ISO/IEC 15408][iso-15408]                                                | [`CSTYLE-086-standard-library-policy`](./c-code-standard.md#521-standard-library-policy)                                  |
+| Homegrown cryptography           | custom crypto is used instead of reviewed primitive     | [CWE-327][cwe-327]                     | [OWASP A04][owasp-a04]                                                 | [IEC 62443][iec-62443], [ISO/IEC 15408][iso-15408], [ISO/SAE 21434][iso-sae-21434]                | [`CSTYLE-029-2-1-4-external-dependency-wrappers`](./c-code-standard.md#214-external-dependency-wrappers)                  |
+| Weak random number               | predictable token, nonce, key, or challenge             | [CWE-338][cwe-338]                     | [OWASP A04][owasp-a04], [OWASP A07][owasp-a07]                         | [IEC 62443][iec-62443], [ISO/IEC 15408][iso-15408]                                                | [`CSTYLE-086-standard-library-policy`](./c-code-standard.md#521-standard-library-policy)                                  |
+| Missing firmware signature check | untrusted firmware image is accepted                    | [CWE-347][cwe-347], [CWE-494][cwe-494] | [OWASP A08][owasp-a08]                                                 | [IEC 62443][iec-62443], [ISO/IEC 15408][iso-15408], [ISO/SAE 21434][iso-sae-21434]                | [`CSTYLE-059-untrusted-input-validation`](./c-code-standard.md#untrusted-input-validation)                                |
+| Missing anti-rollback            | old vulnerable firmware or config can be restored       | [CWE-693][cwe-693]                     | [OWASP A08][owasp-a08]                                                 | [IEC 62443][iec-62443], [ISO/IEC 15408][iso-15408], [ISO/SAE 21434][iso-sae-21434]                | [`CSTYLE-059-untrusted-input-validation`](./c-code-standard.md#untrusted-input-validation)                                |
+| Command injection                | external input reaches shell or command interpreter     | [CWE-78][cwe-78], [CWE-77][cwe-77]     | [OWASP A05][owasp-a05], [CAPEC-88][capec-88], [CISA KEV][cisa-kev]     | [CERT C][cert-c], [TS 17961][ts-17961], [ISO/IEC 27034-1][iso-27034-1]                            | [`CSTYLE-109-9-1-downstream-interpreter-boundaries`](./c-code-standard.md#91-downstream-interpreter-boundaries)           |
+| Path traversal                   | external path escapes allowed directory                 | [CWE-22][cwe-22]                       | [OWASP A01][owasp-a01], [CAPEC-126][capec-126], [CISA KEV][cisa-kev]   | [CERT C][cert-c], [ISO/IEC 27034-1][iso-27034-1]                                                  | [`CSTYLE-059-untrusted-input-validation`](./c-code-standard.md#untrusted-input-validation)                                |
+| Improper access control          | API permits operation without authorization check       | [CWE-284][cwe-284]                     | [OWASP A01][owasp-a01], [CWE Top 25:2025][cwe-top25-2025]              | [IEC 62443][iec-62443], [ISO/IEC 15408][iso-15408], [ISO/SAE 21434][iso-sae-21434]                | [`CSTYLE-110-9-2-authentication-and-authorization-gates`](./c-code-standard.md#92-authentication-and-authorization-gates) |
 
 ---
 
@@ -2570,7 +2570,7 @@ int EX_badMissingAntiRollback(uint32_t image_version)
 
 **Pitfall ID:** `CPIT-103-command-injection`
 
-**Primary prevention rule:** [`CSTYLE-109-10-1-downstream-interpreter-boundaries`](./c-code-standard.md#101-downstream-interpreter-boundaries)
+**Primary prevention rule:** [`CSTYLE-109-9-1-downstream-interpreter-boundaries`](./c-code-standard.md#91-downstream-interpreter-boundaries)
 
 **Command injection.** If external data reaches a shell command, separators,
 substitution, quoting, and environment behavior become attack surface. Runtime
@@ -2609,7 +2609,7 @@ FILE *EX_badPathTraversal(const char *user_path)
 
 **Pitfall ID:** `CPIT-105-improper-access-control`
 
-**Primary prevention rule:** [`CSTYLE-110-10-2-authentication-and-authorization-gates`](./c-code-standard.md#102-authentication-and-authorization-gates)
+**Primary prevention rule:** [`CSTYLE-110-9-2-authentication-and-authorization-gates`](./c-code-standard.md#92-authentication-and-authorization-gates)
 
 **Improper access control.** A function that performs a privileged operation
 must verify the caller's authority, mode, state, or capability before acting.
@@ -2626,7 +2626,6 @@ void EX_badImproperAccessControl(int is_debug_command)
 
 ---
 
-
 ## Application, Service, and Supply-Chain Pitfalls
 
 These entries cover C code used in network services, management planes, web
@@ -2635,25 +2634,25 @@ trust-boundary roles. A project that does not implement a given technology may
 mark the corresponding entry not applicable, but the mapping remains available
 for reuse by modules that do.
 
-| Pitfall | Failure mode | [CWE][cwe] mapping | OWASP / CAPEC / field evidence | ISO and other standards | Primary project control |
-| --- | --- | --- | --- | --- | --- |
-| SQL injection | data becomes SQL syntax | [CWE-89][cwe-89] | [OWASP A05][owasp-a05], [CAPEC-66][capec-66], [CVE-2024-29824][cve-2024-29824], [CISA KEV][kev-cve-2024-29824] | [ISO/IEC 27034-1][iso-27034-1], [ISO/IEC 15408][iso-15408] | [`CSTYLE-109`](./c-code-standard.md#101-downstream-interpreter-boundaries) |
-| Cross-site scripting output injection | untrusted data becomes executable browser content | [CWE-79][cwe-79] | [OWASP A05][owasp-a05], [CAPEC-63][capec-63], [CWE Top 25:2025][cwe-top25-2025] | [ISO/IEC 27034-1][iso-27034-1] | [`CSTYLE-109`](./c-code-standard.md#101-downstream-interpreter-boundaries) |
-| Cross-site request forgery | ambient credentials authorize attacker-triggered request | [CWE-352][cwe-352] | [OWASP A01][owasp-a01], [CAPEC-62][capec-62] | [ISO/IEC 27034-1][iso-27034-1], [ISO/IEC 15408][iso-15408] | [`CSTYLE-110`](./c-code-standard.md#102-authentication-and-authorization-gates) |
-| Code injection or dynamic evaluation | untrusted data controls generated or evaluated code | [CWE-94][cwe-94] | [OWASP A05][owasp-a05], [CAPEC-242][capec-242], [CWE KEV Top 10:2025][cwe-kev-top10-2025] | [ISO/IEC 27034-1][iso-27034-1], [ISO/IEC 15408][iso-15408] | [`CSTYLE-109`](./c-code-standard.md#101-downstream-interpreter-boundaries) |
-| Unrestricted dangerous file upload | attacker-controlled file reaches executable or trusted location | [CWE-434][cwe-434] | [OWASP A06][owasp-a06], [CAPEC-17][capec-17] | [ISO/IEC 27034-1][iso-27034-1], [ISO/IEC 24772-1][iso-24772-1] | [`CSTYLE-111`](./c-code-standard.md#103-untrusted-structured-input-and-file-ingress) |
-| Deserialization of untrusted data | encoded attacker-controlled object recreates unsafe state or behavior | [CWE-502][cwe-502] | [OWASP A08][owasp-a08], [CVE-2025-10035][cve-2025-10035], [CISA KEV][kev-2025-09-29] | [ISO/IEC 27034-1][iso-27034-1], [ISO/IEC 24772-1][iso-24772-1] | [`CSTYLE-111`](./c-code-standard.md#103-untrusted-structured-input-and-file-ingress) |
-| Missing authentication for critical function | privileged function accepts unauthenticated caller | [CWE-306][cwe-306], [CWE-287][cwe-287] | [OWASP A07][owasp-a07], [CWE KEV Top 10:2025][cwe-kev-top10-2025] | [ISO/IEC 15408][iso-15408], [ISO/SAE 21434][iso-sae-21434] | [`CSTYLE-110`](./c-code-standard.md#102-authentication-and-authorization-gates) |
-| Incorrect authorization or user-controlled object key | authenticated caller selects resource outside its authority | [CWE-862][cwe-862], [CWE-863][cwe-863], [CWE-639][cwe-639] | [OWASP A01][owasp-a01], [CAPEC-122][capec-122] | [ISO/IEC 15408][iso-15408], [ISO/SAE 21434][iso-sae-21434] | [`CSTYLE-110`](./c-code-standard.md#102-authentication-and-authorization-gates), [`CMOD-085`](./c-module-architecture.md#194-privileged-capabilities-stay-with-their-security-owner) |
-| Server-side request forgery | external input selects a server-side destination or protocol | [CWE-918][cwe-918] | [OWASP A01][owasp-a01], [CAPEC-664][capec-664], [CVE-2021-21311][cve-2021-21311], [CISA KEV][kev-2025-09-29] | [ISO/IEC 27034-1][iso-27034-1], [ISO/IEC 15408][iso-15408] | [`CSTYLE-112`](./c-code-standard.md#104-outbound-request-destination-validation) |
-| Unbounded resource consumption | attacker controls memory, file, task, recursion, queue, or CPU growth | [CWE-770][cwe-770], [CWE-400][cwe-400] | [OWASP A06][owasp-a06], [CWE Top 25:2025][cwe-top25-2025] | [ISO/IEC 24772-1][iso-24772-1], [ISO/IEC TR 24772-3][iso-24772-3] | [`CSTYLE-113`](./c-code-standard.md#105-resource-budgets-and-throttling) |
-| Security misconfiguration or active debug mode | production enables unsafe defaults, services, credentials, or debug behavior | [CWE-16][cwe-16], [CWE-489][cwe-489] | [OWASP A02][owasp-a02] | [ISO/IEC 27034-1][iso-27034-1], [ISO/IEC 15408][iso-15408], [ISO/SAE 21434][iso-sae-21434] | [`CMOD-083`](./c-module-architecture.md#192-production-security-configuration-is-a-controlled-artifact) |
-| Software supply-chain dependency failure | vulnerable, obsolete, untracked, or unverifiable component enters build/product | [CWE-1104][cwe-1104], [CWE-1395][cwe-1395] | [OWASP A03][owasp-a03], [CISA KEV][cisa-kev], [CVE][cve] | [ISO/IEC 27036-3][iso-27036-3], [ISO/IEC 27034-1][iso-27034-1] | [`CMOD-084`](./c-module-architecture.md#193-dependency-and-artifact-integrity-is-part-of-module-ownership) |
-| Untrusted component or plugin inclusion | loader/build includes executable content from untrusted control sphere | [CWE-829][cwe-829] | [OWASP A08][owasp-a08], [CAPEC-175][capec-175] | [ISO/IEC 27036-3][iso-27036-3], [ISO/IEC 15408][iso-15408] | [`CMOD-084`](./c-module-architecture.md#193-dependency-and-artifact-integrity-is-part-of-module-ownership), [`CMOD-086`](./c-module-architecture.md#195-runtime-loaders-and-plugins-are-explicit-trust-boundaries) |
-| Log injection or insufficient security logging | attacker forges log structure or security-relevant rejection is unobservable | [CWE-117][cwe-117], [CWE-778][cwe-778] | [OWASP A09][owasp-a09] | [ISO/IEC 27034-1][iso-27034-1], [ISO/IEC 15408][iso-15408] | [`CSTYLE-067`](./c-code-standard.md#4110-logging-and-assertions) |
-| Fail-open or sensitive error disclosure | exceptional path grants access, skips safety/security check, or leaks internals | [CWE-636][cwe-636], [CWE-209][cwe-209], [CWE-200][cwe-200] | [OWASP A10][owasp-a10], [OWASP A02][owasp-a02] | [ISO/IEC 27034-1][iso-27034-1], [ISO/IEC 15408][iso-15408] | [`CSTYLE-114`](./c-code-standard.md#106-security-exception-and-fail-closed-behavior) |
-| Untrusted search path or environment-controlled loader | attacker-selected directory or environment value changes loaded code/resource | [CWE-426][cwe-426], [CWE-427][cwe-427] | [OWASP A02][owasp-a02], [OWASP A08][owasp-a08], [CAPEC-38][capec-38] | [ISO/IEC 27036-3][iso-27036-3], [ISO/IEC 15408][iso-15408] | [`CSTYLE-115`](./c-code-standard.md#107-loader-and-search-path-safety), [`CMOD-086`](./c-module-architecture.md#195-runtime-loaders-and-plugins-are-explicit-trust-boundaries) |
-| XML external entity or recursive entity expansion | parser resolves external/recursive entities from untrusted XML | [CWE-611][cwe-611], [CWE-776][cwe-776] | [OWASP A02][owasp-a02] | [ISO/IEC 27034-1][iso-27034-1], [ISO/IEC 24772-1][iso-24772-1] | [`CSTYLE-111`](./c-code-standard.md#103-untrusted-structured-input-and-file-ingress) |
+| Pitfall                                                | Failure mode                                                                    | [CWE][cwe] mapping                                         | OWASP / CAPEC / field evidence                                                                                 | ISO and other standards                                                                    | Primary project control                                                                                                                                                                                            |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| SQL injection                                          | data becomes SQL syntax                                                         | [CWE-89][cwe-89]                                           | [OWASP A05][owasp-a05], [CAPEC-66][capec-66], [CVE-2024-29824][cve-2024-29824], [CISA KEV][kev-cve-2024-29824] | [ISO/IEC 27034-1][iso-27034-1], [ISO/IEC 15408][iso-15408]                                 | [`CSTYLE-109`](./c-code-standard.md#91-downstream-interpreter-boundaries)                                                                                                                                          |
+| Cross-site scripting output injection                  | untrusted data becomes executable browser content                               | [CWE-79][cwe-79]                                           | [OWASP A05][owasp-a05], [CAPEC-63][capec-63], [CWE Top 25:2025][cwe-top25-2025]                                | [ISO/IEC 27034-1][iso-27034-1]                                                             | [`CSTYLE-109`](./c-code-standard.md#91-downstream-interpreter-boundaries)                                                                                                                                          |
+| Cross-site request forgery                             | ambient credentials authorize attacker-triggered request                        | [CWE-352][cwe-352]                                         | [OWASP A01][owasp-a01], [CAPEC-62][capec-62]                                                                   | [ISO/IEC 27034-1][iso-27034-1], [ISO/IEC 15408][iso-15408]                                 | [`CSTYLE-110`](./c-code-standard.md#92-authentication-and-authorization-gates)                                                                                                                                     |
+| Code injection or dynamic evaluation                   | untrusted data controls generated or evaluated code                             | [CWE-94][cwe-94]                                           | [OWASP A05][owasp-a05], [CAPEC-242][capec-242], [CWE KEV Top 10:2025][cwe-kev-top10-2025]                      | [ISO/IEC 27034-1][iso-27034-1], [ISO/IEC 15408][iso-15408]                                 | [`CSTYLE-109`](./c-code-standard.md#91-downstream-interpreter-boundaries)                                                                                                                                          |
+| Unrestricted dangerous file upload                     | attacker-controlled file reaches executable or trusted location                 | [CWE-434][cwe-434]                                         | [OWASP A06][owasp-a06], [CAPEC-17][capec-17]                                                                   | [ISO/IEC 27034-1][iso-27034-1], [ISO/IEC 24772-1][iso-24772-1]                             | [`CSTYLE-111`](./c-code-standard.md#93-untrusted-structured-input-and-file-ingress)                                                                                                                                |
+| Deserialization of untrusted data                      | encoded attacker-controlled object recreates unsafe state or behavior           | [CWE-502][cwe-502]                                         | [OWASP A08][owasp-a08], [CVE-2025-10035][cve-2025-10035], [CISA KEV][kev-2025-09-29]                           | [ISO/IEC 27034-1][iso-27034-1], [ISO/IEC 24772-1][iso-24772-1]                             | [`CSTYLE-111`](./c-code-standard.md#93-untrusted-structured-input-and-file-ingress)                                                                                                                                |
+| Missing authentication for critical function           | privileged function accepts unauthenticated caller                              | [CWE-306][cwe-306], [CWE-287][cwe-287]                     | [OWASP A07][owasp-a07], [CWE KEV Top 10:2025][cwe-kev-top10-2025]                                              | [ISO/IEC 15408][iso-15408], [ISO/SAE 21434][iso-sae-21434]                                 | [`CSTYLE-110`](./c-code-standard.md#92-authentication-and-authorization-gates)                                                                                                                                     |
+| Incorrect authorization or user-controlled object key  | authenticated caller selects resource outside its authority                     | [CWE-862][cwe-862], [CWE-863][cwe-863], [CWE-639][cwe-639] | [OWASP A01][owasp-a01], [CAPEC-122][capec-122]                                                                 | [ISO/IEC 15408][iso-15408], [ISO/SAE 21434][iso-sae-21434]                                 | [`CSTYLE-110`](./c-code-standard.md#92-authentication-and-authorization-gates), [`CMOD-085`](./c-module-architecture.md#194-privileged-capabilities-stay-with-their-security-owner)                                |
+| Server-side request forgery                            | external input selects a server-side destination or protocol                    | [CWE-918][cwe-918]                                         | [OWASP A01][owasp-a01], [CAPEC-664][capec-664], [CVE-2021-21311][cve-2021-21311], [CISA KEV][kev-2025-09-29]   | [ISO/IEC 27034-1][iso-27034-1], [ISO/IEC 15408][iso-15408]                                 | [`CSTYLE-112`](./c-code-standard.md#94-outbound-request-destination-validation)                                                                                                                                    |
+| Unbounded resource consumption                         | attacker controls memory, file, task, recursion, queue, or CPU growth           | [CWE-770][cwe-770], [CWE-400][cwe-400]                     | [OWASP A06][owasp-a06], [CWE Top 25:2025][cwe-top25-2025]                                                      | [ISO/IEC 24772-1][iso-24772-1], [ISO/IEC TR 24772-3][iso-24772-3]                          | [`CSTYLE-113`](./c-code-standard.md#95-resource-budgets-and-throttling)                                                                                                                                            |
+| Security misconfiguration or active debug mode         | production enables unsafe defaults, services, credentials, or debug behavior    | [CWE-16][cwe-16], [CWE-489][cwe-489]                       | [OWASP A02][owasp-a02]                                                                                         | [ISO/IEC 27034-1][iso-27034-1], [ISO/IEC 15408][iso-15408], [ISO/SAE 21434][iso-sae-21434] | [`CMOD-083`](./c-module-architecture.md#192-production-security-configuration-is-a-controlled-artifact)                                                                                                            |
+| Software supply-chain dependency failure               | vulnerable, obsolete, untracked, or unverifiable component enters build/product | [CWE-1104][cwe-1104], [CWE-1395][cwe-1395]                 | [OWASP A03][owasp-a03], [CISA KEV][cisa-kev], [CVE][cve]                                                       | [ISO/IEC 27036-3][iso-27036-3], [ISO/IEC 27034-1][iso-27034-1]                             | [`CMOD-084`](./c-module-architecture.md#193-dependency-and-artifact-integrity-is-part-of-module-ownership)                                                                                                         |
+| Untrusted component or plugin inclusion                | loader/build includes executable content from untrusted control sphere          | [CWE-829][cwe-829]                                         | [OWASP A08][owasp-a08], [CAPEC-175][capec-175]                                                                 | [ISO/IEC 27036-3][iso-27036-3], [ISO/IEC 15408][iso-15408]                                 | [`CMOD-084`](./c-module-architecture.md#193-dependency-and-artifact-integrity-is-part-of-module-ownership), [`CMOD-086`](./c-module-architecture.md#195-runtime-loaders-and-plugins-are-explicit-trust-boundaries) |
+| Log injection or insufficient security logging         | attacker forges log structure or security-relevant rejection is unobservable    | [CWE-117][cwe-117], [CWE-778][cwe-778]                     | [OWASP A09][owasp-a09]                                                                                         | [ISO/IEC 27034-1][iso-27034-1], [ISO/IEC 15408][iso-15408]                                 | [`CSTYLE-067`](./c-code-standard.md#4110-logging-and-assertions)                                                                                                                                                   |
+| Fail-open or sensitive error disclosure                | exceptional path grants access, skips safety/security check, or leaks internals | [CWE-636][cwe-636], [CWE-209][cwe-209], [CWE-200][cwe-200] | [OWASP A10][owasp-a10], [OWASP A02][owasp-a02]                                                                 | [ISO/IEC 27034-1][iso-27034-1], [ISO/IEC 15408][iso-15408]                                 | [`CSTYLE-114`](./c-code-standard.md#96-security-exception-and-fail-closed-behavior)                                                                                                                                |
+| Untrusted search path or environment-controlled loader | attacker-selected directory or environment value changes loaded code/resource   | [CWE-426][cwe-426], [CWE-427][cwe-427]                     | [OWASP A02][owasp-a02], [OWASP A08][owasp-a08], [CAPEC-38][capec-38]                                           | [ISO/IEC 27036-3][iso-27036-3], [ISO/IEC 15408][iso-15408]                                 | [`CSTYLE-115`](./c-code-standard.md#97-loader-and-search-path-safety), [`CMOD-086`](./c-module-architecture.md#195-runtime-loaders-and-plugins-are-explicit-trust-boundaries)                                      |
+| XML external entity or recursive entity expansion      | parser resolves external/recursive entities from untrusted XML                  | [CWE-611][cwe-611], [CWE-776][cwe-776]                     | [OWASP A02][owasp-a02]                                                                                         | [ISO/IEC 27034-1][iso-27034-1], [ISO/IEC 24772-1][iso-24772-1]                             | [`CSTYLE-111`](./c-code-standard.md#93-untrusted-structured-input-and-file-ingress)                                                                                                                                |
 
 ---
 
@@ -2665,7 +2664,7 @@ for reuse by modules that do.
 
 **Pitfall ID:** `CPIT-106-sql-injection`
 
-**Primary prevention rule:** [`CSTYLE-109-10-1-downstream-interpreter-boundaries`](./c-code-standard.md#101-downstream-interpreter-boundaries)
+**Primary prevention rule:** [`CSTYLE-109-9-1-downstream-interpreter-boundaries`](./c-code-standard.md#91-downstream-interpreter-boundaries)
 
 **SQL injection.** Data becomes SQL syntax when a query is assembled by string
 concatenation, formatting, or another text-substitution mechanism. Validate the
@@ -2685,7 +2684,7 @@ snprintf(query,
 
 **Pitfall ID:** `CPIT-107-cross-site-scripting-output-injection`
 
-**Primary prevention rule:** [`CSTYLE-109-10-1-downstream-interpreter-boundaries`](./c-code-standard.md#101-downstream-interpreter-boundaries)
+**Primary prevention rule:** [`CSTYLE-109-9-1-downstream-interpreter-boundaries`](./c-code-standard.md#91-downstream-interpreter-boundaries)
 
 **Cross-site scripting output injection.** When C code generates HTML, script,
 CSS, URLs, or another browser-interpreted representation, untrusted data must be
@@ -2702,7 +2701,7 @@ printf("<div>%s</div>", user_text);
 
 **Pitfall ID:** `CPIT-108-cross-site-request-forgery`
 
-**Primary prevention rule:** [`CSTYLE-110-10-2-authentication-and-authorization-gates`](./c-code-standard.md#102-authentication-and-authorization-gates)
+**Primary prevention rule:** [`CSTYLE-110-9-2-authentication-and-authorization-gates`](./c-code-standard.md#92-authentication-and-authorization-gates)
 
 **Cross-site request forgery.** A state-changing service action must not treat
 ambient browser credentials as proof that the user intended the request. When a
@@ -2720,7 +2719,7 @@ if (session_is_valid != 0)
 
 **Pitfall ID:** `CPIT-109-code-injection-or-dynamic-evaluation`
 
-**Primary prevention rule:** [`CSTYLE-109-10-1-downstream-interpreter-boundaries`](./c-code-standard.md#101-downstream-interpreter-boundaries)
+**Primary prevention rule:** [`CSTYLE-109-9-1-downstream-interpreter-boundaries`](./c-code-standard.md#91-downstream-interpreter-boundaries)
 
 **Code injection or dynamic evaluation.** Configuration, templates, scripts,
 expressions, JIT input, or generated code from an untrusted source can cross a
@@ -2738,7 +2737,7 @@ SCRIPT_eval(untrusted_text);
 
 **Pitfall ID:** `CPIT-110-unrestricted-dangerous-file-upload`
 
-**Primary prevention rule:** [`CSTYLE-111-10-3-untrusted-structured-input-and-file-ingress`](./c-code-standard.md#103-untrusted-structured-input-and-file-ingress)
+**Primary prevention rule:** [`CSTYLE-111-9-3-untrusted-structured-input-and-file-ingress`](./c-code-standard.md#93-untrusted-structured-input-and-file-ingress)
 
 **Unrestricted dangerous file upload.** A filename, extension, or client-supplied
 MIME type does not establish that content is safe. Enforce a size limit, parse
@@ -2755,7 +2754,7 @@ fwrite(upload_bytes, 1u, upload_size, fopen(user_name, "wb"));
 
 **Pitfall ID:** `CPIT-111-deserialization-of-untrusted-data`
 
-**Primary prevention rule:** [`CSTYLE-111-10-3-untrusted-structured-input-and-file-ingress`](./c-code-standard.md#103-untrusted-structured-input-and-file-ingress)
+**Primary prevention rule:** [`CSTYLE-111-9-3-untrusted-structured-input-and-file-ingress`](./c-code-standard.md#93-untrusted-structured-input-and-file-ingress)
 
 **Deserialization of untrusted data.** Wire bytes must not recreate arbitrary
 pointer graphs, function identifiers, object types, lengths, offsets, or
@@ -2773,7 +2772,7 @@ memcpy(object, packet, sizeof(*object));
 
 **Pitfall ID:** `CPIT-112-missing-authentication-for-critical-function`
 
-**Primary prevention rule:** [`CSTYLE-110-10-2-authentication-and-authorization-gates`](./c-code-standard.md#102-authentication-and-authorization-gates)
+**Primary prevention rule:** [`CSTYLE-110-9-2-authentication-and-authorization-gates`](./c-code-standard.md#92-authentication-and-authorization-gates)
 
 **Missing authentication for critical function.** Update, debug, diagnostic,
 factory, secret-management, and administrative operations need a verified caller
@@ -2793,7 +2792,7 @@ int ADMIN_setKey(const uint8_t *key, size_t key_size)
 
 **Pitfall ID:** `CPIT-113-incorrect-authorization-or-user-controlled-object-key`
 
-**Primary prevention rule:** [`CSTYLE-110-10-2-authentication-and-authorization-gates`](./c-code-standard.md#102-authentication-and-authorization-gates)
+**Primary prevention rule:** [`CSTYLE-110-9-2-authentication-and-authorization-gates`](./c-code-standard.md#92-authentication-and-authorization-gates)
 
 **Incorrect authorization or user-controlled object key.** Authentication says
 who the caller is; authorization says which object and operation that caller may
@@ -2810,7 +2809,7 @@ return STORAGE_read(request->object_id, reply);
 
 **Pitfall ID:** `CPIT-114-server-side-request-forgery`
 
-**Primary prevention rule:** [`CSTYLE-112-10-4-outbound-request-destination-validation`](./c-code-standard.md#104-outbound-request-destination-validation)
+**Primary prevention rule:** [`CSTYLE-112-9-4-outbound-request-destination-validation`](./c-code-standard.md#94-outbound-request-destination-validation)
 
 **Server-side request forgery.** A remote URL, host, address, protocol, port, or
 redirect target supplied by an untrusted actor can turn a server into a proxy to
@@ -2827,7 +2826,7 @@ return HTTP_get(request->url, reply);
 
 **Pitfall ID:** `CPIT-115-unbounded-resource-consumption`
 
-**Primary prevention rule:** [`CSTYLE-113-10-5-resource-budgets-and-throttling`](./c-code-standard.md#105-resource-budgets-and-throttling)
+**Primary prevention rule:** [`CSTYLE-113-9-5-resource-budgets-and-throttling`](./c-code-standard.md#95-resource-budgets-and-throttling)
 
 **Unbounded resource consumption.** A validated integer can still be dangerous
 when it controls allocation count, decoded objects, parser depth, queue growth,
@@ -2918,7 +2917,7 @@ printf("user=%s\n", untrusted_user_field);
 
 **Pitfall ID:** `CPIT-120-fail-open-or-sensitive-error-disclosure`
 
-**Primary prevention rule:** [`CSTYLE-114-10-6-security-exception-and-fail-closed-behavior`](./c-code-standard.md#106-security-exception-and-fail-closed-behavior)
+**Primary prevention rule:** [`CSTYLE-114-9-6-security-exception-and-fail-closed-behavior`](./c-code-standard.md#96-security-exception-and-fail-closed-behavior)
 
 **Fail-open or sensitive error disclosure.** Missing parameters, failed
 signature checks, storage errors, timeouts, invalid privileges, and parser
@@ -2937,7 +2936,7 @@ if (AUTH_verify(token) != 0)
 
 **Pitfall ID:** `CPIT-121-untrusted-search-path-or-environment-controlled-loader`
 
-**Primary prevention rule:** [`CSTYLE-115-10-7-loader-and-search-path-safety`](./c-code-standard.md#107-loader-and-search-path-safety)
+**Primary prevention rule:** [`CSTYLE-115-9-7-loader-and-search-path-safety`](./c-code-standard.md#97-loader-and-search-path-safety)
 
 **Untrusted search path or environment-controlled loader.** Current-working
 folders, writable directories, inherited `PATH`-like variables, and relative
@@ -2954,7 +2953,7 @@ handle = dlopen("codec.so", RTLD_NOW);
 
 **Pitfall ID:** `CPIT-122-xml-external-entity-or-recursive-entity-expansion`
 
-**Primary prevention rule:** [`CSTYLE-111-10-3-untrusted-structured-input-and-file-ingress`](./c-code-standard.md#103-untrusted-structured-input-and-file-ingress)
+**Primary prevention rule:** [`CSTYLE-111-9-3-untrusted-structured-input-and-file-ingress`](./c-code-standard.md#93-untrusted-structured-input-and-file-ingress)
 
 **XML external entity or recursive entity expansion.** When XML is accepted
 from an untrusted boundary, a parser that resolves external entities or permits
@@ -3097,6 +3096,7 @@ Use this checklist during code review:
 [posix]: https://pubs.opengroup.org/onlinepubs/9799919799/
 
 <!-- External security taxonomies, evidence, and current ISO references -->
+
 [cwe-top25-2025]: https://cwe.mitre.org/top25/archive/2025/2025_cwe_top25.html
 [cwe-kev-top10-2025]: https://cwe.mitre.org/top25/archive/2025/2025_kev_list.html
 [owasp-top10-2025]: https://owasp.org/Top10/2025/
@@ -3114,13 +3114,11 @@ Use this checklist during code review:
 [capec]: https://capec.mitre.org/
 [cve]: https://www.cve.org/About/Overview
 [cvss-v4]: https://www.first.org/cvss/v4.0/
-[cvss-v4-spec]: https://www.first.org/cvss/v4.0/specification-document
 [iso-24772-1]: https://www.iso.org/standard/83629.html
 [iso-24772-3]: https://www.iso.org/standard/71093.html
 [iso-27034-1]: https://www.iso.org/standard/44378.html
 [iso-27036-3]: https://www.iso.org/standard/82890.html
 [iso-sae-21434]: https://www.iso.org/standard/70918.html
-
 [capec-17]: https://capec.mitre.org/data/definitions/17.html
 [capec-38]: https://capec.mitre.org/data/definitions/38.html
 [capec-62]: https://capec.mitre.org/data/definitions/62.html
@@ -3132,7 +3130,6 @@ Use this checklist during code review:
 [capec-175]: https://capec.mitre.org/data/definitions/175.html
 [capec-242]: https://capec.mitre.org/data/definitions/242.html
 [capec-664]: https://capec.mitre.org/data/definitions/664.html
-
 [kev-cve-2025-24085]: https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2025-24085
 [kev-cve-2025-0282]: https://www.cisa.gov/cisa-mitigation-instructions-cve-2025-0282
 [kev-cve-2024-29824]: https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=CVE-2024-29824
@@ -3145,7 +3142,6 @@ Use this checklist during code review:
 [cve-2024-29824]: https://www.cve.org/CVERecord?id=CVE-2024-29824
 [cve-2025-10035]: https://www.cve.org/CVERecord?id=CVE-2025-10035
 [cve-2021-21311]: https://www.cve.org/CVERecord?id=CVE-2021-21311
-
 [cwe-16]: https://cwe.mitre.org/data/definitions/16.html
 [cwe-77]: https://cwe.mitre.org/data/definitions/77.html
 [cwe-79]: https://cwe.mitre.org/data/definitions/79.html
@@ -3176,7 +3172,6 @@ Use this checklist during code review:
 [cwe-918]: https://cwe.mitre.org/data/definitions/918.html
 [cwe-1104]: https://cwe.mitre.org/data/definitions/1104.html
 [cwe-1395]: https://cwe.mitre.org/data/definitions/1395.html
-
 [cwe-badge]: https://img.shields.io/badge/MITRE-CWE-2F81F7?style=flat-square&labelColor=1F2328
 [cwe-top25-2025-badge]: https://img.shields.io/badge/CWE%20Top%2025-2025-8957E5?style=flat-square&labelColor=1F2328
 [owasp-top10-2025-badge]: https://img.shields.io/badge/OWASP%20Top%2010-2025-DA3633?style=flat-square&logo=owasp&logoColor=white&labelColor=1F2328

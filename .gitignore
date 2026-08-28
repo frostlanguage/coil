@@ -420,6 +420,7 @@ logs/
 
 .lycache/
 **/.lycache/
+.lycheecache
 
 .cache/
 **/.cache/

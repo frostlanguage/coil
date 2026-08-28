@@ -130,10 +130,7 @@ local function hook_directory(path)
    return path:match("^(.*)[/\\][^/\\]+$") or ".githooks"
 end
 
-local platform = dofile(
-   hook_directory(arg[0] or "").."/lib/platform.lua"
-)
-
+local platform = dofile(hook_directory(arg[0] or "") .. "/lib/platform.lua")
 
 local function shell_quote(value)
    return platform.shell_quote(value)
@@ -164,19 +161,19 @@ end
 --- Print a fatal commit-message diagnostic.
 -- @param message string: diagnostic text.
 local function fail(message)
-   io.stderr:write("coil commit-msg: error: "..message.."\n")
+   io.stderr:write("coil commit-msg: error: " .. message .. "\n")
 end
 
 --- Print a non-fatal commit-message diagnostic.
 -- @param message string: diagnostic text.
 local function warn(message)
-   io.stderr:write("coil commit-msg: warning: "..message.."\n")
+   io.stderr:write("coil commit-msg: warning: " .. message .. "\n")
 end
 
 --- Print informational hook output.
 -- @param message string: informational text.
 local function info(message)
-   io.stderr:write("coil commit-msg: info: "..message.."\n")
+   io.stderr:write("coil commit-msg: info: " .. message .. "\n")
 end
 
 --- Check whether a file exists.
@@ -237,9 +234,8 @@ end
 --- Return the repository root.
 -- @return string|nil: absolute repository root.
 local function repository_root()
-   local output = command_output(
-      silence_stderr("git rev-parse --show-toplevel")
-   )
+   local output =
+      command_output(silence_stderr("git rev-parse --show-toplevel"))
 
    if not output then
       return nil
@@ -258,9 +254,7 @@ end
 -- @param key string: Git configuration key.
 -- @return string|nil: configured value, or nil when absent.
 local function git_config(key)
-   local command = silence_stderr(
-      "git config --get "..shell_quote(key)
-   )
+   local command = silence_stderr("git config --get " .. shell_quote(key))
    local output = command_output(command)
 
    if not output then
@@ -285,7 +279,7 @@ local function split_lines(text)
    text = text:gsub("\r", "\n")
 
    if text:sub(-1) ~= "\n" then
-      text = text.."\n"
+      text = text .. "\n"
    end
 
    for line in text:gmatch("(.-)\n") do
@@ -295,13 +289,30 @@ local function split_lines(text)
    return lines
 end
 
---- Remove Git comment lines and trailing empty lines.
--- @param text string: raw commit message.
+--- Check whether a line is Git's scissors separator.
+-- The scissors marker separates the actual commit message from editor-only
+-- context such as the diff appended when commit.verbose is enabled.
+-- @param line string: line to inspect.
+-- @return boolean: true when the line is a Git scissors separator.
+local function is_scissors_line(line)
+   return line:match("^%s*#%s*%-+%s*>8%s*%-+%s*$") ~= nil
+end
+
+--- Normalize the actual commit message.
+-- Stop at Git's scissors separator so verbose diff content and other
+-- editor-only context never participate in commit-message validation.
+-- Git comment lines and trailing whitespace are removed from the remaining
+-- message, followed by trailing empty lines.
+-- @param text string: raw Git commit-message buffer.
 -- @return string: normalized commit message.
 local function normalize_message(text)
    local normalized = {}
 
    for _, line in ipairs(split_lines(text)) do
+      if is_scissors_line(line) then
+         break
+      end
+
       if not line:match("^%s*#") then
          line = line:gsub("%s+$", "")
          table.insert(normalized, line)
@@ -312,7 +323,7 @@ local function normalize_message(text)
       table.remove(normalized)
    end
 
-   return table.concat(normalized, "\n").."\n"
+   return table.concat(normalized, "\n") .. "\n"
 end
 
 --- Check whether a Unicode code point is a supported lowercase letter.
@@ -374,8 +385,7 @@ end
 -- @param subject string: first commit-message line.
 -- @return table|nil: parsed subject fields.
 local function parse_subject(subject)
-   local pattern =
-      "^([a-z][a-z0-9%-]*)%(([a-z0-9][a-z0-9%._/%-]*)%)(!?): (.+)$"
+   local pattern = "^([a-z][a-z0-9%-]*)%(([a-z0-9][a-z0-9%._/%-]*)%)(!?): (.+)$"
    local commit_type, scope, bang, description = subject:match(pattern)
 
    if not commit_type then
@@ -394,9 +404,7 @@ end
 -- @param line string: trailer line.
 -- @return string|nil, string|nil: name and email.
 local function parse_signoff(line)
-   local name, email = line:match(
-      "^Signed%-off%-by: (.+) <([^<>]+)>$"
-   )
+   local name, email = line:match("^Signed%-off%-by: (.+) <([^<>]+)>$")
 
    if not name or not email then
       return nil, nil
@@ -489,22 +497,32 @@ end
 -- @param errors table: error array.
 local function validate_line_lengths(lines, errors)
    for i, line in ipairs(lines) do
-      if not is_url_line(line)
+      if
+         not is_url_line(line)
          and not is_doi_line(line)
-         and not is_remote_reference_footer_line(line) then
+         and not is_remote_reference_footer_line(line)
+      then
          local length, invalid_position = utf8_character_count(line)
 
          if not length then
             add_error(
                errors,
-               "line "..i.." contains invalid UTF-8 at byte "
-                  ..tostring(invalid_position).."."
+               "line "
+                  .. i
+                  .. " contains invalid UTF-8 at byte "
+                  .. tostring(invalid_position)
+                  .. "."
             )
          elseif length > MAX_COLUMNS then
             add_error(
                errors,
-               "line "..i.." is "..length.." characters; maximum is "
-                  ..MAX_COLUMNS.."."
+               "line "
+                  .. i
+                  .. " is "
+                  .. length
+                  .. " characters; maximum is "
+                  .. MAX_COLUMNS
+                  .. "."
             )
          end
       end
@@ -534,7 +552,7 @@ local function locate_sections(lines, errors)
          table.insert(seen, name)
 
          if positions[name] then
-            add_error(errors, name..": must appear exactly once.")
+            add_error(errors, name .. ": must appear exactly once.")
          else
             positions[name] = i
          end
@@ -542,25 +560,29 @@ local function locate_sections(lines, errors)
          if body == "" then
             add_error(
                errors,
-               name..": must start its first paragraph on the same line."
+               name .. ": must start its first paragraph on the same line."
             )
          elseif not starts_lowercase(body) then
             add_error(
                errors,
-               "text immediately after "..name..": must begin with lowercase."
+               "text immediately after "
+                  .. name
+                  .. ": must begin with lowercase."
             )
          end
       end
    end
 
-   if #seen ~= 3
+   if
+      #seen ~= 3
       or seen[1] ~= section_names[1]
       or seen[2] ~= section_names[2]
-      or seen[3] ~= section_names[3] then
+      or seen[3] ~= section_names[3]
+   then
       add_error(
          errors,
          "body must contain exactly Motivation:, Details:, and Impact: "
-            .."once each, in that order."
+            .. "once each, in that order."
       )
 
       return nil
@@ -574,8 +596,9 @@ end
 -- @param token string: canonical footer token.
 -- @return string|nil, string|nil: name and email.
 local function parse_identity_footer(line, token)
-   local prefix = "^"..token:gsub("%-", "%%-")
-      ..": (.+) <([^<>@%s]+@[^<>%s]+)>$"
+   local prefix = "^"
+      .. token:gsub("%-", "%%-")
+      .. ": (.+) <([^<>@%s]+@[^<>%s]+)>$"
    return line:match(prefix)
 end
 
@@ -588,43 +611,47 @@ local function parse_remote_reference(value)
    local number = value:match("^#([1-9][0-9]*)$")
 
    if number then
-      return { kind = "issue", value = number, display = "#"..number }
+      return { kind = "issue", value = number, display = "#" .. number }
    end
 
    number = value:match("^issue #([1-9][0-9]*)$")
 
    if number then
-      return { kind = "issue", value = number, display = "issue #"..number }
+      return { kind = "issue", value = number, display = "issue #" .. number }
    end
 
    number = value:match("^pull #([1-9][0-9]*)$")
 
    if number then
-      return { kind = "pull", value = number, display = "pull #"..number }
+      return { kind = "pull", value = number, display = "pull #" .. number }
    end
 
    local sha = value:match("^commit ([0-9a-fA-F]+)$")
 
    if sha and #sha >= 7 and #sha <= 64 then
-      return { kind = "commit", value = sha:lower(), display = "commit "..sha }
+      return {
+         kind = "commit",
+         value = sha:lower(),
+         display = "commit " .. sha,
+      }
    end
 
    local branch = value:match("^branch (%S+)$")
 
    if branch then
-      return { kind = "branch", value = branch, display = "branch "..branch }
+      return { kind = "branch", value = branch, display = "branch " .. branch }
    end
 
    local tag = value:match("^tag (%S+)$")
 
    if tag then
-      return { kind = "tag", value = tag, display = "tag "..tag }
+      return { kind = "tag", value = tag, display = "tag " .. tag }
    end
 
    local ref = value:match("^ref (refs/%S+)$")
 
    if ref then
-      return { kind = "ref", value = ref, display = "ref "..ref }
+      return { kind = "ref", value = ref, display = "ref " .. ref }
    end
 
    return nil
@@ -634,21 +661,25 @@ end
 -- @param line string: line to inspect.
 -- @return boolean: true for a recognized footer line.
 local function is_recognized_footer_line(line)
-   if line:match("^Theory%-reference: .+")
+   if
+      line:match("^Theory%-reference: .+")
       or line:match("^URL: .+")
       or line:match("^DOI: .+")
       or line:match("^BREAKING CHANGE: .+")
       or line:match("^BREAKING%-CHANGE: .+")
       or line:match("^Assisted%-by: .+")
-      or line:match("^Signed%-off%-by: .+") then
+      or line:match("^Signed%-off%-by: .+")
+   then
       return true
    end
 
    local token = line:match("^([A-Za-z][A-Za-z%-]*): .+$")
 
    return token ~= nil
-      and (IDENTITY_FOOTERS[token] == true
-         or REMOTE_REFERENCE_FOOTERS[token] == true)
+      and (
+         IDENTITY_FOOTERS[token] == true
+         or REMOTE_REFERENCE_FOOTERS[token] == true
+      )
 end
 
 --- Check whether a line looks like structured footer metadata.
@@ -685,8 +716,10 @@ local function locate_footer_block(lines, impact_index, signoff_index, errors)
          if is_recognized_footer_line(lines[i]) then
             add_error(
                errors,
-               "line "..i..": footer block must be contiguous and immediately "
-                  .."precede the Signed-off-by: separator."
+               "line "
+                  .. i
+                  .. ": footer block must be contiguous and immediately "
+                  .. "precede the Signed-off-by: separator."
             )
          end
       end
@@ -706,14 +739,16 @@ local function locate_footer_block(lines, impact_index, signoff_index, errors)
    if not separator_index then
       add_error(
          errors,
-         "footer block must be separated from Impact: by exactly one "..
-            "blank line."
+         "footer block must be separated from Impact: by exactly one "
+            .. "blank line."
       )
       return nil, nil
    end
 
-   if separator_index > impact_index + 1
-      and lines[separator_index - 1] == "" then
+   if
+      separator_index > impact_index + 1
+      and lines[separator_index - 1] == ""
+   then
       add_error(
          errors,
          "footer block must be preceded by exactly one blank line."
@@ -726,7 +761,9 @@ local function locate_footer_block(lines, impact_index, signoff_index, errors)
       if lines[i] == "" then
          add_error(
             errors,
-            "line "..i..": blank lines are not allowed inside the footer block."
+            "line "
+               .. i
+               .. ": blank lines are not allowed inside the footer block."
          )
       end
    end
@@ -735,8 +772,10 @@ local function locate_footer_block(lines, impact_index, signoff_index, errors)
       if is_recognized_footer_line(lines[i]) then
          add_error(
             errors,
-            "line "..i..": footer block must be contiguous; move all footers "
-               .."after the final Impact paragraph."
+            "line "
+               .. i
+               .. ": footer block must be contiguous; move all footers "
+               .. "after the final Impact paragraph."
          )
       end
    end
@@ -764,8 +803,10 @@ local function validate_footer_block(lines, footer_start, footer_end, errors)
       if expecting_identifier and not is_identifier then
          add_error(
             errors,
-            "line "..i..": Theory-reference: must be immediately followed "
-               .."by URL: or DOI:."
+            "line "
+               .. i
+               .. ": Theory-reference: must be immediately followed "
+               .. "by URL: or DOI:."
          )
          expecting_identifier = false
       end
@@ -774,8 +815,10 @@ local function validate_footer_block(lines, footer_start, footer_end, errors)
          if expecting_identifier then
             add_error(
                errors,
-               "line "..i..": previous Theory-reference: is missing "..
-                  "URL: or DOI:."
+               "line "
+                  .. i
+                  .. ": previous Theory-reference: is missing "
+                  .. "URL: or DOI:."
             )
          end
 
@@ -784,29 +827,35 @@ local function validate_footer_block(lines, footer_start, footer_end, errors)
          if not expecting_identifier then
             add_error(
                errors,
-               "line "..i..": URL: or DOI: must immediately follow "
-                  .."Theory-reference:."
+               "line "
+                  .. i
+                  .. ": URL: or DOI: must immediately follow "
+                  .. "Theory-reference:."
             )
          end
 
          expecting_identifier = false
       elseif line:match("^URL:") then
-         add_error(errors, "line "..i..": URL: must contain one HTTPS URL.")
+         add_error(errors, "line " .. i .. ": URL: must contain one HTTPS URL.")
       elseif line:match("^DOI:") then
          add_error(
             errors,
-            "line "..i..": DOI: must use the bare '10.xxxx/...' form."
+            "line " .. i .. ": DOI: must use the bare '10.xxxx/...' form."
          )
-      elseif line:match("^BREAKING CHANGE: .+")
-         or line:match("^BREAKING%-CHANGE: .+") then
+      elseif
+         line:match("^BREAKING CHANGE: .+")
+         or line:match("^BREAKING%-CHANGE: .+")
+      then
          breaking_count = breaking_count + 1
          local value = line:match(": (.+)$")
 
          if not starts_lowercase(value) then
             add_error(
                errors,
-               "line "..i..": BREAKING CHANGE description must begin "
-                  .."with lowercase."
+               "line "
+                  .. i
+                  .. ": BREAKING CHANGE description must begin "
+                  .. "with lowercase."
             )
          end
 
@@ -822,8 +871,11 @@ local function validate_footer_block(lines, footer_start, footer_end, errors)
             if not name then
                add_error(
                   errors,
-                  "line "..i..": "..token
-                     ..": must use 'Name <email@example.org>'."
+                  "line "
+                     .. i
+                     .. ": "
+                     .. token
+                     .. ": must use 'Name <email@example.org>'."
                )
             end
 
@@ -834,15 +886,24 @@ local function validate_footer_block(lines, footer_start, footer_end, errors)
             if not target then
                add_error(
                   errors,
-                  "line "..i..": "..token
-                     ..": must reference #N, issue #N, pull #N, commit HEX, "
-                     .."branch NAME, tag NAME, or ref refs/...."
+                  "line "
+                     .. i
+                     .. ": "
+                     .. token
+                     .. ": must reference #N, issue #N, pull #N, commit HEX, "
+                     .. "branch NAME, tag NAME, or ref refs/...."
                )
-            elseif (token == "Fixes" or token == "Closes")
-               and target.kind ~= "issue" then
+            elseif
+               (token == "Fixes" or token == "Closes")
+               and target.kind ~= "issue"
+            then
                add_error(
                   errors,
-                  "line "..i..": "..token..": may reference only an issue."
+                  "line "
+                     .. i
+                     .. ": "
+                     .. token
+                     .. ": may reference only an issue."
                )
             end
 
@@ -850,11 +911,14 @@ local function validate_footer_block(lines, footer_start, footer_end, errors)
          else
             add_error(
                errors,
-               "line "..i..": unsupported footer; allowed metadata includes "
-                  .."Theory-reference/URL/DOI, BREAKING CHANGE, Reviewed-by, "
-                  .."Assisted-by, Co-authored-by, Tested-by, Acked-by, "
-                  .."Reported-by, Suggested-by, "..REMOTE_REFERENCE_FOOTER_LIST
-                  ..". Signed-off-by: is reserved for the final DCO line."
+               "line "
+                  .. i
+                  .. ": unsupported footer; allowed metadata includes "
+                  .. "Theory-reference/URL/DOI, BREAKING CHANGE, Reviewed-by, "
+                  .. "Assisted-by, Co-authored-by, Tested-by, Acked-by, "
+                  .. "Reported-by, Suggested-by, "
+                  .. REMOTE_REFERENCE_FOOTER_LIST
+                  .. ". Signed-off-by: is reserved for the final DCO line."
             )
             expecting_identifier = false
          end
@@ -899,15 +963,17 @@ local function validate_structure(text, author_name, author_email)
       add_error(
          errors,
          "subject must match 'type(scope): lowercase subject' "
-            .."or 'type(scope)!: lowercase subject'."
+            .. "or 'type(scope)!: lowercase subject'."
       )
    else
       if not CONVENTIONAL_TYPES[subject.commit_type] then
          add_error(
             errors,
-            "commit type '"..subject.commit_type
-               .."' is not allowed; use one of: "
-               ..CONVENTIONAL_TYPE_LIST.."."
+            "commit type '"
+               .. subject.commit_type
+               .. "' is not allowed; use one of: "
+               .. CONVENTIONAL_TYPE_LIST
+               .. "."
          )
       end
 
@@ -951,17 +1017,19 @@ local function validate_structure(text, author_name, author_email)
          "Signed-off-by: must be preceded by exactly one blank line."
       )
    elseif not signoff_name then
-      add_error(
-         errors,
-         "Signed-off-by: must use 'Name <email@example.org>'."
-      )
+      add_error(errors, "Signed-off-by: must use 'Name <email@example.org>'.")
    elseif author_name ~= "" and author_email ~= "" then
-      if signoff_name ~= author_name
-         or signoff_email:lower() ~= author_email:lower() then
+      if
+         signoff_name ~= author_name
+         or signoff_email:lower() ~= author_email:lower()
+      then
          add_error(
             errors,
             "DCO sign-off must exactly match the commit author "
-               ..author_name.." <"..author_email..">."
+               .. author_name
+               .. " <"
+               .. author_email
+               .. ">."
          )
       end
    end
@@ -974,11 +1042,13 @@ local function validate_structure(text, author_name, author_email)
          )
       end
 
-      if not (
-         sections.Motivation < sections.Details
-         and sections.Details < sections.Impact
-         and sections.Impact < signoff_index
-      ) then
+      if
+         not (
+            sections.Motivation < sections.Details
+            and sections.Details < sections.Impact
+            and sections.Impact < signoff_index
+         )
+      then
          add_error(
             errors,
             "required sections must precede trailers in the required order."
@@ -999,8 +1069,7 @@ local function validate_structure(text, author_name, author_email)
          if not has_one_blank then
             add_error(
                errors,
-               section.name
-                  ..": must be preceded by exactly one blank line."
+               section.name .. ": must be preceded by exactly one blank line."
             )
          end
       end
@@ -1009,17 +1078,15 @@ local function validate_structure(text, author_name, author_email)
          if is_recognized_footer_line(lines[i]) then
             add_error(
                errors,
-               "line "..i..": footers are allowed only after the Impact body."
+               "line "
+                  .. i
+                  .. ": footers are allowed only after the Impact body."
             )
          end
       end
 
-      local footer_start, footer_end = locate_footer_block(
-         lines,
-         sections.Impact,
-         signoff_index,
-         errors
-      )
+      local footer_start, footer_end =
+         locate_footer_block(lines, sections.Impact, signoff_index, errors)
 
       if footer_start and footer_end then
          validate_footer_block(lines, footer_start, footer_end, errors)
@@ -1039,22 +1106,19 @@ local function reference_remote()
       return configured
    end
 
-   local branch = command_output(
-      silence_stderr("git symbolic-ref --quiet --short HEAD")
-   )
+   local branch =
+      command_output(silence_stderr("git symbolic-ref --quiet --short HEAD"))
 
    if branch then
       branch = branch:gsub("%s+$", "")
-      local branch_remote = git_config("branch."..branch..".remote")
+      local branch_remote = git_config("branch." .. branch .. ".remote")
 
       if branch_remote and branch_remote ~= "." then
          return branch_remote
       end
    end
 
-   if command_succeeded(
-      silence_all("git remote get-url origin")
-   ) then
+   if command_succeeded(silence_all("git remote get-url origin")) then
       return "origin"
    end
 
@@ -1066,7 +1130,7 @@ end
 -- @return string|nil: configured URL.
 local function remote_url(remote)
    local output = command_output(
-      silence_stderr("git remote get-url "..shell_quote(remote))
+      silence_stderr("git remote get-url " .. shell_quote(remote))
    )
 
    if not output then
@@ -1113,8 +1177,8 @@ end
 local function github_api_matches_kind(repository, endpoint, expected_kind)
    if not command_exists("curl") then
       fail(
-         "curl is required to verify GitHub issue, pull, and commit "..
-            "references."
+         "curl is required to verify GitHub issue, pull, and commit "
+            .. "references."
       )
       return false
    end
@@ -1126,23 +1190,23 @@ local function github_api_matches_kind(repository, endpoint, expected_kind)
       "--silent",
       "--show-error",
       "--location",
-      "--output "..shell_quote(response_path),
-      "--write-out "..shell_quote("%{http_code}"),
-      "--proto "..shell_quote("=https"),
+      "--output " .. shell_quote(response_path),
+      "--write-out " .. shell_quote("%{http_code}"),
+      "--proto " .. shell_quote("=https"),
       "--tlsv1.2",
-      "--header "..shell_quote("Accept: application/vnd.github+json"),
-      "--header "..shell_quote("X-GitHub-Api-Version: 2022-11-28"),
+      "--header " .. shell_quote("Accept: application/vnd.github+json"),
+      "--header " .. shell_quote("X-GitHub-Api-Version: 2022-11-28"),
    }
 
    if token and token ~= "" then
-      local authorization = shell_quote("Authorization: Bearer "..token)
-      table.insert(parts, "--header "..authorization)
+      local authorization = shell_quote("Authorization: Bearer " .. token)
+      table.insert(parts, "--header " .. authorization)
    end
 
    table.insert(
       parts,
       shell_quote(
-         "https://api.github.com/repos/"..repository.."/"..endpoint
+         "https://api.github.com/repos/" .. repository .. "/" .. endpoint
       )
    )
    table.insert(parts, platform.stderr_redirect())
@@ -1180,35 +1244,47 @@ local function git_remote_reference_exists(remote, target)
    local pattern
 
    if target.kind == "branch" then
-      if not command_succeeded(
-         "git check-ref-format --branch "..shell_quote(target.value)
-            .." "..platform.all_redirect()
-      ) then
+      if
+         not command_succeeded(
+            "git check-ref-format --branch "
+               .. shell_quote(target.value)
+               .. " "
+               .. platform.all_redirect()
+         )
+      then
          return false
       end
 
-      pattern = "refs/heads/"..target.value
+      pattern = "refs/heads/" .. target.value
    elseif target.kind == "tag" then
-      pattern = "refs/tags/"..target.value
+      pattern = "refs/tags/" .. target.value
 
-      if not command_succeeded(
-         silence_all("git check-ref-format "..shell_quote(pattern))
-      ) then
+      if
+         not command_succeeded(
+            silence_all("git check-ref-format " .. shell_quote(pattern))
+         )
+      then
          return false
       end
    else
       pattern = target.value
 
-      if not command_succeeded(
-         silence_all("git check-ref-format "..shell_quote(pattern))
-      ) then
+      if
+         not command_succeeded(
+            silence_all("git check-ref-format " .. shell_quote(pattern))
+         )
+      then
          return false
       end
    end
 
    return command_succeeded(
-      "git ls-remote --exit-code "..shell_quote(remote).." "
-         ..shell_quote(pattern).." "..platform.all_redirect()
+      "git ls-remote --exit-code "
+         .. shell_quote(remote)
+         .. " "
+         .. shell_quote(pattern)
+         .. " "
+         .. platform.all_redirect()
    )
 end
 
@@ -1250,8 +1326,8 @@ local function validate_remote_references(text)
 
    if not remote then
       fail(
-         "repository references are present but no verification remote "..
-            "is configured."
+         "repository references are present but no verification remote "
+            .. "is configured."
       )
       return false
    end
@@ -1259,7 +1335,7 @@ local function validate_remote_references(text)
    local url = remote_url(remote)
 
    if not url then
-      fail("could not read URL for verification remote '"..remote.."'.")
+      fail("could not read URL for verification remote '" .. remote .. "'.")
       return false
    end
 
@@ -1270,39 +1346,45 @@ local function validate_remote_references(text)
    for _, target in ipairs(references) do
       local exists = false
 
-      if target.kind == "branch"
+      if
+         target.kind == "branch"
          or target.kind == "tag"
-         or target.kind == "ref" then
+         or target.kind == "ref"
+      then
          exists = git_remote_reference_exists(remote, target)
       else
          if not github_repository then
             fail(
-               target.footer..": "..target.display
-                  .." requires a github.com remote for verification."
+               target.footer
+                  .. ": "
+                  .. target.display
+                  .. " requires a github.com remote for verification."
             )
             ok = false
          else
             local endpoint
 
             if target.kind == "issue" then
-               endpoint = "issues/"..target.value
+               endpoint = "issues/" .. target.value
             elseif target.kind == "pull" then
-               endpoint = "pulls/"..target.value
+               endpoint = "pulls/" .. target.value
             else
-               endpoint = "commits/"..target.value
+               endpoint = "commits/" .. target.value
             end
 
-            exists = github_api_matches_kind(
-               github_repository, endpoint, target.kind
-            )
+            exists =
+               github_api_matches_kind(github_repository, endpoint, target.kind)
          end
       end
 
       if not exists then
          fail(
-            target.footer..": referenced "..target.display
-               .." does not exist with that object kind on remote '"
-               ..remote.."'."
+            target.footer
+               .. ": referenced "
+               .. target.display
+               .. " does not exist with that object kind on remote '"
+               .. remote
+               .. "'."
          )
          ok = false
       end
@@ -1316,25 +1398,23 @@ end
 -- @return string: temporary file path.
 local function temporary_message_path(root)
    local git_dir = command_output(
-      silence_stderr(
-         "git -C "..shell_quote(root).." rev-parse --git-dir"
-      )
+      silence_stderr("git -C " .. shell_quote(root) .. " rev-parse --git-dir")
    )
 
    if not git_dir then
-      return root.."/.coil-commit-message.md"
+      return root .. "/.coil-commit-message.md"
    end
 
    git_dir = git_dir:gsub("%s+$", "")
 
    if not platform.is_absolute_path(git_dir) then
-      git_dir = root.."/"..git_dir
+      git_dir = root .. "/" .. git_dir
    end
 
    local random_suffix = tostring(math.random(100000, 999999))
-   local suffix = tostring(os.time()).."."..random_suffix
+   local suffix = tostring(os.time()) .. "." .. random_suffix
 
-   return git_dir.."/coil-commit-message."..suffix..".md"
+   return git_dir .. "/coil-commit-message." .. suffix .. ".md"
 end
 
 --- Run one optional spelling, prose, or link checker.
@@ -1353,18 +1433,21 @@ local function run_optional_tool(tool, root, message_path, has_urls)
 
    if not command_exists(tool.name) then
       warn(
-         "optional tool '"..tool.name
-            .."' is not installed; bypassing this check."
+         "optional tool '"
+            .. tool.name
+            .. "' is not installed; bypassing this check."
       )
       return true
    end
 
-   local config = root.."/"..tool.config
+   local config = root .. "/" .. tool.config
 
    if not file_exists(config) then
       fail(
-         "configuration for installed tool '"..tool.name
-            .."' is missing: "..tool.config
+         "configuration for installed tool '"
+            .. tool.name
+            .. "' is missing: "
+            .. tool.config
       )
       return false
    end
@@ -1376,7 +1459,7 @@ local function run_optional_tool(tool, root, message_path, has_urls)
    )
 
    if not command_succeeded(command) then
-      fail(tool.name.." rejected the commit message.")
+      fail(tool.name .. " rejected the commit message.")
       return false
    end
 
@@ -1481,11 +1564,7 @@ local function main()
    end
 
    local normalized = normalize_message(text)
-   local errors = validate_structure(
-      normalized,
-      author_name,
-      author_email
-   )
+   local errors = validate_structure(normalized, author_name, author_email)
 
    if #errors > 0 then
       for _, message in ipairs(errors) do

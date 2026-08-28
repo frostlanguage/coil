@@ -405,8 +405,8 @@ local function main()
       remote_main_sha = remote_output:match("^([0-9a-fA-F]+)") or ""
    end
 
-   local missing_url = "https://raw.githubusercontent.com/frostlanguage/coil/main/"
-      .. "__lychee_missing_test_9f371e__.md"
+   local missing_url = "https://raw.githubusercontent.com/"
+      .. "frostlanguage/coil/main/__lychee_missing_test_9f371e__.md"
 
    local fixture_values = {
       NAME = user_name,
@@ -458,7 +458,8 @@ Impact: this change affects commit metadata validation.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["03-good-breaking.txt"] = [[feat(api)!: replace the legacy string interface
+      ["03-good-breaking.txt"] = [[
+feat(api)!: replace the legacy string interface
 
 Motivation: coil needs one stable string interface for future releases.
 
@@ -470,7 +471,8 @@ BREAKING CHANGE: callers must use the replacement string interface.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["04-good-breaking-hyphen.txt"] = [[feat(api): replace a legacy entry point
+      ["04-good-breaking-hyphen.txt"] = [[
+feat(api): replace a legacy entry point
 
 Motivation: coil needs one stable entry point for future releases.
 
@@ -482,7 +484,8 @@ BREAKING-CHANGE: callers must use the current entry point.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["05-good-remote-commit.txt"] = [[chore(policy): verify remote commit references
+      ["05-good-remote-commit.txt"] = [[
+chore(policy): verify remote commit references
 
 Motivation: coil needs repository citations that resolve remotely.
 
@@ -517,7 +520,8 @@ Impact: this change affects commit metadata validation.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["11-extra-subject-blank.txt"] = [[ci(policy): reject extra subject separators
+      ["11-extra-subject-blank.txt"] = [[
+ci(policy): reject extra subject separators
 
 
 Motivation: coil needs exactly one blank line after the subject.
@@ -528,7 +532,8 @@ Impact: this change affects commit metadata validation.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["12-number-uppercase.txt"] = [[ci(policy): validate the first alphabetic character
+      ["12-number-uppercase.txt"] = [[
+ci(policy): validate the first alphabetic character
 
 Motivation: 2026 Coil needs deterministic lowercase validation.
 
@@ -592,7 +597,8 @@ Details: add repository-local commit validation.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["19-bad-theory-reference.txt"] = [[docs(policy): validate technical reference trailers
+      ["19-bad-theory-reference.txt"] = [[
+docs(policy): validate technical reference trailers
 
 Motivation: coil needs deterministic reference metadata.
 
@@ -604,7 +610,8 @@ Theory-reference: Conventional Commits.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["20-orphan-url.txt"] = [[docs(policy): validate technical reference trailers
+      ["20-orphan-url.txt"] = [[
+docs(policy): validate technical reference trailers
 
 Motivation: coil needs deterministic reference metadata.
 
@@ -690,7 +697,8 @@ BREAKING-CHANGE: callers must also migrate to the replacement interface.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["27-breaking-uppercase.txt"] = [[feat(api): validate breaking-change descriptions
+      ["27-breaking-uppercase.txt"] = [[
+feat(api): validate breaking-change descriptions
 
 Motivation: coil needs deterministic lowercase footer descriptions.
 
@@ -702,7 +710,8 @@ BREAKING CHANGE: Callers must migrate to the replacement interface.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["28-bad-ref-syntax.txt"] = [[chore(policy): validate repository reference syntax
+      ["28-bad-ref-syntax.txt"] = [[
+chore(policy): validate repository reference syntax
 
 Motivation: coil needs machine-readable repository references.
 
@@ -714,7 +723,8 @@ Refs: something somewhere
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["29-missing-branch.txt"] = [[chore(policy): reject missing remote branches
+      ["29-missing-branch.txt"] = [[
+chore(policy): reject missing remote branches
 
 Motivation: coil needs repository citations that resolve remotely.
 
@@ -762,7 +772,8 @@ Refs: issue #99999999
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["33-missing-pull.txt"] = [[chore(policy): reject missing remote pull requests
+      ["33-missing-pull.txt"] = [[
+chore(policy): reject missing remote pull requests
 
 Motivation: coil needs repository citations that resolve remotely.
 
@@ -786,7 +797,8 @@ Fixes: commit deadbeefdeadbeefdeadbeefdeadbeefdeadbeef
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["35-no-signoff-separator.txt"] = [[ci(policy): reject a missing DCO separator
+      ["35-no-signoff-separator.txt"] = [[
+ci(policy): reject a missing DCO separator
 
 Motivation: coil needs a visually isolated final DCO trailer.
 
@@ -795,7 +807,8 @@ Details: reject a sign-off without its required blank separator.
 Impact: this change affects commit metadata validation.
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["36-extra-signoff-separator.txt"] = [[ci(policy): reject extra DCO separator lines
+      ["36-extra-signoff-separator.txt"] = [[
+ci(policy): reject extra DCO separator lines
 
 Motivation: coil needs exactly one blank line before the DCO trailer.
 
@@ -889,7 +902,8 @@ URL: {{MISSING_URL}}
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["45-extra-details-separator.txt"] = [[ci(policy): reject extra section separators
+      ["45-extra-details-separator.txt"] = [[
+ci(policy): reject extra section separators
 
 Motivation: coil needs exactly one blank line between sections.
 
@@ -900,7 +914,8 @@ Impact: this change affects commit metadata validation.
 
 Signed-off-by: {{NAME}} <{{EMAIL}}>
 ]],
-      ["46-extra-impact-separator.txt"] = [[ci(policy): reject extra section separators
+      ["46-extra-impact-separator.txt"] = [[
+ci(policy): reject extra section separators
 
 Motivation: coil needs exactly one blank line between sections.
 

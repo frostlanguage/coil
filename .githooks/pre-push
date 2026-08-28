@@ -22,10 +22,7 @@ local function hook_directory(path)
    return path:match("^(.*)[/\\][^/\\]+$") or ".githooks"
 end
 
-local platform = dofile(
-   hook_directory(arg[0] or "").."/lib/platform.lua"
-)
-
+local platform = dofile(hook_directory(arg[0] or "") .. "/lib/platform.lua")
 
 local function shell_quote(value)
    return platform.shell_quote(value)
@@ -52,7 +49,7 @@ end
 --- Print a fatal pre-push diagnostic.
 -- @param message string: diagnostic text.
 local function fail(message)
-   io.stderr:write("coil pre-push: error: "..message.."\n")
+   io.stderr:write("coil pre-push: error: " .. message .. "\n")
 end
 
 --- Check whether an object identifier is all zeroes.
@@ -98,13 +95,10 @@ local function valid_gitflow_version(version)
    end
 
    local function valid_number(value)
-      return value == "0"
-         or (value:match("^[1-9]%d*$") ~= nil)
+      return value == "0" or (value:match("^[1-9]%d*$") ~= nil)
    end
 
-   return valid_number(major)
-      and valid_number(minor)
-      and valid_number(patch)
+   return valid_number(major) and valid_number(minor) and valid_number(patch)
 end
 
 --- Validate a Coil Gitflow branch name.
@@ -122,36 +116,36 @@ local function validate_branch_name(branch)
    if not prefix then
       return false,
          "branch must be 'main', 'develop', 'feature/<kebab-name>', "
-            .."'release/<MAJOR.MINOR.PATCH>', "
-            .."'hotfix/<MAJOR.MINOR.PATCH>', or "
-            .."'support/<MAJOR.MINOR.PATCH>'."
+            .. "'release/<MAJOR.MINOR.PATCH>', "
+            .. "'hotfix/<MAJOR.MINOR.PATCH>', or "
+            .. "'support/<MAJOR.MINOR.PATCH>'."
    end
 
    if prefix == "feature" then
       if not valid_feature_name(suffix) then
          return false,
             "feature branch suffix must be lowercase alphanumeric "
-               .."kebab-case."
+               .. "kebab-case."
       end
 
       return true, nil
    end
 
-   if prefix == "release"
-      or prefix == "hotfix"
-      or prefix == "support" then
+   if prefix == "release" or prefix == "hotfix" or prefix == "support" then
       if not valid_gitflow_version(suffix) then
          return false,
-            prefix.." branch suffix must be a stable Semantic Versioning "
-               .."core in MAJOR.MINOR.PATCH form without leading zeroes."
+            prefix
+               .. " branch suffix must be a stable Semantic Versioning "
+               .. "core in MAJOR.MINOR.PATCH form without leading zeroes."
       end
 
       return true, nil
    end
 
    return false,
-      "unsupported Gitflow branch prefix '"..prefix
-         .."'; use feature/, release/, hotfix/, or support/."
+      "unsupported Gitflow branch prefix '"
+         .. prefix
+         .. "'; use feature/, release/, hotfix/, or support/."
 end
 
 --- Split a dotted SemVer identifier list.
@@ -260,12 +254,14 @@ local function validate_semver(version)
       return false, "SemVer tags must begin with MAJOR.MINOR.PATCH."
    end
 
-   if not valid_core_number(major)
+   if
+      not valid_core_number(major)
       or not valid_core_number(minor)
-      or not valid_core_number(patch) then
+      or not valid_core_number(patch)
+   then
       return false,
          "MAJOR, MINOR, and PATCH must be non-negative integers "
-            .."without leading zeroes."
+            .. "without leading zeroes."
    end
 
    if prerelease then
@@ -281,12 +277,14 @@ local function validate_semver(version)
                "pre-release identifiers may contain only [0-9A-Za-z-]."
          end
 
-         if is_numeric(identifier)
+         if
+            is_numeric(identifier)
             and #identifier > 1
-            and identifier:sub(1, 1) == "0" then
+            and identifier:sub(1, 1) == "0"
+         then
             return false,
                "numeric pre-release identifiers must not contain "
-                  .."leading zeroes."
+                  .. "leading zeroes."
          end
       end
    end
@@ -300,8 +298,7 @@ local function validate_semver(version)
 
       for _, identifier in ipairs(identifiers) do
          if not valid_semver_identifier(identifier) then
-            return false,
-               "build identifiers may contain only [0-9A-Za-z-]."
+            return false, "build identifiers may contain only [0-9A-Za-z-]."
          end
       end
    end
@@ -315,7 +312,7 @@ end
 local function peel_commit(object_id)
    local command = table.concat({
       "git rev-parse",
-      shell_quote(object_id.."^{commit}"),
+      shell_quote(object_id .. "^{commit}"),
       platform.stderr_redirect(),
    }, " ")
 
@@ -354,7 +351,7 @@ local function outgoing_commits(local_commit, remote_object)
       if remote_commit then
          command = table.concat({
             "git rev-list",
-            shell_quote(remote_commit..".."..local_commit),
+            shell_quote(remote_commit .. ".." .. local_commit),
             platform.stderr_redirect(),
          }, " ")
       else
@@ -398,10 +395,8 @@ local function has_openpgp_signature(commit)
       return false
    end
 
-   return output:find(
-      "gpgsig %-%-%-%-%-BEGIN PGP SIGNATURE%-%-%-%-%-",
-      1
-   ) ~= nil
+   return output:find("gpgsig %-%-%-%-%-BEGIN PGP SIGNATURE%-%-%-%-%-", 1)
+      ~= nil
 end
 
 --- Verify a commit signature with Git.
@@ -409,7 +404,7 @@ end
 -- @return boolean: true when git verify-commit succeeds.
 local function verify_signature(commit)
    return command_succeeded(
-      silence_all("git verify-commit "..shell_quote(commit))
+      silence_all("git verify-commit " .. shell_quote(commit))
    )
 end
 
@@ -423,7 +418,7 @@ local function commit_msg_hook()
       directory = ".githooks"
    end
 
-   local path = directory.."/commit-msg"
+   local path = directory .. "/commit-msg"
    local handle = io.open(path, "rb")
 
    if not handle then
@@ -446,7 +441,7 @@ local function validate_message(hook, commit)
    end
 
    return command_succeeded(
-      "lua "..shell_quote(hook).." --commit "..shell_quote(commit)
+      "lua " .. shell_quote(hook) .. " --commit " .. shell_quote(commit)
    )
 end
 
@@ -488,7 +483,7 @@ local function validate_ref_policy(record)
       local valid, diagnostic = validate_branch_name(branch)
 
       if not valid then
-         fail("invalid branch '"..branch.."': "..diagnostic)
+         fail("invalid branch '" .. branch .. "': " .. diagnostic)
          return false
       end
 
@@ -503,8 +498,9 @@ local function validate_ref_policy(record)
       if is_zero_object(record.local_object) then
          if valid then
             fail(
-               "release tag '"..tag
-                  .."' is immutable and cannot be deleted after publication."
+               "release tag '"
+                  .. tag
+                  .. "' is immutable and cannot be deleted after publication."
             )
             return false
          end
@@ -513,15 +509,18 @@ local function validate_ref_policy(record)
       end
 
       if not valid then
-         fail("invalid SemVer tag '"..tag.."': "..diagnostic)
+         fail("invalid SemVer tag '" .. tag .. "': " .. diagnostic)
          return false
       end
 
-      if not is_zero_object(record.remote_object)
-         and record.local_object ~= record.remote_object then
+      if
+         not is_zero_object(record.remote_object)
+         and record.local_object ~= record.remote_object
+      then
          fail(
-            "release tag '"..tag
-               .."' already exists remotely and cannot be modified."
+            "release tag '"
+               .. tag
+               .. "' already exists remotely and cannot be modified."
          )
          return false
       end
@@ -547,7 +546,7 @@ local function main()
       local record = parse_push_line(line)
 
       if not record then
-         fail("unexpected pre-push input: "..line)
+         fail("unexpected pre-push input: " .. line)
          return 1
       end
 
@@ -559,10 +558,8 @@ local function main()
          local local_commit = peel_commit(record.local_object)
 
          if local_commit then
-            local candidates = outgoing_commits(
-               local_commit,
-               record.remote_object
-            )
+            local candidates =
+               outgoing_commits(local_commit, record.remote_object)
 
             if not candidates then
                fail("could not enumerate outgoing commits.")
@@ -581,20 +578,20 @@ local function main()
 
    for _, commit in ipairs(commits) do
       local short = commit:sub(1, 12)
-      io.stderr:write("coil pre-push: validating "..short.."\n")
+      io.stderr:write("coil pre-push: validating " .. short .. "\n")
 
       if not has_openpgp_signature(commit) then
-         fail(short.." is not signed with OpenPGP.")
+         fail(short .. " is not signed with OpenPGP.")
          return 1
       end
 
       if not verify_signature(commit) then
-         fail("OpenPGP verification failed for "..short..".")
+         fail("OpenPGP verification failed for " .. short .. ".")
          return 1
       end
 
       if not validate_message(hook, commit) then
-         fail("commit-message policy failed for "..short..".")
+         fail("commit-message policy failed for " .. short .. ".")
          return 1
       end
    end

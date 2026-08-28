@@ -1,0 +1,90 @@
+# SPDX-FileCopyrightText: © 2026 Rafael V. Volkmer <rafael.v.volkmer@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-only
+
+# Repository Git quality configuration
+#
+# Activate this repository-local configuration once with:
+#
+#   git config --local include.path ../.gitconfig
+#
+# Hooks are loaded automatically from:
+#
+#   .githooks/pre-commit
+#   .githooks/commit-msg
+#   .githooks/pre-push
+
+[core]
+    hooksPath = .githooks
+    whitespace = trailing-space,space-before-tab
+    quotePath = false
+
+[init]
+    defaultBranch = main
+
+[color]
+    ui = auto
+
+[status]
+    branch = true
+    showStash = true
+
+[commit]
+    verbose = false
+    gpgSign = true
+
+[tag]
+    gpgSign = true
+    sort = version:refname
+
+[branch]
+    sort = -committerdate
+
+[push]
+    default = simple
+    autoSetupRemote = true
+    followTags = true
+    useForceIfIncludes = true
+
+[pull]
+    ff = only
+
+[fetch]
+    prune = true
+    writeCommitGraph = true
+    fsckObjects = true
+
+[transfer]
+    fsckObjects = true
+
+[receive]
+    fsckObjects = true
+
+[protocol]
+    version = 2
+
+[rebase]
+    autoStash = true
+    updateRefs = true
+    missingCommitsCheck = error
+
+[merge]
+    conflictStyle = zdiff3
+
+[diff]
+    algorithm = histogram
+    colorMoved = default
+    mnemonicPrefix = true
+    renames = true
+
+[rerere]
+    enabled = true
+    autoupdate = true
+
+[help]
+    autocorrect = prompt
+
+[log]
+    decorate = auto
+    date = iso
+
+# EOF

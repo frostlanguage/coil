@@ -5,6 +5,8 @@
 
 format = "detailed"
 no_progress = true
+accept_timeouts = true
+cache = true
 max_concurrency = 16
 max_redirects = 10
 max_retries = 3
