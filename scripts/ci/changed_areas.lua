@@ -130,7 +130,10 @@ local function classify(input)
 
       if path == "scripts/ci/check_hooks.lua" then
          changed.mark("hooks")
-      elseif path == "scripts/ci/check_c.lua" or path == "scripts/ci/check_modules.lua" then
+      elseif
+         path == "scripts/ci/check_c.lua"
+         or path == "scripts/ci/check_modules.lua"
+      then
          changed.mark("c")
       end
    end
