@@ -87,7 +87,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          "${LUA}" scripts/ci/changed_areas.lua \
+          "${LUA}" ci/changed_areas.lua \
             --base "${BASE_SHA}" \
             --head "${HEAD_SHA}" \
             --force-all "${FORCE_ALL}"
@@ -431,7 +431,7 @@ jobs:
             .githooks/commit-msg \
             .githooks/pre-push
 
-          lua scripts/ci/check_hooks.lua
+          lua ci/check_hooks.lua
 
   structure:
     name: Structure, DCO, and OpenPGP

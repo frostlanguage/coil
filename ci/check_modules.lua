@@ -2,17 +2,27 @@
 -- SPDX-License-Identifier: GPL-3.0-only
 
 --- Local entrypoint for Coil module-architecture validation.
--- Semantic CMOD enforcement is intentionally delegated until its checker is defined.
+-- Semantic CMOD enforcement is intentionally delegated until its checker is
+-- defined.
 
 local raw_script = tostring(arg[0] or ""):gsub("\\", "/")
-local scripts_root = raw_script:match("^(.*)/ci/[^/]+$") or "scripts"
-local paths = dofile(scripts_root .. "/libs/paths.lua")
-local platform = dofile(paths.join(scripts_root, "libs", "platform.lua"))
-local git_module = dofile(paths.join(scripts_root, "libs", "git.lua"))
-local repo_root = paths.dirname(scripts_root)
+local script_dir = raw_script:match("^(.*)/[^/]+$") or "."
+local repo_root = "."
+
+if script_dir == "ci" then
+   repo_root = "."
+elseif script_dir:sub(-3) == "/ci" then
+   repo_root = script_dir:sub(1, -4)
+end
+
+local library_root = repo_root == "." and "libs" or repo_root .. "/libs"
+local paths = dofile(library_root .. "/paths.lua")
+local platform = dofile(paths.join(library_root, "platform.lua"))
+local git_module = dofile(paths.join(library_root, "git.lua"))
 local git = git_module.new(platform, repo_root)
 
-local architecture_policy = "docs/code_style/c_language/c-module-architecture.md"
+local architecture_policy =
+   "docs/code_style/c_language/c-module-architecture.md"
 
 --- Print a fatal diagnostic and terminate.
 -- @param message string: diagnostic text.
@@ -21,7 +31,10 @@ local function fail(message)
    os.exit(1)
 end
 
-local policy_file = io.open(paths.join(repo_root, architecture_policy), "rb")
+local policy_file = io.open(
+   paths.join(repo_root, architecture_policy),
+   "rb"
+)
 if not policy_file then
    fail("module architecture policy is missing: " .. architecture_policy)
 end
@@ -40,14 +53,18 @@ for _, path in ipairs(tracked) do
 end
 
 if #translation_units == 0 then
-   print("No tracked C translation units found; module policy entrypoint is ready.")
+   print(
+      "No tracked C translation units found; "
+         .. "module policy entrypoint is ready."
+   )
    os.exit(0)
 end
 
 local checker = os.getenv("COIL_MODULE_CHECKER")
 if not checker or checker == "" then
    fail(
-      "tracked C translation units exist, but COIL_MODULE_CHECKER is not configured."
+      "tracked C translation units exist, but "
+         .. "COIL_MODULE_CHECKER is not configured."
    )
 end
 

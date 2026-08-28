@@ -120,7 +120,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          "${LUA}" scripts/ci/changed_areas.lua \
+          "${LUA}" ci/changed_areas.lua \
             --base "${BASE_SHA}" \
             --head "${HEAD_SHA}" \
             --force-all "${FORCE_ALL}"
@@ -611,8 +611,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          "${COIL_LUA}" scripts/ci/check_c.lua
-          "${COIL_LUA}" scripts/ci/check_modules.lua
+          "${COIL_LUA}" ci/check_c.lua
+          "${COIL_LUA}" ci/check_modules.lua
 
 
   bazel:
@@ -815,7 +815,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          "${COIL_LUA}" scripts/ci/check_lua.lua
+          "${COIL_LUA}" ci/check_lua.lua
 
   python:
     name: Python

@@ -5,11 +5,19 @@
 -- Tool paths may be overridden through COIL_CLANG_FORMAT and COIL_CLANG_TIDY.
 
 local raw_script = tostring(arg[0] or ""):gsub("\\", "/")
-local scripts_root = raw_script:match("^(.*)/ci/[^/]+$") or "scripts"
-local paths = dofile(scripts_root .. "/libs/paths.lua")
-local platform = dofile(paths.join(scripts_root, "libs", "platform.lua"))
-local git_module = dofile(paths.join(scripts_root, "libs", "git.lua"))
-local repo_root = paths.dirname(scripts_root)
+local script_dir = raw_script:match("^(.*)/[^/]+$") or "."
+local repo_root = "."
+
+if script_dir == "ci" then
+   repo_root = "."
+elseif script_dir:sub(-3) == "/ci" then
+   repo_root = script_dir:sub(1, -4)
+end
+
+local library_root = repo_root == "." and "libs" or repo_root .. "/libs"
+local paths = dofile(library_root .. "/paths.lua")
+local platform = dofile(paths.join(library_root, "platform.lua"))
+local git_module = dofile(paths.join(library_root, "git.lua"))
 local git = git_module.new(platform, repo_root)
 
 local format_config = "tools/lint/code/c/.clang-format"

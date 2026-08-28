@@ -3,7 +3,7 @@
 
 ---
 name: Setup pinned Lua
-description: Restore, verify, build, and expose the repository Lua runtime.
+description: Restore, verify, build, and return the repository Lua runtime.
 
 inputs:
   version:
@@ -62,7 +62,6 @@ runs:
         install --mode=0755 "${source_dir}/src/lua" "${bin_dir}/lua"
         install --mode=0755 "${source_dir}/src/luac" "${bin_dir}/luac"
 
-        printf '%s\n' "${bin_dir}" >> "${GITHUB_PATH}"
         printf 'lua=%s\n' "${bin_dir}/lua" >> "${GITHUB_OUTPUT}"
         printf 'luac=%s\n' "${bin_dir}/luac" >> "${GITHUB_OUTPUT}"
 
