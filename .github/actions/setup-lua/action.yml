@@ -1,0 +1,69 @@
+# SPDX-FileCopyrightText: © 2026 Rafael V. Volkmer <rafael.v.volkmer@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-only
+
+---
+name: Setup pinned Lua
+description: Restore, verify, build, and expose the repository Lua runtime.
+
+inputs:
+  version:
+    description: Lua source release version.
+    required: true
+  sha256:
+    description: SHA-256 digest of the Lua source archive.
+    required: true
+
+outputs:
+  lua:
+    description: Absolute path to the Lua interpreter.
+    value: ${{ steps.build.outputs.lua }}
+  luac:
+    description: Absolute path to the Lua compiler.
+    value: ${{ steps.build.outputs.luac }}
+
+runs:
+  using: composite
+  steps:
+    - name: Restore Lua source archive
+      id: download
+      uses: ./.github/actions/verified-download
+      with:
+        name: lua
+        version: ${{ inputs.version }}
+        filename: lua-${{ inputs.version }}.tar.gz
+        sha256: ${{ inputs.sha256 }}
+        origin: https://www.lua.org
+        directory: ftp
+
+    - name: Build pinned Lua
+      id: build
+      shell: bash
+      env:
+        LUA_ARCHIVE: ${{ steps.download.outputs.path }}
+        LUA_VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+
+        source_dir="${RUNNER_TEMP}/lua-${LUA_VERSION}"
+        bin_dir="${RUNNER_TEMP}/coil-lua-bin"
+
+        rm --force --recursive "${source_dir}" "${bin_dir}"
+        mkdir --parents "${bin_dir}"
+
+        tar \
+          --extract \
+          --gzip \
+          --file="${LUA_ARCHIVE}" \
+          --directory="${RUNNER_TEMP}"
+
+        jobs="$(getconf _NPROCESSORS_ONLN 2>/dev/null || printf '1')"
+        make --directory="${source_dir}" --jobs="${jobs}" all
+
+        install --mode=0755 "${source_dir}/src/lua" "${bin_dir}/lua"
+        install --mode=0755 "${source_dir}/src/luac" "${bin_dir}/luac"
+
+        printf '%s\n' "${bin_dir}" >> "${GITHUB_PATH}"
+        printf 'lua=%s\n' "${bin_dir}/lua" >> "${GITHUB_OUTPUT}"
+        printf 'luac=%s\n' "${bin_dir}/luac" >> "${GITHUB_OUTPUT}"
+
+# EOF

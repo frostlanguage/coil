@@ -15,11 +15,6 @@ on:
     branches:
       - "**"
   merge_group: {}
-  release:
-    types:
-      - published
-      - prereleased
-      - released
   workflow_dispatch: {}
 
 permissions: {}
@@ -73,8 +68,68 @@ env:
   NUFMT_REVISION: "7cfd3b7eacf5a9feb22777230e3076038f2e9e8d"
 
 jobs:
+  changes:
+    name: Changed areas
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      actions: ${{ steps.detect.outputs.actions }}
+      bazel: ${{ steps.detect.outputs.bazel }}
+      c: ${{ steps.detect.outputs.c }}
+      ci: ${{ steps.detect.outputs.ci }}
+      json: ${{ steps.detect.outputs.json }}
+      lua: ${{ steps.detect.outputs.lua }}
+      markdown: ${{ steps.detect.outputs.markdown }}
+      nushell: ${{ steps.detect.outputs.nushell }}
+      powershell: ${{ steps.detect.outputs.powershell }}
+      python: ${{ steps.detect.outputs.python }}
+      shell: ${{ steps.detect.outputs.shell }}
+      toml: ${{ steps.detect.outputs.toml }}
+      yaml: ${{ steps.detect.outputs.yaml }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup pinned Lua
+        id: lua
+        uses: ./.github/actions/setup-lua
+        with:
+          version: ${{ env.LUA_VERSION }}
+          sha256: ${{ env.LUA_SHA256 }}
+
+      - name: Detect changed areas
+        id: detect
+        env:
+          BASE_SHA: >-
+            ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+          FORCE_ALL: >-
+            ${{
+              github.event_name == 'merge_group' ||
+              github.event_name == 'workflow_dispatch' ||
+              startsWith(github.ref, 'refs/tags/') ||
+              (github.event_name == 'push' &&
+              github.ref_name == github.event.repository.default_branch)
+            }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          LUA: ${{ steps.lua.outputs.lua }}
+        run: |
+          set -euo pipefail
+
+          "${LUA}" scripts/ci/changed_areas.lua \
+            --base "${BASE_SHA}" \
+            --head "${HEAD_SHA}" \
+            --force-all "${FORCE_ALL}"
+
   cache-plane:
     name: CI cache plane
+    needs:
+      - changes
+    if: needs.changes.outputs.ci == 'true'
     runs-on: >-
       ${{
         github.event_name == 'pull_request' &&
@@ -96,6 +151,9 @@ jobs:
 
   actionlint:
     name: GitHub Actions
+    needs:
+      - changes
+    if: needs.changes.outputs.actions == 'true'
     runs-on: >-
       ${{
         github.event_name == 'pull_request' &&
@@ -233,6 +291,9 @@ jobs:
 
   json:
     name: JSON and JSONC
+    needs:
+      - changes
+    if: needs.changes.outputs.json == 'true'
     runs-on: >-
       ${{
         github.event_name == 'pull_request' &&
@@ -296,6 +357,9 @@ jobs:
 
   yamllint:
     name: YAML
+    needs:
+      - changes
+    if: needs.changes.outputs.yaml == 'true'
     runs-on: >-
       ${{
         github.event_name == 'pull_request' &&
@@ -347,6 +411,9 @@ jobs:
 
   taplo:
     name: TOML
+    needs:
+      - changes
+    if: needs.changes.outputs.toml == 'true'
     runs-on: >-
       ${{
         github.event_name == 'pull_request' &&
@@ -412,6 +479,9 @@ jobs:
 
   markdownlint:
     name: Markdown
+    needs:
+      - changes
+    if: needs.changes.outputs.markdown == 'true'
     runs-on: >-
       ${{
         github.event_name == 'pull_request' &&
@@ -464,6 +534,9 @@ jobs:
 
   c:
     name: C
+    needs:
+      - changes
+    if: needs.changes.outputs.c == 'true'
     runs-on: >-
       ${{
         github.event_name == 'pull_request' &&
@@ -523,58 +596,30 @@ jobs:
           "${RUNNER_TEMP}/coil-clang/bin/clang-format" --version
           "${RUNNER_TEMP}/coil-clang/bin/clang-tidy" --version
 
-      - name: Validate C policy and sources
+      - name: Setup pinned Lua
+        id: lua
+        uses: ./.github/actions/setup-lua
+        with:
+          version: ${{ env.LUA_VERSION }}
+          sha256: ${{ env.LUA_SHA256 }}
+
+      - name: Run C checks
+        env:
+          COIL_CLANG_FORMAT: ${{ runner.temp }}/coil-clang/bin/clang-format
+          COIL_CLANG_TIDY: ${{ runner.temp }}/coil-clang/bin/clang-tidy
+          COIL_LUA: ${{ steps.lua.outputs.lua }}
         run: |
           set -euo pipefail
 
-          clang_format="${RUNNER_TEMP}/coil-clang/bin/clang-format"
-          clang_tidy="${RUNNER_TEMP}/coil-clang/bin/clang-tidy"
-          format_config="tools/lint/code/c/.clang-format"
-          tidy_config="tools/lint/code/c/.clang-tidy"
-
-          "${clang_format}" \
-            --style="file:${format_config}" \
-            --dump-config \
-            >/dev/null
-
-          "${clang_tidy}" \
-            --experimental-custom-checks \
-            --config-file="${tidy_config}" \
-            --list-checks \
-            >/dev/null
-
-          mapfile -d '' format_files < <(
-            git ls-files -z -- '*.c' '*.h' '*.i'
-          )
-
-          if (( ${#format_files[@]} == 0 )); then
-            echo "No tracked C sources or headers found; policy files are valid."
-            exit 0
-          fi
-
-          "${clang_format}" \
-            --style="file:${format_config}" \
-            --dry-run \
-            --Werror \
-            "${format_files[@]}"
-
-          mapfile -d '' translation_units < <(
-            git ls-files -z -- '*.c' '*.i'
-          )
-
-          for source in "${translation_units[@]}"; do
-            "${clang_tidy}" \
-              --experimental-custom-checks \
-              --config-file="${tidy_config}" \
-              "${source}" \
-              -- \
-              -std=c23 \
-              -I.
-          done
+          "${COIL_LUA}" scripts/ci/check_c.lua
+          "${COIL_LUA}" scripts/ci/check_modules.lua
 
 
   bazel:
     name: Bazel
+    needs:
+      - changes
+    if: needs.changes.outputs.bazel == 'true'
     runs-on: >-
       ${{
         github.event_name == 'pull_request' &&
@@ -628,6 +673,9 @@ jobs:
 
   lua:
     name: Lua
+    needs:
+      - changes
+    if: needs.changes.outputs.lua == 'true'
     runs-on: >-
       ${{
         github.event_name == 'pull_request' &&
@@ -758,54 +806,22 @@ jobs:
 
       - name: Run Lua checks
         if: steps.detect.outputs.found == 'true'
+        env:
+          COIL_LUA: ${{ runner.temp }}/lua-${{ env.LUA_VERSION }}/src/lua
+          COIL_LUAC: ${{ runner.temp }}/lua-${{ env.LUA_VERSION }}/src/luac
+          COIL_LUALS: ${{ runner.temp }}/luals/bin/lua-language-server
+          COIL_SELENE: ${{ runner.temp }}/selene/selene
+          COIL_STYLUA: ${{ runner.temp }}/stylua/stylua
         run: |
           set -euo pipefail
 
-          collect_lua_files() {
-            while IFS= read -r -d '' file; do
-              case "${file}" in
-                *.lua)
-                  printf '%s\0' "${file}"
-                  continue
-                  ;;
-              esac
-
-              first_line="$(head -n 1 -- "${file}" 2>/dev/null || true)"
-
-              if [[ "${first_line}" =~ ^#!.*(^|[[:space:]/])lua([[:space:]]|$) ]]; then
-                printf '%s\0' "${file}"
-              fi
-            done < <(git ls-files -z)
-          }
-
-          mapfile -d '' files < <(collect_lua_files)
-
-          printf 'Checking %d Lua source file(s).\n' "${#files[@]}"
-
-          for file in "${files[@]}"; do
-            "${RUNNER_TEMP}/lua-${LUA_VERSION}/src/luac" -p "${file}"
-          done
-
-          "${RUNNER_TEMP}/lua-${LUA_VERSION}/src/lua" \
-            tools/lint/spell/dictionary/generate.lua \
-            --check
-
-          "${RUNNER_TEMP}/selene/selene" \
-            --config tools/lint/code/lua/selene.toml \
-            "${files[@]}"
-
-          "${RUNNER_TEMP}/stylua/stylua" \
-            --check \
-            --config-path tools/lint/code/lua/stylua.toml \
-            "${files[@]}"
-
-          "${RUNNER_TEMP}/luals/bin/lua-language-server" \
-            --configpath=tools/lint/code/lua/luals.json \
-            --check="${GITHUB_WORKSPACE}" \
-            --checklevel=Warning
+          "${COIL_LUA}" scripts/ci/check_lua.lua
 
   python:
     name: Python
+    needs:
+      - changes
+    if: needs.changes.outputs.python == 'true'
     runs-on: >-
       ${{
         github.event_name == 'pull_request' &&
@@ -970,6 +986,9 @@ jobs:
 
   shell:
     name: POSIX sh and Bash
+    needs:
+      - changes
+    if: needs.changes.outputs.shell == 'true'
     runs-on: >-
       ${{
         github.event_name == 'pull_request' &&
@@ -1132,6 +1151,9 @@ jobs:
 
   powershell:
     name: PowerShell 7
+    needs:
+      - changes
+    if: needs.changes.outputs.powershell == 'true'
     runs-on: >-
       ${{
         github.event_name == 'pull_request' &&
@@ -1301,6 +1323,9 @@ jobs:
 
   nushell:
     name: Nushell
+    needs:
+      - changes
+    if: needs.changes.outputs.nushell == 'true'
     runs-on: >-
       ${{
         github.event_name == 'pull_request' &&

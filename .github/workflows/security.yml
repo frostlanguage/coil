@@ -14,6 +14,8 @@ on:
     branches:
       - "**"
   merge_group: {}
+  schedule:
+    - cron: "17 3 * * 1"
   workflow_dispatch: {}
 
 permissions: {}
@@ -143,7 +145,23 @@ jobs:
             "${extraction_directory}/gitleaks" \
             "${RUNNER_TEMP}/gitleaks"
 
-      - name: Scan Git history for secrets
+      - name: Scan pull-request commits for secrets
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          "${RUNNER_TEMP}/gitleaks" git \
+            --config tools/security/git/gitleaks.toml \
+            --redact \
+            --verbose \
+            --log-opts="${BASE_SHA}..${HEAD_SHA}" \
+            .
+
+      - name: Scan complete Git history for secrets
+        if: github.event_name != 'pull_request'
         run: |
           set -euo pipefail
 

@@ -47,8 +47,56 @@ env:
   GIT_REMOTE_GITTUF_SHA256: "7029c8f026b574622087110162dff27a3cb15d73161fdecee9ef65c76e50dedf"
 
 jobs:
+  changes:
+    name: Hook-related changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      hooks: ${{ steps.detect.outputs.hooks }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup pinned Lua
+        id: lua
+        uses: ./.github/actions/setup-lua
+        with:
+          version: ${{ env.LUA_VERSION }}
+          sha256: ${{ env.LUA_SHA256 }}
+
+      - name: Detect hook-related changes
+        id: detect
+        env:
+          BASE_SHA: >-
+            ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+          FORCE_ALL: >-
+            ${{
+              github.event_name == 'merge_group' ||
+              github.event_name == 'workflow_dispatch' ||
+              startsWith(github.ref, 'refs/tags/') ||
+              (github.event_name == 'push' &&
+              github.ref_name == github.event.repository.default_branch)
+            }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          LUA: ${{ steps.lua.outputs.lua }}
+        run: |
+          set -euo pipefail
+
+          "${LUA}" scripts/ci/changed_areas.lua \
+            --base "${BASE_SHA}" \
+            --head "${HEAD_SHA}" \
+            --force-all "${FORCE_ALL}"
+
   git-hook-mocks:
     name: Git hook mock tests
+    needs:
+      - changes
+    if: needs.changes.outputs.hooks == 'true'
     runs-on: >-
       ${{
         github.event_name == 'pull_request' &&
@@ -372,7 +420,7 @@ jobs:
           gitleaks version
           gittuf version
 
-      - name: Run commit hook mock suite
+      - name: Run Git hook mock suites
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
@@ -383,22 +431,10 @@ jobs:
             .githooks/commit-msg \
             .githooks/pre-push
 
-          luac -p tests/mock/git_hooks/coil-hook-test-suite.lua
-          luac -p tests/mock/git_hooks/coil-ref-policy-test-suite.lua
-          lua tests/mock/git_hooks/coil-hook-test-suite.lua
-
-      - name: Run Gitflow and ref mock suite
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-
-          lua tests/mock/git_hooks/coil-ref-policy-test-suite.lua
+          lua scripts/ci/check_hooks.lua
 
   structure:
     name: Structure, DCO, and OpenPGP
-    needs:
-      - git-hook-mocks
     runs-on: >-
       ${{
         github.event_name == 'pull_request' &&
@@ -416,44 +452,11 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Build pinned Lua
-        run: |
-          set -euo pipefail
-
-          archive="lua-${LUA_VERSION}.tar.gz"
-          destination="${RUNNER_TEMP}/${archive}"
-          url="https://www.lua.org/ftp/${archive}"
-
-          curl \
-            --fail \
-            --silent \
-            --show-error \
-            --location \
-            --proto '=https' \
-            --tlsv1.2 \
-            "${url}" \
-            --output "${destination}"
-
-          printf '%s  %s\n' \
-            "${LUA_SHA256}" \
-            "${destination}" \
-            | sha256sum --check --strict
-
-          tar \
-            --extract \
-            --gzip \
-            --file="${destination}" \
-            --directory="${RUNNER_TEMP}"
-
-          make \
-            --directory="${RUNNER_TEMP}/lua-${LUA_VERSION}" \
-            --jobs="$(nproc)" \
-            all
-
-          install \
-            --mode=0755 \
-            "${RUNNER_TEMP}/lua-${LUA_VERSION}/src/lua" \
-            "${RUNNER_TEMP}/lua"
+      - name: Setup pinned Lua
+        uses: ./.github/actions/setup-lua
+        with:
+          version: ${{ env.LUA_VERSION }}
+          sha256: ${{ env.LUA_SHA256 }}
 
       - name: Select commits
         env:
@@ -516,8 +519,7 @@ jobs:
 
           while IFS= read -r sha; do
             printf 'Validating message: %s\n' "${sha}"
-            PATH="${RUNNER_TEMP}:${PATH}" \
-              .githooks/commit-msg --commit "${sha}"
+            .githooks/commit-msg --commit "${sha}"
           done < "${RUNNER_TEMP}/commit-policy-shas"
 
       - name: Require GitHub-verified OpenPGP signatures
@@ -555,8 +557,6 @@ jobs:
 
   prose:
     name: Commit message spelling and prose
-    needs:
-      - git-hook-mocks
     runs-on: >-
       ${{
         github.event_name == 'pull_request' &&

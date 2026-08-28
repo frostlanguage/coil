@@ -17,12 +17,6 @@ on:
 
   merge_group: {}
 
-  release:
-    types:
-      - published
-      - prereleased
-      - released
-
   workflow_dispatch: {}
 
 permissions: {}

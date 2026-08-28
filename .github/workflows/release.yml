@@ -1,0 +1,80 @@
+# SPDX-FileCopyrightText: © 2026 Rafael V. Volkmer <rafael.v.volkmer@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-only
+
+---
+name: Release
+
+on:
+  release:
+    types:
+      - published
+      - prereleased
+      - released
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  source:
+    name: Release source
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Verify release source identity
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+
+          git show-ref \
+            --verify \
+            --quiet \
+            "refs/tags/${RELEASE_TAG}"
+
+          release_commit="$(git rev-list --max-count=1 "refs/tags/${RELEASE_TAG}")"
+
+          if [[ "${release_commit}" != "${GITHUB_SHA}" ]]; then
+            printf '%s\n' \
+              "Release tag ${RELEASE_TAG} does not resolve to ${GITHUB_SHA}." \
+              >&2
+            exit 1
+          fi
+
+          if [[ -n "$(git status --porcelain=v1)" ]]; then
+            printf '%s\n' 'Release checkout is not clean.' >&2
+            exit 1
+          fi
+
+      - name: Summarize release boundary
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+
+          {
+            printf '%s\n' '### Coil release boundary'
+            printf '\n'
+            printf 'Release tag: `%s`\n' "${RELEASE_TAG}"
+            printf 'Source commit: `%s`\n' "${GITHUB_SHA}"
+            printf '\n'
+            printf '%s\n' \
+              'CI validation is performed by the tag-push workflows.'
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+# EOF
