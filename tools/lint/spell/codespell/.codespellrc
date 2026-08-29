@@ -8,6 +8,7 @@ check-hidden =
 count =
 ignore-words = tools/lint/spell/dictionary/coil-words.txt
 quiet-level = 2
-skip = .git,LICENSES,*.lock,*.min.*,*.svg,*.aff,*.dic,./*.patch,./tests/mock/git_hooks/coil-hook-test-suite.lua
+# Generated dependency identities and integrity hashes are not authored prose.
+skip = .git,node_modules,LICENSES,*.lock,package-lock.json,*.min.*,*.svg,*.aff,*.dic,./*.patch,./tests/mock/git_hooks/coil-hook-test-suite.lua
 
 # EOF

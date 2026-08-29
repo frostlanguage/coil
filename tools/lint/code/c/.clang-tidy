@@ -10,6 +10,12 @@
 #
 # CI policy: every unsuppressed diagnostic is an error. A NOLINT suppression for
 # a project-review API is expected to point to the corresponding deviation/review.
+#
+# Rule authority: docs/code_style/c_language/c-code-standard.md#cstyle-NNN
+# Architecture: docs/code_style/c_language/c-module-architecture.md#cmod-NNN
+# API register: docs/code_style/c_language/c-code-standard.md#cban-NNN
+# Each ID below names a control, not a claim of complete semantic coverage.
+# Review triggers remain review triggers; a documented deviation resolves them.
 
 InheritParentConfig: false
 
@@ -19,19 +25,37 @@ Checks:
   # Compiler diagnostics enabled through ExtraArgs below.
   - 'clang-diagnostic-*'
 
-  # CSTYLE-076..108: memory, lifetime, UB, taint, libc, concurrency and Unix APIs.
+  # CSTYLE-079, CSTYLE-080, CSTYLE-082, CSTYLE-084, CSTYLE-098, CSTYLE-101,
+  # CSTYLE-118, CSTYLE-120, CSTYLE-121, CSTYLE-125, CSTYLE-153: path-sensitive
+  # allocation, release, lifetime, bounds, arithmetic, and pointer diagnostics.
   - 'clang-analyzer-*'
   - '-clang-analyzer-cplusplus.*'
   - '-clang-analyzer-osx.*'
   - '-clang-analyzer-webkit.*'
 
-  # Supporting diagnostics for CSTYLE-053..108; explicit conflicts are removed below.
+  # CSTYLE-010, CSTYLE-043, CSTYLE-044, CSTYLE-048: macro evaluation and structure.
+  # CSTYLE-060, CSTYLE-068, CSTYLE-075, CSTYLE-097, CSTYLE-103, CSTYLE-104,
+  # CSTYLE-128, CSTYLE-135, CSTYLE-136, CSTYLE-137, CSTYLE-159, CSTYLE-160:
+  # enum, format, conversion, sizeof, representation, and expression hazards.
+  # CSTYLE-040, CSTYLE-063, CSTYLE-087, CSTYLE-165, CSTYLE-258: buffer contracts.
   - 'bugprone-*'
+  # CSTYLE-095, CSTYLE-101, CSTYLE-109, CSTYLE-132, CSTYLE-149, CSTYLE-151:
+  # CERT diagnostics supplement project controls; no CERT conformance claim.
   - 'cert-*'
+  # CSTYLE-090, CSTYLE-091, CSTYLE-092, CSTYLE-094, CSTYLE-095, CSTYLE-176:
+  # thread cancellation, signal handlers, and selected synchronization hazards.
   - 'concurrency-*'
+  # CSTYLE-024, CSTYLE-062, CSTYLE-072, CSTYLE-127, CSTYLE-143, CSTYLE-148:
+  # const use, redundant expressions, bit fields, assertions, and recursion.
   - 'misc-*'
+  # CSTYLE-201, CPERF-001, CPERF-004, CPERF-042: optimization review candidates;
+  # diagnostics do not establish target-specific speed or correctness.
   - 'performance-*'
+  # CSTYLE-026, CSTYLE-035, CSTYLE-052, CSTYLE-248, CSTYLE-250: target assumptions.
   - 'portability-*'
+  # CSTYLE-002, CSTYLE-004, CSTYLE-005, CSTYLE-006, CSTYLE-007, CSTYLE-022,
+  # CSTYLE-046, CSTYLE-056, CSTYLE-057, CSTYLE-073, CSTYLE-138, CSTYLE-243:
+  # naming, braces, complexity review, declarations, and diagnostic comments.
   - 'readability-*'
 
   # Project-specific AST rules declared below.
@@ -41,11 +65,8 @@ Checks:
   # Mandatory CSTYLE overrides.
   # -------------------------------------------------------------------------
 
-  # CSTYLE-026/027 requires #pragma once; this check demands include guards.
-  - '-portability-avoid-pragma-once'
-
-  # CSTYLE-022 permits brace-less bodies for a single simple statement.
-  - '-readability-braces-around-statements'
+  # CSTYLE-026, CSTYLE-027: portability-avoid-pragma-once stays enabled.
+  # CSTYLE-022: readability-braces-around-statements stays enabled for all bodies.
 
   # CSTYLE-050 explicitly requires #if defined(...) / #if !defined(...).
   # This check rewrites those forms to #ifdef/#ifndef/#elifdef/#elifndef.
@@ -64,14 +85,13 @@ Checks:
   # CSTYLE-062 permits const scalar parameters when they improve intent.
   - '-readability-avoid-const-params-in-decls'
 
-  # CSTYLE-007 requires lowercase 'u' for sequential enum values, while
-  # CSTYLE-043 requires uppercase U/ULL/F specifically inside macro literals.
-  # A global uppercase-suffix rule therefore conflicts with the project policy.
+  # CSTYLE-007, CSTYLE-043: examples use context-dependent literal suffix case.
+  # Capitalization does not establish representation; keep the written spelling.
   - '-readability-uppercase-literal-suffix'
   - '-cert-dcl16-c'
 
-  # Configure the underlying reserved-identifier rule ourselves so that the
-  # project's narrowly allowed __COMPILER_STYLE identifiers are not rejected.
+  # CSTYLE-009: use the underlying reserved-identifier check once, with no
+  # exemption for project declarations that imitate compiler-owned names.
   - '-cert-dcl37-c'
 
   # Configure the underlying unsafe-functions rule from the canonical CBAN
@@ -80,20 +100,34 @@ Checks:
   - '-cert-msc24-c'
   - '-cert-msc33-c'
 
+  # CSTYLE-085: this advisory bans even reviewed, bounded memcpy/memset calls
+  # solely because optional Annex K alternatives exist. CBAN owns API policy;
+  # retain the analyzer's actual bounds, nullability, and lifetime diagnostics.
+  - '-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling'
+
   # C project: enum-size optimization can silently affect externally visible
-  # representation/ABI decisions. CSTYLE-035..041 own that policy instead.
+  # representation/ABI decisions. CSTYLE-035, CSTYLE-039, CSTYLE-041 own that policy.
   - '-performance-enum-size'
+
+  # CSTYLE-064: preserve the mandatory final return in void functions.
+  - '-readability-redundant-control-flow'
+
+  # CSTYLE-149: only an approved foreign-interface adapter may use nonlocal jumps.
+  - 'cppcoreguidelines-avoid-setjmp-longjmp'
 
 WarningsAsErrors: '*'
 
 HeaderFilterRegex: '.*'
 ExcludeHeaderFilterRegex: '(^|/)(third_party|vendor|external|generated|build[^/]*)(/|$)'
 SystemHeaders: false
-FormatStyle: file
+# CSTYLE-014, CSTYLE-015, CSTYLE-019: fixes use this repository's actual style
+# file even though it is stored outside the source directory's ancestor chain.
+FormatStyle: 'file:tools/lint/code/c/.clang-format'
 HeaderFileExtensions: ['h']
 ImplementationFileExtensions: ['c']
 
-# CSTYLE-052/096/097/099/100: keep the translation mode deterministic and
+# CSTYLE-052, CSTYLE-096, CSTYLE-097, CSTYLE-099, CSTYLE-100, CSTYLE-155:
+# Keep the translation mode deterministic and
 # surface strict portability, conversion and undefined-behavior diagnostics.
 # The compilation database remains authoritative for include paths, defines,
 # target, ABI and other project-specific compiler arguments.
@@ -126,10 +160,21 @@ ExtraArgs:
   - '-Wconditional-uninitialized'
   - '-Wdeclaration-after-statement'
   - '-Wcast-function-type-strict'
+  # CSTYLE-144, CSTYLE-151, CSTYLE-161, CSTYLE-170, CSTYLE-248, CSTYLE-263,
+  # CSTYLE-274; CMOD-105: literals, ignored results, extensions, source text,
+  # incomplete enums, and lock annotations (when the owning API supplies them).
+  - '-Wwrite-strings'
+  - '-Wunused-result'
+  - '-Wnested-anon-types'
+  - '-Wunicode-homoglyph'
+  - '-Wunicode-whitespace'
+  - '-Wenum-conversion'
+  - '-Wthread-safety'
 
 CheckOptions:
   # -------------------------------------------------------------------------
-  # CSTYLE-002..010/088 naming rules that clang-tidy can represent directly.
+  # CSTYLE-002, CSTYLE-004, CSTYLE-005, CSTYLE-006, CSTYLE-009, CSTYLE-088:
+  # naming rules that clang-tidy can represent directly.
   # Function names are composite MODULE_lowerCamelCase and are enforced by a
   # CustomCheck below because readability-identifier-naming cannot express that
   # composition with a single Case/Prefix/Suffix setting.
@@ -145,6 +190,7 @@ CheckOptions:
   readability-identifier-naming.GlobalVariablePrefix: 'g_'
   readability-identifier-naming.StaticVariableCase: 'lower_case'
   readability-identifier-naming.ConstantCase: 'lower_case'
+  readability-identifier-naming.MemberCase: 'lower_case'
 
   readability-identifier-naming.TypedefCase: 'lower_case'
   readability-identifier-naming.TypedefSuffix: '_t'
@@ -154,7 +200,11 @@ CheckOptions:
   readability-identifier-naming.EnumConstantCase: 'UPPER_CASE'
   readability-identifier-naming.MacroDefinitionCase: 'UPPER_CASE'
 
-  # CSTYLE-054..057. Cognitive complexity and parameter count map directly to
+  # CSTYLE-022: no line-count exception to required control-statement braces.
+  readability-braces-around-statements.ShortStatementLines: '0'
+
+  # CSTYLE-054, CSTYLE-055, CSTYLE-056, CSTYLE-057: complexity and parameter review.
+  # Cognitive complexity and parameter count map directly to
   # documented limits. Branch count is not cyclomatic complexity, so CSTYLE-055
   # remains a separate review/metric check instead of being approximated here.
   readability-function-cognitive-complexity.Threshold: '15'
@@ -173,7 +223,7 @@ CheckOptions:
   readability-magic-numbers.IgnoreBitFieldsWidths: 'false'
   readability-magic-numbers.IgnoreTypeAliases: 'false'
 
-  # CSTYLE-058/072/073 permit idiomatic truth tests, while pointer nullability
+  # CSTYLE-058, CSTYLE-072, CSTYLE-073 permit truth tests, while pointer nullability
   # must remain explicit. Keep integer conditions, reject pointer-to-bool.
   readability-implicit-bool-conversion.AllowIntegerConditions: 'true'
   readability-implicit-bool-conversion.AllowPointerConditions: 'false'
@@ -186,20 +236,19 @@ CheckOptions:
   bugprone-narrowing-conversions.PedanticMode: 'true'
   bugprone-narrowing-conversions.IgnoreConversionFromTypes: ''
 
-  # CSTYLE-057/069: supplementary call-site review for ambiguous parameters.
+  # CSTYLE-057, CSTYLE-069: supplementary call-site review for ambiguous parameters.
   bugprone-easily-swappable-parameters.MinimumLength: '2'
   bugprone-easily-swappable-parameters.IgnoredParameterNames: ''
 
-  # CSTYLE-069/071: argument comments must match the declared contract exactly.
+  # CSTYLE-069, CSTYLE-071: argument comments must match the declared contract exactly.
   bugprone-argument-comment.StrictMode: 'true'
   bugprone-argument-comment.CommentBoolLiterals: 'true'
   bugprone-argument-comment.IgnoreSingleArgument: 'false'
 
-  # CSTYLE-009 allows __ only for compiler/builtin/system information. clang-tidy
-  # cannot infer semantic intent, so only the uppercase project form is exempted;
-  # project review still decides whether each use belongs to an allowed category.
+  # CSTYLE-009: compiler-provided tokens may be consumed at an adapter boundary;
+  # project declarations must not create implementation-reserved identifiers.
   bugprone-reserved-identifier.Invert: 'false'
-  bugprone-reserved-identifier.AllowedIdentifiers: '^__[A-Z][A-Z0-9_]*$'
+  bugprone-reserved-identifier.AllowedIdentifiers: ''
 
   # CSTYLE-085 canonical CBAN direct-call policy.
   # Broad clang-tidy defaults are deliberately OFF because they classify several
@@ -207,24 +256,95 @@ CheckOptions:
   # snprintf/memcpy). Only project bans/reviews are encoded here.
   bugprone-unsafe-functions.ReportDefaultFunctions: 'false'
   bugprone-unsafe-functions.ReportMoreUnsafeFunctions: 'false'
-  bugprone-unsafe-functions.CustomFunctions: "^(gets|_getts|strcpy|wcscpy|_tcscpy|_mbscpy|lstrcpy|StrCpy|strcat|wcsca\
-    t|_tcscat|_mbscat|lstrcat|StrCat|sprintf|vsprintf|wsprintf|wvsprintf|scanf|vscanf|atoi|atol|atoll|atof|strtok|bco\
-    py|bcmp|alloca|_alloca|system|tmpnam|tempnam|mktemp|_mktemp|asctime|ctime|IsBadReadPtr|IsBadWritePtr)$,,> CSTYLE-\
-    085 CBAN direct-call ban: this API is forbidden by project policy; ^(strncpy|wcsncpy|_tcsncpy|_mbsncpy|strncat|wc\
-    sncat|fscanf|vfscanf|sscanf|vsscanf|itoa|_itoa|ltoa|_ltoa|ultoa|_ultoa|strtok_r|strsep|bzero|realloc|popen|execlp\
-    |execvp|putenv|signal|pthread_cancel|crypt|strerror|localtime|gmtime|_splitpath|_makepath|_fullpath)$,,> CSTYLE-0\
-    85 CBAN review: use requires an approved documented review or deviation"
+  bugprone-unsafe-functions.CustomFunctions: >-
+    ^gets$,,> CBAN-001 / CSTYLE-085: direct call prohibited;
+    ^_getts$,,> CBAN-002 / CSTYLE-085: direct call prohibited;
+    ^strcpy$,,> CBAN-003 / CSTYLE-085: direct call prohibited;
+    ^wcscpy$,,> CBAN-004 / CSTYLE-085: direct call prohibited;
+    ^_tcscpy$,,> CBAN-005 / CSTYLE-085: direct call prohibited;
+    ^_mbscpy$,,> CBAN-006 / CSTYLE-085: direct call prohibited;
+    ^lstrcpy$,,> CBAN-007 / CSTYLE-085: direct call prohibited;
+    ^StrCpy$,,> CBAN-008 / CSTYLE-085: direct call prohibited;
+    ^strncpy$,,> CBAN-009 / CSTYLE-085: documented API review required;
+    ^wcsncpy$,,> CBAN-010 / CSTYLE-085: documented API review required;
+    ^_tcsncpy$,,> CBAN-011 / CSTYLE-085: documented API review required;
+    ^_mbsncpy$,,> CBAN-012 / CSTYLE-085: documented API review required;
+    ^strcat$,,> CBAN-013 / CSTYLE-085: direct call prohibited;
+    ^wcscat$,,> CBAN-014 / CSTYLE-085: direct call prohibited;
+    ^_tcscat$,,> CBAN-015 / CSTYLE-085: direct call prohibited;
+    ^_mbscat$,,> CBAN-016 / CSTYLE-085: direct call prohibited;
+    ^lstrcat$,,> CBAN-017 / CSTYLE-085: direct call prohibited;
+    ^StrCat$,,> CBAN-018 / CSTYLE-085: direct call prohibited;
+    ^strncat$,,> CBAN-019 / CSTYLE-085: documented API review required;
+    ^wcsncat$,,> CBAN-020 / CSTYLE-085: documented API review required;
+    ^sprintf$,,> CBAN-021 / CSTYLE-085: direct call prohibited;
+    ^vsprintf$,,> CBAN-022 / CSTYLE-085: direct call prohibited;
+    ^wsprintf$,,> CBAN-024 / CSTYLE-085: direct call prohibited;
+    ^wvsprintf$,,> CBAN-025 / CSTYLE-085: direct call prohibited;
+    ^scanf$,,> CBAN-034 / CSTYLE-085: direct call prohibited;
+    ^vscanf$,,> CBAN-035 / CSTYLE-085: direct call prohibited;
+    ^fscanf$,,> CBAN-036 / CSTYLE-085: documented API review required;
+    ^vfscanf$,,> CBAN-037 / CSTYLE-085: documented API review required;
+    ^sscanf$,,> CBAN-038 / CSTYLE-085: documented API review required;
+    ^vsscanf$,,> CBAN-039 / CSTYLE-085: documented API review required;
+    ^atoi$,,> CBAN-040 / CSTYLE-085: direct call prohibited;
+    ^atol$,,> CBAN-041 / CSTYLE-085: direct call prohibited;
+    ^atoll$,,> CBAN-042 / CSTYLE-085: direct call prohibited;
+    ^atof$,,> CBAN-043 / CSTYLE-085: direct call prohibited;
+    ^itoa$,,> CBAN-044 / CSTYLE-085: documented API review required;
+    ^_itoa$,,> CBAN-045 / CSTYLE-085: documented API review required;
+    ^ltoa$,,> CBAN-046 / CSTYLE-085: documented API review required;
+    ^_ltoa$,,> CBAN-047 / CSTYLE-085: documented API review required;
+    ^ultoa$,,> CBAN-048 / CSTYLE-085: documented API review required;
+    ^_ultoa$,,> CBAN-049 / CSTYLE-085: documented API review required;
+    ^strtok$,,> CBAN-050 / CSTYLE-085: direct call prohibited;
+    ^strtok_r$,,> CBAN-051 / CSTYLE-085: documented API review required;
+    ^strsep$,,> CBAN-052 / CSTYLE-085: documented API review required;
+    ^bzero$,,> CBAN-059 / CSTYLE-085: documented API review required;
+    ^bcopy$,,> CBAN-062 / CSTYLE-085: direct call prohibited;
+    ^bcmp$,,> CBAN-063 / CSTYLE-085: direct call prohibited;
+    ^alloca$,,> CBAN-064 / CSTYLE-085: direct call prohibited;
+    ^_alloca$,,> CBAN-065 / CSTYLE-085: direct call prohibited;
+    ^realloc$,,> CBAN-068 / CSTYLE-085: documented API review required;
+    ^system$,,> CBAN-070 / CSTYLE-085: direct call prohibited;
+    ^popen$,,> CBAN-071 / CSTYLE-085: documented API review required;
+    ^execlp$,,> CBAN-072 / CSTYLE-085: documented API review required;
+    ^execvp$,,> CBAN-073 / CSTYLE-085: documented API review required;
+    ^tmpnam$,,> CBAN-077 / CSTYLE-085: direct call prohibited;
+    ^tempnam$,,> CBAN-078 / CSTYLE-085: direct call prohibited;
+    ^mktemp$,,> CBAN-079 / CSTYLE-085: direct call prohibited;
+    ^_mktemp$,,> CBAN-080 / CSTYLE-085: direct call prohibited;
+    ^putenv$,,> CBAN-098 / CSTYLE-085: documented API review required;
+    ^signal$,,> CBAN-103 / CSTYLE-085: documented API review required;
+    ^pthread_cancel$,,> CBAN-106 / CSTYLE-085: documented API review required;
+    ^strerror$,,> CBAN-122 / CSTYLE-085: documented API review required;
+    ^asctime$,,> CBAN-123 / CSTYLE-085: direct call prohibited;
+    ^ctime$,,> CBAN-124 / CSTYLE-085: direct call prohibited;
+    ^localtime$,,> CBAN-125 / CSTYLE-085: documented API review required;
+    ^gmtime$,,> CBAN-126 / CSTYLE-085: documented API review required;
+    ^IsBadReadPtr$,,> CBAN-128 / CSTYLE-085: direct call prohibited;
+    ^IsBadWritePtr$,,> CBAN-129 / CSTYLE-085: direct call prohibited;
+    ^_splitpath$,,> CBAN-130 / CSTYLE-085: documented API review required;
+    ^_makepath$,,> CBAN-131 / CSTYLE-085: documented API review required;
+    ^_fullpath$,,> CBAN-132 / CSTYLE-085: documented API review required
 
-  # CSTYLE-066: discarded non-void return values are forbidden by default.
+  # CSTYLE-066, CSTYLE-151, CBAN-140: discarded fallible results need review.
   # This intentionally checks all functions; functions whose contracts prove an
   # ignorable return require an explicit local deviation/suppression.
   bugprone-unused-return-value.CheckedFunctions: '.*'
+  bugprone-unused-return-value.AllowCastToVoid: 'false'
+
+  # CSTYLE-064, CSTYLE-067, CSTYLE-072: keep the explicit exit protocol while
+  # checking void-valued returns and side effects hidden inside assertions.
+  readability-avoid-return-with-void-value.IgnoreMacros: 'false'
+  readability-avoid-return-with-void-value.StrictMode: 'true'
+  bugprone-assert-side-effect.CheckFunctionCalls: 'true'
 
   # CSTYLE-007: preserve the project's explicit sequential enum form.
   readability-enum-initial-value.AllowExplicitZeroFirstInitialValue: 'true'
   readability-enum-initial-value.AllowExplicitSequentialInitialValues: 'true'
 
-  # Keep macro analysis strict; CSTYLE-043..048 treats macros as high-risk code.
+  # CSTYLE-043, CSTYLE-044, CSTYLE-048: inspect macro comparison expressions too.
   bugprone-chained-comparison.IgnoreMacros: 'false'
 
 CustomChecks:
@@ -234,7 +354,7 @@ CustomChecks:
     Query: |
       match labelStmt(
         hasDeclaration(
-          labelDecl(unless(matchesName("^[a-z][a-z0-9_]*$"))).bind("label")
+          labelDecl(unless(matchesName("(^|::)[a-z][a-z0-9_]*$"))).bind("label")
         )
       )
     Diagnostic:
@@ -242,18 +362,24 @@ CustomChecks:
         Message: 'CSTYLE-008: label name must use snake_case'
         Level: Warning
 
-  # CSTYLE-003: functions use MODULE_lowerCamelCase. `main` is the only generic
-  # language entry-point exception encoded here. Platform/ABI callbacks that
-  # require foreign names need a documented NOLINT/custom-function-name.
+  # CSTYLE-003; CMOD-040, CMOD-041, CMOD-043: static functions use the internal
+  # module_lowerCamelCase form. Non-static declarations may be public or internal;
+  # their names alone cannot prove the export/visibility contract. Foreign names
+  # require an adapter-scoped deviation. The hosted main entry point is exempt.
   - Name: 'function-name'
     Query: |
       match functionDecl(
         unless(isMain()),
-        unless(matchesName("^[A-Z][A-Z0-9_]*_[a-z][A-Za-z0-9]*$"))
+        anyOf(
+          allOf(isStaticStorageClass(),
+            unless(matchesName("(^|::)[a-z][a-z0-9_]*_[a-z][A-Za-z0-9]*$"))),
+          allOf(unless(isStaticStorageClass()),
+            unless(matchesName("(^|::)([A-Z][A-Z0-9_]*|[a-z][a-z0-9_]*)_[a-z][A-Za-z0-9]*$")))
+        )
       ).bind("function")
     Diagnostic:
       - BindName: 'function'
-        Message: 'CSTYLE-003: function name must match MODULE_lowerCamelCase'
+        Message: 'CSTYLE-003: use MODULE_lowerCamelCase publicly or module_lowerCamelCase internally'
         Level: Warning
 
   # CSTYLE-074: continue always targets a loop and is therefore unambiguously
@@ -277,14 +403,14 @@ CustomChecks:
         Message: 'CSTYLE-108: variable-length arrays are forbidden'
         Level: Warning
 
-  # CSTYLE-088: function-level static mutable/hidden state is forbidden by
-  # default. A truly exceptional case requires a documented suppression.
+  # CSTYLE-088: function-static mutable state requires a documented exception.
+  # A const-qualified object does not by itself prove deep immutability.
   - Name: 'no-static-local'
     Query: |
-      match varDecl(isStaticLocal()).bind("static_local")
+      match varDecl(isStaticLocal(), unless(hasType(isConstQualified()))).bind("static_local")
     Diagnostic:
       - BindName: 'static_local'
-        Message: 'CSTYLE-088: function-level static variables are forbidden'
+        Message: 'CSTYLE-088: move mutable function-static state into an owned module instance'
         Level: Warning
 
   # CSTYLE-107: local automatic variables must be declared at function scope,
@@ -304,5 +430,151 @@ CustomChecks:
       - BindName: 'local'
         Message: 'CSTYLE-107: local variables must be declared at function scope before normal statements'
         Level: Warning
+
+  # CSTYLE-064: return follows the output label or its explicit cleanup block.
+  # Cleanup ordering and whether all paths reach it still need flow analysis.
+  - Name: 'return-at-output-label'
+    Query: |
+      match returnStmt(unless(anyOf(
+        hasParent(labelStmt(hasDeclaration(labelDecl(hasName("function_output"))))),
+        hasAncestor(compoundStmt(hasParent(labelStmt(
+          hasDeclaration(labelDecl(hasName("function_output")))
+        ))))
+      ))).bind("return")
+    Diagnostic:
+      - BindName: 'return'
+        Message: 'CSTYLE-064: return only at the function_output label'
+        Level: Warning
+
+  # CSTYLE-064: value-returning operations return the declared result variable.
+  - Name: 'return-result-variable'
+    Query: |
+      match returnStmt(hasReturnValue(expr(unless(ignoringParenImpCasts(
+        declRefExpr(to(varDecl(hasName("ret"))))
+      ))))).bind("return")
+    Diagnostic:
+      - BindName: 'return'
+        Message: 'CSTYLE-064: return the ret variable; assign results before the exit label'
+        Level: Warning
+
+  # CSTYLE-107: explicit initialization is required even before definite use.
+  # This does not prove the mandated zero-like value or declaration ordering.
+  - Name: 'initialize-local'
+    Query: |
+      match varDecl(hasLocalStorage(), unless(parmVarDecl()),
+        unless(hasInitializer(expr()))).bind("local")
+    Diagnostic:
+      - BindName: 'local'
+        Message: 'CSTYLE-107: initialize automatic variables at function entry'
+        Level: Warning
+
+  # CSTYLE-139: assignments must not supply a value to another expression.
+  # bugprone-assignment-in-if-condition also checks direct if conditions.
+  - Name: 'assignment-as-value'
+    Query: |
+      match binaryOperator(isAssignmentOperator(),
+        anyOf(hasAncestor(expr(unless(parenExpr()))),
+          hasAncestor(returnStmt()), hasAncestor(varDecl()))).bind("assignment")
+    Diagnostic:
+      - BindName: 'assignment'
+        Message: 'CSTYLE-139: keep assignments out of larger expressions'
+        Level: Warning
+
+  # CSTYLE-140: a standalone update or a single for-loop update remains allowed.
+  - Name: 'embedded-increment'
+    Query: |
+      match unaryOperator(anyOf(hasOperatorName("++"), hasOperatorName("--")),
+        anyOf(hasAncestor(expr(unless(parenExpr()))),
+          hasAncestor(returnStmt()), hasAncestor(varDecl()))).bind("update")
+    Diagnostic:
+      - BindName: 'update'
+        Message: 'CSTYLE-140: isolate increment and decrement operations'
+        Level: Warning
+
+  # CSTYLE-134: AST matching distinguishes the operator from argument separators.
+  - Name: 'no-comma-operator'
+    Query: |
+      match binaryOperator(hasOperatorName(",")).bind("comma")
+    Diagnostic:
+      - BindName: 'comma'
+        Message: 'CSTYLE-134: replace the comma operator with separate statements'
+        Level: Warning
+
+  # CSTYLE-141; CMOD-044: callback typedefs stay allowed; ordinary object-pointer
+  # typedefs require a reviewed external ABI boundary, not a global exemption.
+  - Name: 'object-pointer-typedef'
+    Query: |
+      match typedefDecl(unless(isImplicit()), hasType(pointerType(
+        unless(pointee(hasUnqualifiedDesugaredType(functionType())))))).bind("typedef")
+    Diagnostic:
+      - BindName: 'typedef'
+        Message: 'CSTYLE-141: spell object pointers explicitly; review foreign ABI exceptions'
+        Level: Warning
+
+  # CSTYLE-132: variadic project declarations require a controlled adapter.
+  - Name: 'variadic-boundary'
+    Query: |
+      match functionDecl(isVariadic(), unless(isExpansionInSystemHeader())).bind("function")
+    Diagnostic:
+      - BindName: 'function'
+        Message: 'CSTYLE-132: variadic APIs require a reviewed formatting or foreign-interface adapter'
+        Level: Warning
+
+  # CSTYLE-161: anonymous members hide the aggregate's public identity.
+  - Name: 'anonymous-aggregate-member'
+    Query: |
+      match fieldDecl(isImplicit(), hasType(recordDecl())).bind("member")
+    Diagnostic:
+      - BindName: 'member'
+        Message: 'CSTYLE-161: name struct and union members explicitly'
+        Level: Warning
+
+  # CSTYLE-162; CMOD-087: assembly belongs to a reviewed target-specific adapter.
+  - Name: 'assembly-boundary'
+    Query: |
+      match asmStmt().bind("assembly")
+    Diagnostic:
+      - BindName: 'assembly'
+        Message: 'CSTYLE-162: inline assembly requires an approved platform or compiler adapter'
+        Level: Warning
+
+  # CSTYLE-078: C permits this conversion implicitly; project policy does not.
+  - Name: 'explicit-void-pointer-conversion'
+    Query: |
+      match implicitCastExpr(
+        hasSourceExpression(expr(hasType(pointerType(pointee(voidType()))))),
+        hasType(pointerType(unless(pointee(voidType()))))
+      ).bind("conversion")
+    Diagnostic:
+      - BindName: 'conversion'
+        Message: 'CSTYLE-078: use an explicit cast when converting void pointers'
+        Level: Warning
+
+  # CSTYLE-078, CSTYLE-107: scalar pointers need a typed NULL expression.
+  # Aggregate { 0 } is semantic initialization, not a scalar pointer shortcut.
+  - Name: 'typed-null-pointer'
+    Query: |
+      match implicitCastExpr(hasCastKind("CK_NullToPointer"),
+        unless(hasParent(initListExpr()))).bind("conversion")
+    Diagnostic:
+      - BindName: 'conversion'
+        Message: 'CSTYLE-078: use a null expression explicitly cast to the destination pointer type'
+        Level: Warning
+
+# Coverage limits: CSTYLE-055 needs a named cyclomatic-complexity metric;
+# CSTYLE-071, CSTYLE-082, CSTYLE-119, CSTYLE-147, CSTYLE-174, CSTYLE-175,
+# CSTYLE-178, CSTYLE-255, CSTYLE-259, CSTYLE-260, CSTYLE-261, CSTYLE-262 and
+# CSTYLE-266 require ownership, timing, security, or concurrency evidence.
+# CMOD-009, CMOD-014, CMOD-028, CMOD-029, CMOD-042, CMOD-063, CMOD-109 need
+# standalone header builds, dependency checks, or actual artifact/ABI inspection.
+# CSTYLE-142 designators and CSTYLE-138 file-scope multi-declarations also need
+# source-aware checks beyond the built-in local declaration diagnostic.
+# CMOD-017 requires a source-token check for explicit extern declarations.
+# The module graph and performance claims cannot be certified by these checks.
+
+# LLVM references:
+# https://releases.llvm.org/22.1.0/tools/clang/tools/extra/docs/clang-tidy/checks/list.html
+# https://releases.llvm.org/22.1.0/tools/clang/tools/extra/docs/clang-tidy/QueryBasedCustomChecks.html
+# https://releases.llvm.org/22.1.0/tools/clang/docs/LibASTMatchersReference.html
 
 # EOF

@@ -11,10 +11,14 @@ EditorConfig
 Follows
 gRPC
 grpcs
+libdevice
 libmemalloc
+Lua
 lychee
 markdownlint
 no-stdlib
+NOLINTNEXTLINE
+npm
 NVMe
 Refs
 Reported
@@ -27,4 +31,5 @@ Tested
 typos
 Vale
 yamllint
+Zizmor
 zstd

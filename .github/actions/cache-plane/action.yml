@@ -81,14 +81,28 @@ runs:
         fi
 
         bazel_cache="${COIL_CI_BAZEL_REMOTE_CACHE:-}"
+        # CWE-93 / CWE-74: runner settings must not inject Bazel rc options.
+        for value in "${bazel_cache}" "${COIL_CI_BAZEL_REMOTE_INSTANCE:-}"; do
+          if [[ "${value}" =~ [[:space:]] ]]; then
+            printf '%s\n' 'Bazel cache settings must not contain whitespace.' >&2
+            exit 1
+          fi
+        done
         if [[ -n "${bazel_cache}" ]]; then
+          # CWE-319: plaintext endpoints must be literal loopback origins.
+          if [[ "${bazel_cache}" =~ ^(http|grpc):// && \
+                ! "${bazel_cache}" =~ ^(http|grpc)://(127\.0\.0\.1|localhost):[0-9]+/?$ ]]; then
+            printf '%s\n' 'Plaintext Bazel cache is not a loopback origin.' >&2
+            exit 1
+          fi
           case "${bazel_cache}" in
-            http://*|https://*|grpc://*|grpcs://*)
+            https://*|grpcs://*|http://127.0.0.1:*|http://localhost:*|\
+            grpc://127.0.0.1:*|grpc://localhost:*)
               bazel_enabled=true
               ;;
             *)
               printf '%s\n' \
-                'COIL_CI_BAZEL_REMOTE_CACHE must use HTTP(S) or gRPC(S).' >&2
+                'Remote Bazel caches require TLS; plaintext is loopback-only.' >&2
               exit 1
               ;;
           esac
@@ -121,17 +135,24 @@ runs:
             exit 1
           fi
 
+          # CWE-319: do not send object-store credentials over a remote LAN.
+          if [[ "${s3_endpoint}" == http://* && \
+                ! "${s3_endpoint}" =~ ^http://(127\.0\.0\.1|localhost):[0-9]+/?$ ]]; then
+            printf '%s\n' 'Plaintext S3 cache is not a loopback origin.' >&2
+            exit 1
+          fi
           case "${s3_endpoint}" in
-            ""|http://*|https://*)
+            ""|https://*|http://127.0.0.1:*|http://localhost:*)
               ;;
             *)
               printf '%s\n' \
-                'COIL_CI_S3_CACHE_ENDPOINT must use HTTP or HTTPS.' >&2
+                'Remote S3 caches require TLS; plaintext is loopback-only.' >&2
               exit 1
               ;;
           esac
 
           if [[ "${s3_prefix}" == /* || \
+                "${s3_prefix}" =~ [[:space:]] || \
                 "${s3_prefix}" == *\\* || \
                 "${s3_prefix}" == ".." || \
                 "${s3_prefix}" == ../* || \
@@ -155,10 +176,8 @@ runs:
         bazel_write=false
 
         if [[ "${mode}" != disabled ]]; then
-          if [[ "${EVENT_NAME}" == merge_group ]]; then
-            shared_cache_write=true
-            bazel_write=true
-          elif [[ "${EVENT_NAME}" == push && \
+          # CWE-829 / OWASP CICD-SEC-5: proposed code cannot populate caches.
+          if [[ "${EVENT_NAME}" == push && \
                   "${REF_NAME}" == "${DEFAULT_BRANCH}" ]]; then
             shared_cache_write=true
             bazel_write=true

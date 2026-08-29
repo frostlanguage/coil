@@ -56,39 +56,9 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Read pinned Lua identity
-      id: toolchain
-      shell: bash
-      run: |
-        set -euo pipefail
-
-        python3 - <<'PY'
-        import os
-        import pathlib
-        import re
-        import tomllib
-
-        data = tomllib.loads(pathlib.Path("scripts/ci/toolchain.lock.toml").read_text())
-        lua = data["tools"]["lua"]
-        version = str(lua["version"])
-        sha256 = str(lua["sha256"])
-
-        if not re.fullmatch(r"[0-9A-Za-z._+-]+", version):
-            raise SystemExit("invalid Lua version in scripts/ci/toolchain.lock.toml")
-        if not re.fullmatch(r"[0-9a-f]{64}", sha256):
-            raise SystemExit("invalid Lua SHA-256 in scripts/ci/toolchain.lock.toml")
-
-        with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
-            handle.write(f"version={version}\n")
-            handle.write(f"sha256={sha256}\n")
-        PY
-
     - name: Setup pinned Lua
       id: lua
       uses: ./.github/actions/setup-lua
-      with:
-        version: ${{ steps.toolchain.outputs.version }}
-        sha256: ${{ steps.toolchain.outputs.sha256 }}
 
     - name: Classify repository changes
       id: detect

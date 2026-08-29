@@ -16,17 +16,21 @@ exceptions:
   - ANSI
   - API
   - APIs
+  - ASan
   - ASCII
   - BANNED
+  - BTB
   - C23
   - C28719
   - CAPEC
   - CBAN
   - CERT
   - CI
+  - CICD
   - CISA
   - CLI
   - CMake
+  - CPERF
   - CPIT
   - CPU
   - CPUs
@@ -35,9 +39,15 @@ exceptions:
   - CVEs
   - CWE
   - DCO
+  - DDIO
+  - DLL
+  - DLLs
   - DMA
   - DO
   - DOI
+  - DPDK
+  - DSB
+  - DTLB
   - DTOs
   - EEPROM
   - ELF
@@ -47,7 +57,9 @@ exceptions:
   - GC
   - GDB
   - GNU
+  - GNUC
   - GPU
+  - GUIs
   - HTML
   - HTTP
   - HTTPS
@@ -63,26 +75,37 @@ exceptions:
   - JPL
   - JSON
   - JSONC
+  - LLVM
   - LRU
   - MAC
   - MISRA
   - MITRE
   - MMIO
+  - MSHR
   - NASA
+  - NDEBUG
   - NUL
   - NULL
+  - NUMA
   - NVM
   - OCI
   - OOM
   - OpenPGP
+  - PCIe
   - PDG
   - PII
+  - PMU
   - POSIX
+  - PRNG
   - PRNGs
+  - QEMU
   - RAM
+  - RCU
   - README
+  - RELRO
   - RNG
   - ROM
+  - RSB
   - RTLD
   - SAST
   - SDL
@@ -92,19 +115,26 @@ exceptions:
   - SIMD
   - SPDX
   - SQL
+  - SSDF
+  - SSRF
   - SV
   - TCHAR
+  - TLB
   - TLS
   - TOML
   - TS
   - UB
+  - UBSan
   - URI
   - URL
   - UTF
   - VLA
   - VLAs
+  - WCET
   - XML
   - XOR
+  - XSS
+  - XXE
   - YAML
 # END GENERATED ACRONYMS
 

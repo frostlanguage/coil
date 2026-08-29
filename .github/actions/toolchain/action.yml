@@ -1,0 +1,81 @@
+# SPDX-FileCopyrightText: © 2026 Rafael V. Volkmer <rafael.v.volkmer@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-only
+
+---
+name: Resolve toolchain lock
+description: Load the pinned Coil toolchain from its canonical lock file.
+
+outputs:
+  tools:
+    description: Compact JSON object containing every locked tool identity.
+    value: ${{ steps.resolve.outputs.tools }}
+  digest:
+    description: SHA-256 digest of scripts/ci/toolchain.lock.toml.
+    value: ${{ steps.resolve.outputs.digest }}
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve canonical toolchain
+      id: resolve
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        python3 - <<'PYTHON'
+        import hashlib
+        import json
+        import os
+        import pathlib
+        import re
+        import tomllib
+
+        lock_path = pathlib.Path("scripts/ci/toolchain.lock.toml")
+        raw = lock_path.read_bytes()
+        data = tomllib.loads(raw.decode("utf-8"))
+
+        if data.get("schema_version") != 1:
+            raise SystemExit("unsupported toolchain lock schema")
+
+        tools = data.get("tools")
+        if not isinstance(tools, dict) or not tools:
+            raise SystemExit("toolchain lock has no [tools] entries")
+
+        hex64 = re.compile(r"[0-9a-f]{64}")
+        identity = re.compile(r"[0-9A-Za-z._+-]+")
+
+        for name, tool in tools.items():
+            if not isinstance(name, str) or not identity.fullmatch(name):
+                raise SystemExit(f"invalid tool name: {name!r}")
+            if not isinstance(tool, dict):
+                raise SystemExit(f"invalid tool entry: {name}")
+
+            version = tool.get("version")
+            revision = tool.get("revision")
+            if version is None and revision is None:
+                raise SystemExit(
+                    f"tool {name!r} requires a version or revision"
+                )
+
+            if version is not None and not identity.fullmatch(str(version)):
+                raise SystemExit(f"invalid version for tool {name!r}")
+            if revision is not None and not identity.fullmatch(str(revision)):
+                raise SystemExit(f"invalid revision for tool {name!r}")
+
+            for field in ("sha256", "remote_sha256"):
+                value = tool.get(field)
+                if value is not None and not hex64.fullmatch(str(value)):
+                    raise SystemExit(
+                        f"invalid {field} for tool {name!r}"
+                    )
+
+        compact = json.dumps(tools, sort_keys=True, separators=(",", ":"))
+        digest = hashlib.sha256(raw).hexdigest()
+
+        with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+            handle.write(f"tools={compact}\n")
+            handle.write(f"digest={digest}\n")
+
+        PYTHON
+
+# EOF

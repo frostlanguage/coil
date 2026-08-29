@@ -94,7 +94,9 @@ local function classify(input)
 
    if
       path:match("^%.github/actions/verified%-download/")
+      or path:match("^%.github/actions/cache%-plane/")
       or path:match("^%.github/actions/setup%-lua/")
+      or path:match("^%.github/actions/toolchain/")
       or path:match("^%.github/actions/detect%-changes/")
       or path:match("^scripts/libs/")
       or path == "scripts/ci/changed_areas.lua"
@@ -132,7 +134,13 @@ local function classify(input)
       if path == "scripts/ci/check_hooks.lua" then
          changed.mark("hooks")
       elseif
+         path == "scripts/ci/check_mermaid.lua"
+         or path == "scripts/ci/check_doc_tools.lua"
+      then
+         changed.mark("markdown")
+      elseif
          path == "scripts/ci/check_c.lua"
+         or path == "scripts/ci/check_doc_examples.lua"
          or path == "scripts/ci/check_modules.lua"
       then
          changed.mark("c")
@@ -142,6 +150,16 @@ local function classify(input)
    if path:match("^%.githooks/") then
       changed.mark("hooks")
       changed.mark("lua")
+   end
+
+   if path == "tests/lint/c-policy-test-suite.lua" then
+      changed.mark("c")
+      changed.mark("lua")
+   end
+
+   if path == "tests/lint/ci-policy-test-suite.lua" then
+      changed.mark("markdown")
+      changed.mark("ci")
    end
 
    if path:match("^tests/mock/git_hooks/") then
@@ -234,7 +252,10 @@ local function classify(input)
       changed.mark("toml")
       changed.mark("spelling")
    elseif
-      paths.ends_with(path, ".md") or paths.ends_with(path, ".markdown")
+      paths.ends_with(path, ".md")
+      or paths.ends_with(path, ".markdown")
+      or paths.ends_with(path, ".mmd")
+      or paths.ends_with(path, ".mermaid")
    then
       changed.mark("markdown")
       changed.mark("spelling")

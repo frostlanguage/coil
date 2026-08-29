@@ -5,6 +5,7 @@
 -- Keep host-shell quoting and command discovery isolated in this module.
 
 local M = {}
+local temporary_directories = {}
 
 M.is_windows = os.getenv("OS") == "Windows_NT"
 M.null_device = M.is_windows and "NUL" or "/dev/null"
@@ -105,6 +106,41 @@ function M.command_output(arguments)
    end
 
    return output
+end
+
+--- Create an exclusively owned temporary directory without optional modules.
+-- @return string: absolute directory path, private to this process.
+function M.temporary_directory()
+   local arguments = { "mktemp", "-d" }
+   if M.is_windows then
+      arguments = {
+         "powershell",
+         "-NoProfile",
+         "-NonInteractive",
+         "-Command",
+         "$p = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid()); "
+            .. "New-Item -ItemType Directory -Path $p -ErrorAction Stop "
+            .. "| Out-Null; [Console]::WriteLine($p)",
+      }
+   end
+   -- CWE-377: the OS creates the directory before its name becomes visible.
+   local directory = assert(M.command_output(arguments)):gsub("[\r\n]+$", "")
+   assert(directory ~= "" and directory ~= "/", "invalid temporary path")
+   temporary_directories[directory] = true
+   return directory
+end
+
+--- Remove only a private directory allocated by this module instance.
+-- @param directory string: exact path returned by temporary_directory.
+function M.remove_temporary_directory(directory)
+   -- CWE-22: callers cannot use cleanup to remove arbitrary repository paths.
+   assert(temporary_directories[directory], "temporary directory is not owned")
+   local arguments = { "rm", "-r", "--", directory }
+   if M.is_windows then
+      arguments = { "cmd", "/d", "/c", "rmdir", "/s", "/q", directory }
+   end
+   assert(M.command_succeeded(arguments), "temporary directory cleanup failed")
+   temporary_directories[directory] = nil
 end
 
 --- Append host-native stdout and stderr redirection to the null device.

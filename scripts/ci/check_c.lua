@@ -87,6 +87,17 @@ then
 end
 
 local tracked = git.tracked_files()
+local policy_tests =
+   dofile(paths.join(repo_root, "tests/lint/c-policy-test-suite.lua"))
+policy_tests({
+   root = repo_root,
+   platform = platform,
+   tidy = clang_tidy,
+   format = clang_format,
+   tidy_config = tidy_config,
+   format_config = format_config,
+})
+
 if type(tracked) ~= "table" then
    fail("git ls-files failed.")
 end

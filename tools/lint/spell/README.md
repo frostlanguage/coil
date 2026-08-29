@@ -22,11 +22,11 @@ vale --config tools/lint/spell/vale/.vale.ini .
 The reviewed source vocabulary lives under `dictionary`, with one term per
 line and categories for acronyms, C APIs, C terminology, project terminology,
 and proper names. Add a recurring domain term to the narrowest category. Fix a
-real spelling error in its source document instead of adding it to the
-vocabulary.
+real spelling error in its source document. Reserve the vocabulary for valid
+domain terms.
 
 The generator combines the category files into `dictionary/coil-words.txt`.
-CSpell and codespell consume this central word list directly. The other tools
+CSpell and codespell consume this central word list. The other tools
 require native adapters, generated with:
 
 ```sh
@@ -38,10 +38,13 @@ the generated sections of the typos word table and Vale acronym rules. It
 rejects duplicate, unsorted, or malformed source entries. CI runs `--check` so
 a canonical vocabulary change cannot leave stale adapters behind.
 
-Do not edit generated content by hand. Do not use document-wide spelling or
-acronym suppressions. A genuinely document-specific term may use a narrowly
-scoped inline directive, but recurring technical language belongs in the
-canonical vocabulary.
+Use the generator to update generated content. Keep spelling and acronym checks
+active across each document. A document-specific term may use a scoped inline
+directive, but recurring technical language belongs in the canonical vocabulary.
+
+Generated npm locks contain upstream package identities and integrity hashes.
+Codespell excludes these locks and installed dependency directories from prose
+checks. The dependency graph validator and security audit check the locks.
 
 ## Vale policy
 
@@ -70,12 +73,12 @@ promotional claims, vague references, unsupported attribution, and inflated
 wording. The remaining rules improve technical precision through acronym
 definitions, consistent units, concise sentences, and explicit actors.
 
-The C language style guide and pitfall catalog are normative references rather
-than narrative articles. They use the focused `CoilSpelling` style, which keeps
+The C language style guide and pitfall catalog are normative references. They use
+the focused `CoilSpelling` style, which keeps
 spelling and acronym validation active across the complete documents without
 applying narrative-prose heuristics to rule tables and compact requirements.
 
-Use Vale's inline configuration comments only for a justified, isolated
+Use Vale's inline configuration comments for a justified, isolated
 exception. Limit the suppression to one rule and the smallest relevant
 passage.
 

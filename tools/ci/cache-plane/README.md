@@ -5,46 +5,41 @@ SPDX-License-Identifier: GPL-3.0-only
 
 # Coil CI cache plane
 
-The Coil CI can use a cache plane on the same low-latency network as trusted
-self-hosted runners. GitHub-hosted runners remain the fallback and require no
-private infrastructure.
+Coil separates validation results from reusable dependency content. Independent lint jobs share a
+pinned toolchain and content-addressed downloads. Trusted self-hosted runners can use nearby cache
+services; GitHub-hosted runners provide the public validation path.
 
-The cache plane separates four concerns instead of treating every service as
-one interchangeable cache:
+<details>
+<summary>Contents</summary>
 
-```text
-runner
-  |-- L0 runner-local immutable tool cache
-  |-- L1 S3-compatible shared object cache
-  |-- specialized OCI registry / mirror
-  |-- specialized Bazel remote cache
-  `-- Squid egress proxy --> upstream origins
-```
+- [Runner boundary](#runner-boundary)
+- [Service configuration](#service-configuration)
+- [Cache hierarchy](#cache-hierarchy)
+- [Validation graph](#validation-graph)
+- [Security controls](#security-controls)
+- [Local verification](#local-verification)
+- [Links and references](#links-and-references)
 
-Squid controls egress and can cache eligible HTTP traffic. It is not a shared
-object-cache tier for normal end-to-end HTTPS traffic.
+</details>
 
-## Runner selection
+---
 
-Set the repository variable `COIL_CI_RUNNER` to the custom label assigned to
-the trusted self-hosted runner pool. Leave the variable unset to use
-`ubuntu-24.04`.
+## Runner boundary
 
-All `pull_request` jobs use GitHub-hosted runners. Push, merge-group, and manual
-jobs may use the private runner label. This keeps pull-request code off the
-private runner network by default.
+`pull_request` and `merge_group` jobs use GitHub-hosted runners. Hosted isolation separates proposed
+code from the private runner network and its credentials. Push and manual jobs can use the trusted
+pool selected by `COIL_CI_RUNNER`. Leaving that repository variable unset selects `ubuntu-24.04`.
 
-Workflow routing is defense in depth, not the cache-plane security boundary.
-Enforce write access with runner identity, service authentication, and network
-policy. Do not give pull-request runners private cache credentials.
+Service authentication and network policy enforce cache authorization. Workflow routing supplements
+those controls. Issue private cache credentials to trusted runner identities and keep them outside
+repository variables and committed files. Workload identity or a managed credential store avoids
+static credentials in Kubernetes and VM deployments.
 
-## Runner environment
+---
 
-Provision cache endpoints and credentials on the runner service or through a
-workload identity. Do not place object-store credentials in repository
-variables or committed files.
+## Service configuration
 
-A self-hosted runner can use this environment:
+Configure the runner service with its cache endpoints and workload identity:
 
 ```text
 COIL_CI_CACHE_PLANE_MODE=optional
@@ -57,119 +52,195 @@ HTTPS_PROXY=http://squid.ci.internal:3128
 HTTP_PROXY=http://squid.ci.internal:3128
 NO_PROXY=silo.ci.internal,registry.ci.internal,bazel-cache.ci.internal
 COIL_CI_OCI_REGISTRY=registry.ci.internal:5000
-COIL_CI_BAZEL_REMOTE_CACHE=grpc://bazel-cache.ci.internal:9092
+COIL_CI_BAZEL_REMOTE_CACHE=grpcs://bazel-cache.ci.internal:9092
 ```
 
-Use the standard AWS credential chain for the S3-compatible endpoint. A VM may
-use its machine identity or credential store. A Kubernetes runner should prefer
-workload identity or a service account over static credentials.
+`COIL_CI_CACHE_PLANE_MODE` accepts `disabled`, `optional` or `required`. Required mode demands an
+S3-compatible shared cache. OCI, Bazel and Squid have separate roles and requirements.
 
-`COIL_CI_CACHE_PLANE_MODE` accepts `disabled`, `optional`, or `required`.
-Required mode requires the S3-compatible shared object cache. OCI, Bazel, and
-Squid remain specialized services and do not become mandatory when the build
-does not need them.
+Remote S3 endpoints require HTTPS. Remote Bazel endpoints require HTTPS or gRPC with TLS. HTTP/gRPC
+endpoints without encryption must identify `localhost` or `127.0.0.1` with an explicit port. This
+exception supports runner-local services. Credentials use the standard AWS credential chain.
 
-## L0 runner-local cache
+Provision OCI authentication and daemon mirror settings before the runner starts. CI jobs avoid
+privileged daemon changes. Use the runner credential store for registry authentication.
 
-`COIL_CI_TOOL_CACHE_DIR` points to an optional persistent local directory. The
-verified-download action stores immutable tool downloads below this directory
-by platform, version, and SHA-256.
+---
 
-The action writes through a temporary file and renames only verified content.
-Concurrent jobs can therefore share the local directory without trusting a
-partial download.
+## Cache hierarchy
 
-## L1 S3-compatible shared object cache
-
-`COIL_CI_S3_CACHE_BUCKET` enables the shared object cache. Set
-`COIL_CI_S3_CACHE_ENDPOINT` for an S3-compatible service; leave the endpoint
-unset when the standard AWS S3 endpoint should supply the cache.
-
-The verified-download action uses this lookup order:
+The services have distinct data and trust boundaries:
 
 ```text
-L0 runner-local cache
-  -> L1 S3-compatible shared cache
-  -> GitHub Actions cache when runners have no private cache access
-  -> HTTPS origin, optionally through Squid
+L0  runner-local immutable tool archives
+L1  S3-compatible shared archives for trusted runners
+H1  GitHub Actions archive cache for hosted runners
+S1  OCI registry or mirror for container layers and manifests
+S2  Bazel remote cache for build action outputs
+E1  Squid for outbound traffic controls and eligible HTTP responses
+O1  upstream HTTPS origin
 ```
 
-Every cache hit receives the same SHA-256 verification as an origin download.
-A digest mismatch in the shared cache fails the job instead of silently falling
-back to the network.
+The verified-download action checks L0 content before using the shared service or the origin. Hosted
+runners without private cache access restore H1 archives. H1, OCI, Bazel and Squid are separate
+services; they have separate authorization and integrity requirements.
 
-Only merge-group jobs, trusted pushes to the default branch, and manual runs on
-the default branch may populate the shared object cache. Pull requests and tags
-do not upload objects. The object key includes platform, architecture, tool,
-version, digest, and filename, so policy keys address shared tool objects by
-content.
+Archive identities include platform, architecture, tool, version and SHA-256. The S3 key includes
+the filename. The action verifies restored and downloaded content against the expected digest. A
+shared-cache digest mismatch fails the job. Temporary files use exclusive creation, and verified
+content reaches the cache through an atomic rename. Concurrent readers receive complete archives.
 
-Configure lifecycle expiration in the object store rather than deleting cache
-objects from CI jobs. Use a bounded retention window that matches runner reuse,
-and expire incomplete multipart uploads separately.
+Default-branch pushes and manual runs can publish shared archives and Bazel results. PRs, merge
+queues and tags have read access without publication rights. Hosted release and tag jobs fetch
+verified tool archives from the upstream origin, bypassing H1 restoration and publication.
 
-## Squid egress proxy
+Use object-store lifecycle expiration with bounded retention. Expire incomplete multipart uploads
+through the storage service. OCI retention precedes garbage collection; Distribution garbage
+collection requires blocked writes or a registry implementation supporting collection during writes.
 
-Use Squid as the runner egress proxy and apply an LRU disk replacement policy
-when the deployed Squid version supports that configuration. Do not enable TLS
-interception only to improve CI cache hit rate. Normal HTTPS `CONNECT` traffic
-remains end-to-end encrypted and does not expose response bodies to Squid.
+Squid preserves end-to-end HTTPS through `CONNECT`; encrypted response bodies remain opaque to its
+HTTP cache. Avoid TLS interception for cache hit rates. Use the proxy's supported LRU disk policy
+for eligible responses. Put private cache endpoints in `NO_PROXY` to keep their traffic on the
+runner network.
 
-The pipeline honors standard `HTTP_PROXY`, `HTTPS_PROXY`, and `NO_PROXY`
-variables inherited from the runner service. Put the shared object store, OCI
-registry, and Bazel cache in `NO_PROXY` when they live on the runner LAN.
+The Bazel action generates a temporary rc file with download verification and event-scoped upload
+permissions. A Bazel workspace enables `bazel test //...`; without a workspace, CI checks the
+integration configuration. For `bazel-remote`, bounded disk storage, LRU eviction and zstd
+compression control space usage. NVMe storage near the runners reduces storage and network latency.
 
-## OCI registry or mirror
+---
 
-Provision the container runtime with the local OCI registry or pull-through
-mirror before the runner service starts. The workflow does not mutate the host
-daemon because that would require privileged job access.
+## Validation graph
 
-Keep registry authentication in the runner credential store. Apply retention
-before garbage collection and run Distribution garbage collection with writes
-blocked, or use a registry implementation that provides safe online retention
-and garbage collection.
+Changed-area detection selects independent language and document checks. Integration, release and
+manual validation retain the full graph. The final gate rejects failed prerequisites. A cache hit
+supplies inputs; test execution determines the result.
 
-## Bazel remote cache
+```mermaid
+flowchart TD
+    Changes[Classify changed paths] --> Languages[Independent language checks]
+    Changes --> Documents[Markdown and Mermaid]
+    Changes --> Prose[Spelling and prose]
+    CPolicy[C policy configuration] --> Examples[Extract complete C examples]
+    Examples --> Clang[Clang release and sanitizer tests]
+    Examples --> GCC[GCC release tests]
+    Languages --> Gate[CI gate]
+    Documents --> Gate
+    Prose --> Gate
+    Clang --> Gate
+    GCC --> Gate
+    Integrity[Verified dependency content] --> Languages
+    Integrity --> Documents
+```
 
-The cache-plane action generates a temporary Bazel rc file whenever
-`COIL_CI_BAZEL_REMOTE_CACHE` is present. Supported URI schemes are `http`,
-`https`, `grpc`, and `grpcs`.
+Markdown and Mermaid share one runner and one locked npm installation. Their cache contains package
+content; installed `node_modules` and generated executables remain outside it. The exact key
+includes the lock digest, Node version, operating system and architecture. `npm ci --ignore-scripts`
+checks package integrity and prevents dependency install hooks. Proposed changes receive read access
+to this cache.
 
-Only trusted pushes to the default branch, merge-group builds, and manual runs
-on the default branch may upload local Bazel results. Pull requests and tags
-may read cached results but may not upload them. Bazel download verification
-remains enabled.
+The security job audits the dependency lock without installing packages. Scheduled runs check new
+advisories against the current lock. Transitive overrides cover these findings:
 
-The repository lint workflow runs `bazel test //...` when a Bazel workspace
-marker is present. Until Coil adopts Bazel, the job validates the cache-plane
-integration and exits without building.
+- [Template injection][fix-code].
+- [Prototype pollution][fix-data].
+- [Parser infinite loops][toml-loop].
 
-For `bazel-remote`, use bounded disk storage with its automatic LRU eviction
-and zstd storage. Prefer NVMe storage close to the runners.
+Upstream pin updates can replace these overrides following a security review.
 
-## Cache hierarchy and trust boundary
+The Mermaid validator recognizes nested and tilde Markdown fences, `.mmd` files and `.mermaid`
+files. It invokes the official parser without Chromium or diagram rendering. A worker enforces
+memory and time budgets. File size, diagram size, diagram count and diagnostic size have explicit
+limits. Lua handles discovery and orchestration; an embedded adapter calls the Mermaid JavaScript
+API.
 
-The effective hierarchy is:
+The example checker extracts 24 complete files into a private directory. Clang release, GCC release
+and sanitizer builds share one runner with bounded build parallelism. CTest and clang-tidy execute
+for the current source state. Invalid failure fragments stay outside executable tests. Contextual
+snippets describe contracts within a surrounding implementation.
+
+Measure runner queue time, setup time, cache source, download time and test time before adding jobs
+or cache layers. Compare archive transfer costs with build costs before caching small builds.
+Persistent build caches must preserve content addressing, platform separation and trust separation.
+Runner-fleet measurements establish the achieved speedup.
+
+---
+
+## Security controls
+
+These project threat associations guide review and testing. They supplement branch protection,
+service authorization, credential rotation and runner isolation; they make no claim of an official
+equivalence mapping.
+
+- Workflow inputs remain environment values and quoted arguments. Path and output validation reject
+  traversal and injected records: [CWE-22][cwe-22], [CWE-78][cwe-78], [CWE-93][cwe-93],
+  [CAPEC-88][capec-88], [OWASP CICD-SEC-4][owasp-pipeline].
+- Archive digests and npm integrity fields verify restored dependency content. Install hooks stay
+  disabled: [CWE-494][cwe-494], [CAPEC-184][capec-184], [OWASP CICD-SEC-9][owasp-integrity].
+- Dependency audits and patched transitive dependencies reduce exposure to known vulnerabilities:
+  [CWE-1395][cwe-1395], [OWASP CICD-SEC-3][owasp-chain].
+- Default-branch publication and hosted proposed-code isolation separate cache writers by trust:
+  [CWE-829][cwe-829], [OWASP CICD-SEC-5][owasp-access].
+- TLS protects remote cache traffic and artifact redirects. Exceptions without encryption require
+  loopback origins: [CWE-319][cwe-319].
+- Exclusive temporary-file creation and owned-directory cleanup limit path attacks:
+  [CWE-377][cwe-377], [CWE-22][cwe-22].
+- Job, transfer, build and parser budgets bound resource use: [CWE-400][cwe-400].
+- JSON-encoded diagram errors and credential-free cache summaries protect diagnostic output:
+  [CWE-117][cwe-117], [OWASP CI/CD guidance][owasp-ci].
+
+The Lua security suite tests traversal, output injection, malformed identities, cache publication
+rights, remote transport and Bazel rc injection. Actionlint and Zizmor inspect the workflow graph.
+Mermaid regression checks cover valid, invalid, empty and nested diagrams, plus worker termination.
+The example checker requires external references for 208 pitfalls and checks the named source
+inventory.
+
+---
+
+## Local verification
+
+Install the locked tools and run the entry points from the repository root. `COIL_CLANG_FORMAT` and
+`COIL_CLANG_TIDY` select pinned executables without changing the system installation.
 
 ```text
-L0  persistent runner-local immutable tool cache
-L1  S3-compatible shared cache for trusted self-hosted runners
-H1  GitHub Actions cache for hosted runners without private cache access
-S1  OCI registry / mirror for container layers and manifests
-S2  Bazel remote cache for action outputs when Bazel is in use
-E1  Squid for egress control and eligible HTTP caching
-O1  upstream origin
+lua tests/lint/ci-policy-test-suite.lua
+lua scripts/ci/check_mermaid.lua
+lua scripts/ci/check_c.lua
+lua scripts/ci/check_doc_examples.lua
 ```
 
-The `H1`, `S1`, `S2`, and `E1` labels describe parallel services rather than a
-single linear fallback chain.
+---
 
-Pull requests stay on GitHub-hosted runners and do not receive private cache
-credentials. Release and tag tool downloads may read a configured shared object
-cache but do not publish new objects. GitHub-hosted release and tag jobs still
-go directly to the verified upstream origin because they do not restore or save
-the GitHub Actions tool cache.
+## Links and references
 
-The action verifies every immutable tool artifact with SHA-256 after retrieval,
-regardless of which cache or origin supplied it.
+The [GitHub security reference][github-security], [cache security guidance][github-cache] and
+[Mermaid API documentation][mermaid-api] describe the platform boundaries used above.
+
+[cwe-22]: https://cwe.mitre.org/data/definitions/22.html
+[cwe-78]: https://cwe.mitre.org/data/definitions/78.html
+[cwe-93]: https://cwe.mitre.org/data/definitions/93.html
+[cwe-117]: https://cwe.mitre.org/data/definitions/117.html
+[cwe-319]: https://cwe.mitre.org/data/definitions/319.html
+[cwe-377]: https://cwe.mitre.org/data/definitions/377.html
+[cwe-400]: https://cwe.mitre.org/data/definitions/400.html
+[cwe-494]: https://cwe.mitre.org/data/definitions/494.html
+[cwe-829]: https://cwe.mitre.org/data/definitions/829.html
+[cwe-1395]: https://cwe.mitre.org/data/definitions/1395.html
+[capec-88]: https://capec.mitre.org/data/definitions/88.html
+[capec-184]: https://capec.mitre.org/data/definitions/184.html
+[owasp-pipeline]:
+  https://owasp.org/www-project-top-10-ci-cd-security-risks/CICD-SEC-04-Poisoned-Pipeline-Execution
+[owasp-access]:
+  https://owasp.org/www-project-top-10-ci-cd-security-risks/CICD-SEC-05-Insufficient-PBAC
+[owasp-integrity]:
+  https://owasp.org/www-project-top-10-ci-cd-security-risks/CICD-SEC-09-Improper-Artifact-Integrity-Validation
+[owasp-chain]:
+  https://owasp.org/www-project-top-10-ci-cd-security-risks/CICD-SEC-03-Dependency-Chain-Abuse
+[owasp-ci]: https://cheatsheetseries.owasp.org/cheatsheets/CI_CD_Security_Cheat_Sheet.html
+[github-security]: https://docs.github.com/en/actions/reference/security/secure-use
+[github-cache]:
+  https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching
+[mermaid-api]: https://mermaid.js.org/config/usage
+[fix-code]: https://github.com/advisories/GHSA-r5fr-rjxr-66jc
+[fix-data]: https://github.com/advisories/GHSA-f23m-r3pf-42rh
+[toml-loop]: https://github.com/advisories/GHSA-7w5x-hrqm-74c2
