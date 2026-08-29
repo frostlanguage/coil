@@ -5,14 +5,6 @@
 name: Setup pinned Lua
 description: Restore, verify, build, and return the repository Lua runtime.
 
-inputs:
-  version:
-    description: Lua source release version.
-    required: true
-  sha256:
-    description: SHA-256 digest of the Lua source archive.
-    required: true
-
 outputs:
   lua:
     description: Absolute path to the Lua interpreter.
@@ -24,14 +16,18 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: Resolve toolchain lock
+      id: toolchain
+      uses: ./.github/actions/toolchain
+
     - name: Restore Lua source archive
       id: download
       uses: ./.github/actions/verified-download
       with:
         name: lua
-        version: ${{ inputs.version }}
-        filename: lua-${{ inputs.version }}.tar.gz
-        sha256: ${{ inputs.sha256 }}
+        version: ${{ fromJSON(steps.toolchain.outputs.tools).lua.version }}
+        filename: lua-${{ fromJSON(steps.toolchain.outputs.tools).lua.version }}.tar.gz
+        sha256: ${{ fromJSON(steps.toolchain.outputs.tools).lua.sha256 }}
         origin: https://www.lua.org
         directory: ftp
 
@@ -40,7 +36,7 @@ runs:
       shell: bash
       env:
         LUA_ARCHIVE: ${{ steps.download.outputs.path }}
-        LUA_VERSION: ${{ inputs.version }}
+        LUA_VERSION: ${{ fromJSON(steps.toolchain.outputs.tools).lua.version }}
       run: |
         set -euo pipefail
 

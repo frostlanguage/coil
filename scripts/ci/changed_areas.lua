@@ -95,6 +95,7 @@ local function classify(input)
    if
       path:match("^%.github/actions/verified%-download/")
       or path:match("^%.github/actions/setup%-lua/")
+      or path:match("^%.github/actions/toolchain/")
       or path:match("^%.github/actions/detect%-changes/")
       or path:match("^scripts/libs/")
       or path == "scripts/ci/changed_areas.lua"

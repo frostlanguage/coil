@@ -27,10 +27,6 @@ defaults:
   run:
     shell: bash
 
-env:
-  LUA_VERSION: "5.5.1"
-  LUA_SHA256: "1c4b4068d67061f2a2231ad2b5422e77acea1487ea9890f6320af614f4373dce"
-
 jobs:
   structure:
     name: Structure, DCO, and OpenPGP
@@ -51,12 +47,13 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Resolve toolchain lock
+        id: toolchain
+        uses: ./.github/actions/toolchain
+
       - name: Setup pinned Lua
         id: lua
         uses: ./.github/actions/setup-lua
-        with:
-          version: ${{ env.LUA_VERSION }}
-          sha256: ${{ env.LUA_SHA256 }}
 
       - name: Select commits
         env:

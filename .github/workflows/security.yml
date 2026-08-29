@@ -30,12 +30,6 @@ defaults:
     shell: bash
 
 env:
-  GITLEAKS_VERSION: "8.30.1"
-  GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
-  ZIZMOR_VERSION: "1.29.0"
-  ZIZMOR_SHA256: "dd96df044a6e8538d5f423790f453bdd03d49e5b2bcc38214acc41a2f1297839"
-  GITTUF_VERSION: "0.15.0"
-  GITTUF_SHA256: "e60629e4d165bf47ac450fde834af20d7c5ff1f08f15d685980c37b9d522ae1d"
   # Switch to "required" only after refs/gittuf/policy is formally adopted.
   GITTUF_ENFORCEMENT: "optional"
 
@@ -58,16 +52,20 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Resolve toolchain lock
+        id: toolchain
+        uses: ./.github/actions/toolchain
+
       - name: Restore Zizmor archive
         id: zizmor_download
         uses: ./.github/actions/verified-download
         with:
           name: zizmor
-          version: ${{ env.ZIZMOR_VERSION }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).zizmor.version }}
           filename: zizmor-x86_64-unknown-linux-gnu.tar.gz
-          sha256: ${{ env.ZIZMOR_SHA256 }}
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).zizmor.sha256 }}
           origin: https://github.com
-          directory: zizmorcore/zizmor/releases/download/v${{ env.ZIZMOR_VERSION }}
+          directory: zizmorcore/zizmor/releases/download/v${{ fromJSON(steps.toolchain.outputs.tools).zizmor.version }}
 
       - name: Install zizmor
         env:
@@ -114,16 +112,24 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Resolve toolchain lock
+        id: toolchain
+        uses: ./.github/actions/toolchain
+
       - name: Restore Gitleaks archive
         id: gitleaks_download
         uses: ./.github/actions/verified-download
         with:
           name: gitleaks
-          version: ${{ env.GITLEAKS_VERSION }}
-          filename: gitleaks_${{ env.GITLEAKS_VERSION }}_linux_x64.tar.gz
-          sha256: ${{ env.GITLEAKS_SHA256 }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).gitleaks.version }}
+          filename: gitleaks_${{ fromJSON(steps.toolchain.outputs.tools).gitleaks.version }}_linux_x64.tar.gz
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).gitleaks.sha256 }}
           origin: https://github.com
-          directory: gitleaks/gitleaks/releases/download/v${{ env.GITLEAKS_VERSION }}
+          directory: >-
+            ${{ format(
+              'gitleaks/gitleaks/releases/download/v{0}',
+              fromJSON(steps.toolchain.outputs.tools).gitleaks.version
+            ) }}
 
       - name: Install Gitleaks
         env:
@@ -198,6 +204,10 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Resolve toolchain lock
+        id: toolchain
+        uses: ./.github/actions/toolchain
 
       - name: Fetch gittuf metadata
         id: metadata
@@ -281,11 +291,11 @@ jobs:
         uses: ./.github/actions/verified-download
         with:
           name: gittuf
-          version: ${{ env.GITTUF_VERSION }}
-          filename: gittuf_${{ env.GITTUF_VERSION }}_linux_amd64
-          sha256: ${{ env.GITTUF_SHA256 }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).gittuf.version }}
+          filename: gittuf_${{ fromJSON(steps.toolchain.outputs.tools).gittuf.version }}_linux_amd64
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).gittuf.sha256 }}
           origin: https://github.com
-          directory: gittuf/gittuf/releases/download/v${{ env.GITTUF_VERSION }}
+          directory: gittuf/gittuf/releases/download/v${{ fromJSON(steps.toolchain.outputs.tools).gittuf.version }}
 
       - name: Install gittuf
         if: steps.metadata.outputs.initialized == 'true'

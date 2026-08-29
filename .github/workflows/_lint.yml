@@ -71,60 +71,6 @@ defaults:
   run:
     shell: bash
 
-env:
-  ACTIONLINT_VERSION: "1.7.12"
-  ACTIONLINT_SHA256: "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8"
-  BIOME_VERSION: "2.5.10"
-  BIOME_SHA256: "511592536991d4b07179d063b93ff0c092ccedba556a4b1ea70d12d46ea0785a"
-  EDITORCONFIG_CHECKER_VERSION: "3.11.2"
-  EDITORCONFIG_CHECKER_SHA256: "bc815e5b3b1891a0ee9e1242fe3475312655f8b0f4c4a79510be0a009294571a"
-  YAMLLINT_VERSION: "1.38.0"
-  TAPLO_VERSION: "0.10.0"
-  MARKDOWNLINT_VERSION: "0.23.2"
-  CLANG_FORMAT_VERSION: "22.1.8"
-  CLANG_FORMAT_SHA256: "b00cff6bfd1f1686f073a4fdf1cb937dbd58bf7510c659477805c03afdea0816"
-  CLANG_TIDY_VERSION: "22.1.8"
-  CLANG_TIDY_SHA256: "1a3de07ba82d4403d8b692ae63a5520d4db5c606014c92c24bbcef9259057bf1"
-  LUA_VERSION: "5.5.1"
-  LUA_SHA256: "1c4b4068d67061f2a2231ad2b5422e77acea1487ea9890f6320af614f4373dce"
-  SELENE_VERSION: "0.31.0"
-  SELENE_SHA256: "dac452422747999ec4919bbb8bb52992b66aae533b60022bf005669de8616671"
-  STYLUA_VERSION: "2.5.2"
-  STYLUA_SHA256: "bcb0d855e91f102f28a370e850f8566b3b44b79e6274d806ea5246837c0fd5ab"
-  LUALS_VERSION: "3.19.1"
-  LUALS_SHA256: "e9235d2d72ef55bc41cf8c99cda2ed64777682024b4bb81f5dea425060c5cbb8"
-  RUFF_VERSION: "0.16.4"
-  RUFF_SHA256: "9cb1234804ddb0f7f57cef3f81623ce5acb990e40af7cce08dc7778c9d7ee96c"
-  PYRIGHT_VERSION: "1.1.411"
-  PYRIGHT_SHA256: "bd5c488fc20fa237a944279bf32cae2f986cf10d5d5d9e8705819859daeb2f4a"
-  BANDIT_VERSION: "1.9.4"
-  SHELLCHECK_VERSION: "0.11.0"
-  SHELLCHECK_SHA256: "8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198"
-  SHFMT_VERSION: "3.13.1"
-  SHFMT_SHA256: "fb096c5d1ac6beabbdbaa2874d025badb03ee07929f0c9ff67563ce8c75398b1"
-  POWERSHELL_VERSION: "7.6.5"
-  POWERSHELL_SHA256: "b34ab3b19acac1d3d4d0d3cfdb02acf62f457b0b6a962ff008132033f7566844"
-  PSSCRIPTANALYZER_VERSION: "1.25.0"
-  PSSCRIPTANALYZER_SHA256: "14e634c828eb98efb9f40b2918ba90f139ed5eccdf663a2a747736d996995d60"
-  NUSHELL_VERSION: "0.115.1"
-  NUSHELL_SHA256: "d11d825241f6504a3617c535fa725a9dd6d009c86d7b19fb3168b47635b9d8b0"
-  NUFMT_REVISION: "7cfd3b7eacf5a9feb22777230e3076038f2e9e8d"
-  LUV_VERSION: "1.52.1-0"
-  LUV_SHA256: "3e6eb820a3aee034f85f9cce9bd77b5d42f34d128a1ccec877adf28c913577c7"
-  CODESPELL_VERSION: "2.4.1"
-  CODESPELL_SHA256: "3dadafa67df7e4a3dbf51e0d7315061b80d265f9552ebd699b3dd6834b47e425"
-  LYCHEE_VERSION: "0.24.1"
-  LYCHEE_SHA256: "3ecad9a6e5ec42efaa9cdbdbad2406fdeef11ee38f7774aaf038f981d3248684"
-  TYPOS_VERSION: "1.46.0"
-  TYPOS_SHA256: "c62a626df385c96574743fd4974aeb271a41a67d080a0398e36e1a42782f614a"
-  VALE_VERSION: "3.18.0"
-  VALE_SHA256: "a6f71a75a12fe689345b754f2412b90367fe33648abb7d200fa19eaadc2dbf6d"
-  GITLEAKS_VERSION: "8.30.1"
-  GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
-  GITTUF_VERSION: "0.15.0"
-  GITTUF_SHA256: "e60629e4d165bf47ac450fde834af20d7c5ff1f08f15d685980c37b9d522ae1d"
-  GIT_REMOTE_GITTUF_SHA256: "7029c8f026b574622087110162dff27a3cb15d73161fdecee9ef65c76e50dedf"
-
 jobs:
   cache-plane:
     name: CI cache plane
@@ -145,8 +91,20 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Setup pinned Lua
+        id: lua
+        uses: ./.github/actions/setup-lua
+
       - name: Validate runner-near cache plane
         uses: ./.github/actions/cache-plane
+
+      - name: Enforce toolchain lock authority
+        env:
+          COIL_LUA: ${{ steps.lua.outputs.lua }}
+        run: |
+          set -euo pipefail
+
+          "${COIL_LUA}" scripts/ci/check_toolchain.lua
 
   actionlint:
     name: GitHub Actions
@@ -167,16 +125,24 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Resolve toolchain lock
+        id: toolchain
+        uses: ./.github/actions/toolchain
+
       - name: Restore actionlint archive
         id: actionlint_download
         uses: ./.github/actions/verified-download
         with:
           name: actionlint
-          version: ${{ env.ACTIONLINT_VERSION }}
-          filename: actionlint_${{ env.ACTIONLINT_VERSION }}_linux_amd64.tar.gz
-          sha256: ${{ env.ACTIONLINT_SHA256 }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).actionlint.version }}
+          filename: actionlint_${{ fromJSON(steps.toolchain.outputs.tools).actionlint.version }}_linux_amd64.tar.gz
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).actionlint.sha256 }}
           origin: https://github.com
-          directory: rhysd/actionlint/releases/download/v${{ env.ACTIONLINT_VERSION }}
+          directory: >-
+            ${{ format(
+              'rhysd/actionlint/releases/download/v{0}',
+              fromJSON(steps.toolchain.outputs.tools).actionlint.version
+            ) }}
 
       - name: Install actionlint
         env:
@@ -233,17 +199,24 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Resolve toolchain lock
+        id: toolchain
+        uses: ./.github/actions/toolchain
+
       - name: Restore EditorConfig Checker archive
         id: editorconfig_download
         uses: ./.github/actions/verified-download
         with:
           name: editorconfig-checker
-          version: ${{ env.EDITORCONFIG_CHECKER_VERSION }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).editorconfig_checker.version }}
           filename: ec-linux-amd64.tar.gz
-          sha256: ${{ env.EDITORCONFIG_CHECKER_SHA256 }}
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).editorconfig_checker.sha256 }}
           origin: https://github.com
           directory: >-
-            editorconfig-checker/editorconfig-checker/releases/download/v${{ env.EDITORCONFIG_CHECKER_VERSION }}
+            ${{ format(
+              'editorconfig-checker/editorconfig-checker/releases/download/v{0}',
+              fromJSON(steps.toolchain.outputs.tools).editorconfig_checker.version
+            ) }}
 
       - name: Install EditorConfig Checker
         env:
@@ -305,17 +278,24 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Resolve toolchain lock
+        id: toolchain
+        uses: ./.github/actions/toolchain
+
       - name: Restore Biome binary
         id: biome_download
         uses: ./.github/actions/verified-download
         with:
           name: biome
-          version: ${{ env.BIOME_VERSION }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).biome.version }}
           filename: biome-linux-x64
-          sha256: ${{ env.BIOME_SHA256 }}
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).biome.sha256 }}
           origin: https://github.com
           directory: >-
-            biomejs/biome/releases/download/%40biomejs/biome%40${{ env.BIOME_VERSION }}
+            ${{ format(
+              'biomejs/biome/releases/download/%40biomejs/biome%40{0}',
+              fromJSON(steps.toolchain.outputs.tools).biome.version
+            ) }}
 
       - name: Install Biome
         env:
@@ -369,7 +349,13 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Resolve toolchain lock
+        id: toolchain
+        uses: ./.github/actions/toolchain
+
       - name: Install yamllint
+        env:
+          YAMLLINT_VERSION: ${{ fromJSON(steps.toolchain.outputs.tools).yamllint.version }}
         run: |
           set -euo pipefail
 
@@ -421,7 +407,13 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Resolve toolchain lock
+        id: toolchain
+        uses: ./.github/actions/toolchain
+
       - name: Install Taplo
+        env:
+          TAPLO_VERSION: ${{ fromJSON(steps.toolchain.outputs.tools).taplo.version }}
         run: |
           set -euo pipefail
 
@@ -487,13 +479,19 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Resolve toolchain lock
+        id: toolchain
+        uses: ./.github/actions/toolchain
+
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: "24"
+          node-version: ${{ fromJSON(steps.toolchain.outputs.tools).node.version }}
           package-manager-cache: false
 
       - name: Find and lint all Markdown files
+        env:
+          MARKDOWNLINT_VERSION: ${{ fromJSON(steps.toolchain.outputs.tools).markdownlint.version }}
         run: |
           set -euo pipefail
 
@@ -540,15 +538,22 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Resolve toolchain lock
+        id: toolchain
+        uses: ./.github/actions/toolchain
+
       - name: Restore clang-format wheel
         id: clang_format
         uses: ./.github/actions/verified-download
         with:
           name: clang-format
-          version: ${{ env.CLANG_FORMAT_VERSION }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).clang_format.version }}
           filename: >-
-            clang_format-22.1.8-py2.py3-none-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
-          sha256: ${{ env.CLANG_FORMAT_SHA256 }}
+            ${{ format(
+              'clang_format-{0}-py2.py3-none-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl',
+              fromJSON(steps.toolchain.outputs.tools).clang_format.version
+            ) }}
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).clang_format.sha256 }}
           origin: https://files.pythonhosted.org
           directory: packages/e5/88/b82c066fa807da4ca2518fecf79071361f6324b77375e5e92c059c0697fd
 
@@ -557,10 +562,13 @@ jobs:
         uses: ./.github/actions/verified-download
         with:
           name: clang-tidy
-          version: ${{ env.CLANG_TIDY_VERSION }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).clang_tidy.version }}
           filename: >-
-            clang_tidy-22.1.8-py2.py3-none-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
-          sha256: ${{ env.CLANG_TIDY_SHA256 }}
+            ${{ format(
+              'clang_tidy-{0}-py2.py3-none-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl',
+              fromJSON(steps.toolchain.outputs.tools).clang_tidy.version
+            ) }}
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).clang_tidy.sha256 }}
           origin: https://files.pythonhosted.org
           directory: packages/82/19/0f2668f8f5e2452b096a2b898f2b6bcecbceb6dd0c7f75d1755ce1f18d8b
 
@@ -586,9 +594,6 @@ jobs:
       - name: Setup pinned Lua
         id: lua
         uses: ./.github/actions/setup-lua
-        with:
-          version: ${{ env.LUA_VERSION }}
-          sha256: ${{ env.LUA_SHA256 }}
 
       - name: Run C checks
         env:
@@ -620,6 +625,10 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Resolve toolchain lock
+        id: toolchain
+        uses: ./.github/actions/toolchain
 
       - name: Configure runner-near cache plane
         id: cache_plane
@@ -675,6 +684,10 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Resolve toolchain lock
+        id: toolchain
+        uses: ./.github/actions/toolchain
+
       - name: Detect Lua sources
         id: detect
         run: |
@@ -710,9 +723,9 @@ jobs:
         uses: ./.github/actions/verified-download
         with:
           name: lua
-          version: ${{ env.LUA_VERSION }}
-          filename: lua-${{ env.LUA_VERSION }}.tar.gz
-          sha256: ${{ env.LUA_SHA256 }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).lua.version }}
+          filename: lua-${{ fromJSON(steps.toolchain.outputs.tools).lua.version }}.tar.gz
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).lua.sha256 }}
           origin: https://www.lua.org
           directory: ftp
 
@@ -722,11 +735,11 @@ jobs:
         uses: ./.github/actions/verified-download
         with:
           name: selene
-          version: ${{ env.SELENE_VERSION }}
-          filename: selene-${{ env.SELENE_VERSION }}-linux.zip
-          sha256: ${{ env.SELENE_SHA256 }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).selene.version }}
+          filename: selene-${{ fromJSON(steps.toolchain.outputs.tools).selene.version }}-linux.zip
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).selene.sha256 }}
           origin: https://github.com
-          directory: Kampfkarren/selene/releases/download/${{ env.SELENE_VERSION }}
+          directory: Kampfkarren/selene/releases/download/${{ fromJSON(steps.toolchain.outputs.tools).selene.version }}
 
       - name: Restore StyLua archive
         id: stylua_download
@@ -734,11 +747,15 @@ jobs:
         uses: ./.github/actions/verified-download
         with:
           name: stylua
-          version: ${{ env.STYLUA_VERSION }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).stylua.version }}
           filename: stylua-linux-x86_64.zip
-          sha256: ${{ env.STYLUA_SHA256 }}
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).stylua.sha256 }}
           origin: https://github.com
-          directory: JohnnyMorganz/StyLua/releases/download/v${{ env.STYLUA_VERSION }}
+          directory: >-
+            ${{ format(
+              'JohnnyMorganz/StyLua/releases/download/v{0}',
+              fromJSON(steps.toolchain.outputs.tools).stylua.version
+            ) }}
 
       - name: Restore LuaLS archive
         id: luals_download
@@ -746,17 +763,24 @@ jobs:
         uses: ./.github/actions/verified-download
         with:
           name: lua-language-server
-          version: ${{ env.LUALS_VERSION }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).lua_language_server.version }}
           filename: >-
-            lua-language-server-${{ env.LUALS_VERSION }}-linux-x64.tar.gz
-          sha256: ${{ env.LUALS_SHA256 }}
+            ${{ format(
+              'lua-language-server-{0}-linux-x64.tar.gz',
+              fromJSON(steps.toolchain.outputs.tools).lua_language_server.version
+            ) }}
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).lua_language_server.sha256 }}
           origin: https://github.com
           directory: >-
-            LuaLS/lua-language-server/releases/download/${{ env.LUALS_VERSION }}
+            ${{ format(
+              'LuaLS/lua-language-server/releases/download/{0}',
+              fromJSON(steps.toolchain.outputs.tools).lua_language_server.version
+            ) }}
 
       - name: Install pinned Lua toolchain
         if: steps.detect.outputs.found == 'true'
         env:
+          LUA_VERSION: ${{ fromJSON(steps.toolchain.outputs.tools).lua.version }}
           LUA_ARCHIVE: ${{ steps.lua_download.outputs.path }}
           SELENE_ARCHIVE: ${{ steps.selene_download.outputs.path }}
           STYLUA_ARCHIVE: ${{ steps.stylua_download.outputs.path }}
@@ -790,8 +814,8 @@ jobs:
       - name: Run Lua checks
         if: steps.detect.outputs.found == 'true'
         env:
-          COIL_LUA: ${{ runner.temp }}/lua-${{ env.LUA_VERSION }}/src/lua
-          COIL_LUAC: ${{ runner.temp }}/lua-${{ env.LUA_VERSION }}/src/luac
+          COIL_LUA: ${{ runner.temp }}/lua-${{ fromJSON(steps.toolchain.outputs.tools).lua.version }}/src/lua
+          COIL_LUAC: ${{ runner.temp }}/lua-${{ fromJSON(steps.toolchain.outputs.tools).lua.version }}/src/luac
           COIL_LUALS: ${{ runner.temp }}/luals/bin/lua-language-server
           COIL_SELENE: ${{ runner.temp }}/selene/selene
           COIL_STYLUA: ${{ runner.temp }}/stylua/stylua
@@ -818,6 +842,10 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Resolve toolchain lock
+        id: toolchain
+        uses: ./.github/actions/toolchain
 
       - name: Detect Python sources
         id: detect
@@ -852,7 +880,7 @@ jobs:
         if: steps.detect.outputs.found == 'true'
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: "24"
+          node-version: ${{ fromJSON(steps.toolchain.outputs.tools).node.version }}
           package-manager-cache: false
 
       - name: Restore Ruff archive
@@ -861,11 +889,11 @@ jobs:
         uses: ./.github/actions/verified-download
         with:
           name: ruff
-          version: ${{ env.RUFF_VERSION }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).ruff.version }}
           filename: ruff-x86_64-unknown-linux-gnu.tar.gz
-          sha256: ${{ env.RUFF_SHA256 }}
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).ruff.sha256 }}
           origin: https://github.com
-          directory: astral-sh/ruff/releases/download/${{ env.RUFF_VERSION }}
+          directory: astral-sh/ruff/releases/download/${{ fromJSON(steps.toolchain.outputs.tools).ruff.version }}
 
       - name: Restore Pyright archive
         id: pyright_download
@@ -873,15 +901,16 @@ jobs:
         uses: ./.github/actions/verified-download
         with:
           name: pyright
-          version: ${{ env.PYRIGHT_VERSION }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).pyright.version }}
           filename: pyright.tgz
-          sha256: ${{ env.PYRIGHT_SHA256 }}
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).pyright.sha256 }}
           origin: https://github.com
-          directory: microsoft/pyright/releases/download/${{ env.PYRIGHT_VERSION }}
+          directory: microsoft/pyright/releases/download/${{ fromJSON(steps.toolchain.outputs.tools).pyright.version }}
 
       - name: Install Python lint tools
         if: steps.detect.outputs.found == 'true'
         env:
+          BANDIT_VERSION: ${{ fromJSON(steps.toolchain.outputs.tools).bandit.version }}
           RUFF_ARCHIVE: ${{ steps.ruff_download.outputs.path }}
           PYRIGHT_ARCHIVE: ${{ steps.pyright_download.outputs.path }}
         run: |
@@ -984,6 +1013,10 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Resolve toolchain lock
+        id: toolchain
+        uses: ./.github/actions/toolchain
+
       - name: Detect shell sources
         id: detect
         run: |
@@ -1019,13 +1052,13 @@ jobs:
         uses: ./.github/actions/verified-download
         with:
           name: shellcheck
-          version: ${{ env.SHELLCHECK_VERSION }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).shellcheck.version }}
           filename: >-
-            shellcheck-v${{ env.SHELLCHECK_VERSION }}.linux.x86_64.tar.xz
-          sha256: ${{ env.SHELLCHECK_SHA256 }}
+            shellcheck-v${{ fromJSON(steps.toolchain.outputs.tools).shellcheck.version }}.linux.x86_64.tar.xz
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).shellcheck.sha256 }}
           origin: https://github.com
           directory: >-
-            koalaman/shellcheck/releases/download/v${{ env.SHELLCHECK_VERSION }}
+            koalaman/shellcheck/releases/download/v${{ fromJSON(steps.toolchain.outputs.tools).shellcheck.version }}
 
       - name: Restore shfmt binary
         id: shfmt_download
@@ -1033,15 +1066,16 @@ jobs:
         uses: ./.github/actions/verified-download
         with:
           name: shfmt
-          version: ${{ env.SHFMT_VERSION }}
-          filename: shfmt_v${{ env.SHFMT_VERSION }}_linux_amd64
-          sha256: ${{ env.SHFMT_SHA256 }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).shfmt.version }}
+          filename: shfmt_v${{ fromJSON(steps.toolchain.outputs.tools).shfmt.version }}_linux_amd64
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).shfmt.sha256 }}
           origin: https://github.com
-          directory: mvdan/sh/releases/download/v${{ env.SHFMT_VERSION }}
+          directory: mvdan/sh/releases/download/v${{ fromJSON(steps.toolchain.outputs.tools).shfmt.version }}
 
       - name: Install ShellCheck and shfmt
         if: steps.detect.outputs.found == 'true'
         env:
+          SHELLCHECK_VERSION: ${{ fromJSON(steps.toolchain.outputs.tools).shellcheck.version }}
           SHELLCHECK_ARCHIVE: ${{ steps.shellcheck_download.outputs.path }}
           SHFMT_BINARY: ${{ steps.shfmt_download.outputs.path }}
         run: |
@@ -1147,6 +1181,10 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Resolve toolchain lock
+        id: toolchain
+        uses: ./.github/actions/toolchain
+
       - name: Detect PowerShell sources
         id: detect
         run: |
@@ -1185,11 +1223,15 @@ jobs:
         uses: ./.github/actions/verified-download
         with:
           name: powershell
-          version: ${{ env.POWERSHELL_VERSION }}
-          filename: powershell-${{ env.POWERSHELL_VERSION }}-linux-x64.tar.gz
-          sha256: ${{ env.POWERSHELL_SHA256 }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).powershell.version }}
+          filename: powershell-${{ fromJSON(steps.toolchain.outputs.tools).powershell.version }}-linux-x64.tar.gz
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).powershell.sha256 }}
           origin: https://github.com
-          directory: PowerShell/PowerShell/releases/download/v${{ env.POWERSHELL_VERSION }}
+          directory: >-
+            ${{ format(
+              'PowerShell/PowerShell/releases/download/v{0}',
+              fromJSON(steps.toolchain.outputs.tools).powershell.version
+            ) }}
 
       - name: Restore PSScriptAnalyzer package
         id: psscriptanalyzer_download
@@ -1197,17 +1239,21 @@ jobs:
         uses: ./.github/actions/verified-download
         with:
           name: psscriptanalyzer
-          version: ${{ env.PSSCRIPTANALYZER_VERSION }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).psscriptanalyzer.version }}
           filename: >-
-            PSScriptAnalyzer.${{ env.PSSCRIPTANALYZER_VERSION }}.nupkg
-          sha256: ${{ env.PSSCRIPTANALYZER_SHA256 }}
+            PSScriptAnalyzer.${{ fromJSON(steps.toolchain.outputs.tools).psscriptanalyzer.version }}.nupkg
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).psscriptanalyzer.sha256 }}
           origin: https://github.com
           directory: >-
-            PowerShell/PSScriptAnalyzer/releases/download/${{ env.PSSCRIPTANALYZER_VERSION }}
+            ${{ format(
+              'PowerShell/PSScriptAnalyzer/releases/download/{0}',
+              fromJSON(steps.toolchain.outputs.tools).psscriptanalyzer.version
+            ) }}
 
       - name: Install pinned PowerShell and PSScriptAnalyzer
         if: steps.detect.outputs.found == 'true'
         env:
+          PSSCRIPTANALYZER_VERSION: ${{ fromJSON(steps.toolchain.outputs.tools).psscriptanalyzer.version }}
           POWERSHELL_ARCHIVE: ${{ steps.powershell_download.outputs.path }}
           PSSCRIPTANALYZER_PACKAGE: ${{ steps.psscriptanalyzer_download.outputs.path }}
         run: |
@@ -1228,6 +1274,8 @@ jobs:
 
       - name: Run PowerShell parser and PSScriptAnalyzer
         if: steps.detect.outputs.found == 'true'
+        env:
+          PSSCRIPTANALYZER_VERSION: ${{ fromJSON(steps.toolchain.outputs.tools).psscriptanalyzer.version }}
         run: |
           set -euo pipefail
 
@@ -1317,6 +1365,10 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Resolve toolchain lock
+        id: toolchain
+        uses: ./.github/actions/toolchain
+
       - name: Detect Nushell sources
         id: detect
         run: |
@@ -1355,16 +1407,17 @@ jobs:
         uses: ./.github/actions/verified-download
         with:
           name: nushell
-          version: ${{ env.NUSHELL_VERSION }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).nushell.version }}
           filename: >-
-            nu-${{ env.NUSHELL_VERSION }}-x86_64-unknown-linux-gnu.tar.gz
-          sha256: ${{ env.NUSHELL_SHA256 }}
+            nu-${{ fromJSON(steps.toolchain.outputs.tools).nushell.version }}-x86_64-unknown-linux-gnu.tar.gz
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).nushell.sha256 }}
           origin: https://github.com
-          directory: nushell/nushell/releases/download/${{ env.NUSHELL_VERSION }}
+          directory: nushell/nushell/releases/download/${{ fromJSON(steps.toolchain.outputs.tools).nushell.version }}
 
       - name: Install pinned Nushell and nufmt
         if: steps.detect.outputs.found == 'true'
         env:
+          NUFMT_REVISION: ${{ fromJSON(steps.toolchain.outputs.tools).nufmt.revision }}
           NUSHELL_ARCHIVE: ${{ steps.nushell_download.outputs.path }}
         run: |
           set -euo pipefail
@@ -1446,6 +1499,10 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Resolve toolchain lock
+        id: toolchain
+        uses: ./.github/actions/toolchain
+
       - name: Validate mock test sources
         run: |
           set -euo pipefail
@@ -1458,9 +1515,9 @@ jobs:
         uses: ./.github/actions/verified-download
         with:
           name: lua
-          version: ${{ env.LUA_VERSION }}
-          filename: lua-${{ env.LUA_VERSION }}.tar.gz
-          sha256: ${{ env.LUA_SHA256 }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).lua.version }}
+          filename: lua-${{ fromJSON(steps.toolchain.outputs.tools).lua.version }}.tar.gz
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).lua.sha256 }}
           origin: https://www.lua.org
           directory: ftp
 
@@ -1469,20 +1526,20 @@ jobs:
         uses: ./.github/actions/verified-download
         with:
           name: luv
-          version: ${{ env.LUV_VERSION }}
-          filename: luv-${{ env.LUV_VERSION }}.tar.gz
-          sha256: ${{ env.LUV_SHA256 }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).luv.version }}
+          filename: luv-${{ fromJSON(steps.toolchain.outputs.tools).luv.version }}.tar.gz
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).luv.sha256 }}
           origin: https://github.com
-          directory: luvit/luv/releases/download/${{ env.LUV_VERSION }}
+          directory: luvit/luv/releases/download/${{ fromJSON(steps.toolchain.outputs.tools).luv.version }}
 
       - name: Restore codespell wheel
         id: codespell_download
         uses: ./.github/actions/verified-download
         with:
           name: codespell
-          version: ${{ env.CODESPELL_VERSION }}
-          filename: codespell-${{ env.CODESPELL_VERSION }}-py3-none-any.whl
-          sha256: ${{ env.CODESPELL_SHA256 }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).codespell.version }}
+          filename: codespell-${{ fromJSON(steps.toolchain.outputs.tools).codespell.version }}-py3-none-any.whl
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).codespell.sha256 }}
           origin: https://files.pythonhosted.org
           directory: packages/20/01/b394922252051e97aab231d416c86da3d8a6d781eeadcdca1082867de64e
 
@@ -1491,69 +1548,79 @@ jobs:
         uses: ./.github/actions/verified-download
         with:
           name: typos
-          version: ${{ env.TYPOS_VERSION }}
-          filename: typos-v${{ env.TYPOS_VERSION }}-x86_64-unknown-linux-musl.tar.gz
-          sha256: ${{ env.TYPOS_SHA256 }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).typos.version }}
+          filename: typos-v${{ fromJSON(steps.toolchain.outputs.tools).typos.version }}-x86_64-unknown-linux-musl.tar.gz
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).typos.sha256 }}
           origin: https://github.com
-          directory: crate-ci/typos/releases/download/v${{ env.TYPOS_VERSION }}
+          directory: crate-ci/typos/releases/download/v${{ fromJSON(steps.toolchain.outputs.tools).typos.version }}
 
       - name: Restore Vale archive
         id: vale_download
         uses: ./.github/actions/verified-download
         with:
           name: vale
-          version: ${{ env.VALE_VERSION }}
-          filename: vale_${{ env.VALE_VERSION }}_Linux_64-bit.tar.gz
-          sha256: ${{ env.VALE_SHA256 }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).vale.version }}
+          filename: vale_${{ fromJSON(steps.toolchain.outputs.tools).vale.version }}_Linux_64-bit.tar.gz
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).vale.sha256 }}
           origin: https://github.com
-          directory: vale-cli/vale/releases/download/v${{ env.VALE_VERSION }}
+          directory: vale-cli/vale/releases/download/v${{ fromJSON(steps.toolchain.outputs.tools).vale.version }}
 
       - name: Restore Lychee archive
         id: lychee_download
         uses: ./.github/actions/verified-download
         with:
           name: lychee
-          version: ${{ env.LYCHEE_VERSION }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).lychee.version }}
           filename: lychee-x86_64-unknown-linux-gnu.tar.gz
-          sha256: ${{ env.LYCHEE_SHA256 }}
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).lychee.sha256 }}
           origin: https://github.com
-          directory: lycheeverse/lychee/releases/download/lychee-v${{ env.LYCHEE_VERSION }}
+          directory: >-
+            ${{ format(
+              'lycheeverse/lychee/releases/download/lychee-v{0}',
+              fromJSON(steps.toolchain.outputs.tools).lychee.version
+            ) }}
 
       - name: Restore Gitleaks archive
         id: gitleaks_download
         uses: ./.github/actions/verified-download
         with:
           name: gitleaks
-          version: ${{ env.GITLEAKS_VERSION }}
-          filename: gitleaks_${{ env.GITLEAKS_VERSION }}_linux_x64.tar.gz
-          sha256: ${{ env.GITLEAKS_SHA256 }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).gitleaks.version }}
+          filename: gitleaks_${{ fromJSON(steps.toolchain.outputs.tools).gitleaks.version }}_linux_x64.tar.gz
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).gitleaks.sha256 }}
           origin: https://github.com
-          directory: gitleaks/gitleaks/releases/download/v${{ env.GITLEAKS_VERSION }}
+          directory: >-
+            ${{ format(
+              'gitleaks/gitleaks/releases/download/v{0}',
+              fromJSON(steps.toolchain.outputs.tools).gitleaks.version
+            ) }}
 
       - name: Restore gittuf binary
         id: gittuf_download
         uses: ./.github/actions/verified-download
         with:
           name: gittuf
-          version: ${{ env.GITTUF_VERSION }}
-          filename: gittuf_${{ env.GITTUF_VERSION }}_linux_amd64
-          sha256: ${{ env.GITTUF_SHA256 }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).gittuf.version }}
+          filename: gittuf_${{ fromJSON(steps.toolchain.outputs.tools).gittuf.version }}_linux_amd64
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).gittuf.sha256 }}
           origin: https://github.com
-          directory: gittuf/gittuf/releases/download/v${{ env.GITTUF_VERSION }}
+          directory: gittuf/gittuf/releases/download/v${{ fromJSON(steps.toolchain.outputs.tools).gittuf.version }}
 
       - name: Restore git-remote-gittuf binary
         id: git_remote_gittuf_download
         uses: ./.github/actions/verified-download
         with:
           name: git-remote-gittuf
-          version: ${{ env.GITTUF_VERSION }}
-          filename: git-remote-gittuf_${{ env.GITTUF_VERSION }}_linux_amd64
-          sha256: ${{ env.GIT_REMOTE_GITTUF_SHA256 }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).gittuf.version }}
+          filename: git-remote-gittuf_${{ fromJSON(steps.toolchain.outputs.tools).gittuf.version }}_linux_amd64
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).gittuf.remote_sha256 }}
           origin: https://github.com
-          directory: gittuf/gittuf/releases/download/v${{ env.GITTUF_VERSION }}
+          directory: gittuf/gittuf/releases/download/v${{ fromJSON(steps.toolchain.outputs.tools).gittuf.version }}
 
       - name: Install pinned mock-test toolchain
         env:
+          LUA_VERSION: ${{ fromJSON(steps.toolchain.outputs.tools).lua.version }}
+          LUV_VERSION: ${{ fromJSON(steps.toolchain.outputs.tools).luv.version }}
           LUA_ARCHIVE: ${{ steps.lua_download.outputs.path }}
           LUV_ARCHIVE: ${{ steps.luv_download.outputs.path }}
           CODESPELL_PACKAGE: ${{ steps.codespell_download.outputs.path }}

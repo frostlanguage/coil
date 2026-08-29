@@ -231,21 +231,21 @@ not scatter pointer safety across unrelated sections.
 | Dangling pointer                          | pointer names storage whose lifetime has ended                     | [CWE-825][cwe-825], [CWE-416][cwe-416] | [CERT C][cert-c], [MISRA C][misra-c], [ISO/IEC 24772][iso-24772]   | [`CSTYLE-084-5-1-8-local-memory-lifetime`](./c-code-standard.md#518-local-memory-lifetime)                                      |
 | Use-after-free                            | read or write through freed heap object                            | [CWE-416][cwe-416]                     | [CERT C][cert-c], [TS 17961][ts-17961], [ISO/IEC 24772][iso-24772] | [`CSTYLE-082-5-1-6-ownership-rules`](./c-code-standard.md#516-ownership-rules)                                                  |
 | Double free                               | same allocation released twice                                     | [CWE-415][cwe-415]                     | [CERT C][cert-c], [TS 17961][ts-17961]                             | [`CSTYLE-082-5-1-6-ownership-rules`](./c-code-standard.md#516-ownership-rules)                                                  |
-| Memory leak                               | allocation or resource loses release path                          | [CWE-401][cwe-401], [CWE-772][cwe-772] | [CERT C][cert-c], [IEC 62304][iec-62304], [ISO 26262][iso-26262]   | [`CSTYLE-077-5-1-1-allocation-rules`](./c-code-standard.md#511-allocation-rules)                                                |
+| Memory leak                               | allocation or resource loses release path                          | [CWE-401][cwe-401], [CWE-772][cwe-772] | [CERT C][cert-c], [IEC 62304][iec-62304], [ISO 26262][iso-26262]   | [`CSTYLE-120-5-1-11-resource-acquisition-and-cleanup`](./c-code-standard.md#5111-resource-acquisition-and-cleanup)              |
 | Ambiguous ownership                       | two modules believe they own or borrow the same object             | [CWE-664][cwe-664]                     | [CERT C][cert-c], [MISRA C][misra-c], [IEC 61508][iec-61508]       | [`CSTYLE-082-5-1-6-ownership-rules`](./c-code-standard.md#516-ownership-rules)                                                  |
-| Invalid free                              | freeing stack, static, interior, or non-allocated memory           | [CWE-590][cwe-590]                     | [CERT C][cert-c], [TS 17961][ts-17961]                             | [`CSTYLE-086-standard-library-policy`](./c-code-standard.md#521-standard-library-policy)                                        |
-| Mismatched allocator                      | allocation and deallocation families do not match                  | [CWE-762][cwe-762]                     | [CERT C][cert-c], [MISRA C][misra-c]                               | [`CSTYLE-077-5-1-1-allocation-rules`](./c-code-standard.md#511-allocation-rules)                                                |
+| Invalid free                              | freeing stack, static, interior, or non-allocated memory           | [CWE-590][cwe-590]                     | [CERT C][cert-c], [TS 17961][ts-17961]                             | [`CSTYLE-118-5-1-9-allocator-family-rules`](./c-code-standard.md#519-allocator-family-rules)                                    |
+| Mismatched allocator                      | allocation and deallocation families do not match                  | [CWE-762][cwe-762]                     | [CERT C][cert-c], [MISRA C][misra-c]                               | [`CSTYLE-118-5-1-9-allocator-family-rules`](./c-code-standard.md#519-allocator-family-rules)                                    |
 | Stale pointer after `realloc`             | old pointer or aliases used after successful `realloc`             | [CWE-416][cwe-416], [CWE-825][cwe-825] | [CERT C][cert-c], [TS 17961][ts-17961]                             | [`CSTYLE-080-5-1-4-realloc-safety`](./c-code-standard.md#514-realloc-safety)                                                    |
 | Lost base pointer                         | only an interior pointer remains, so object cannot be freed        | [CWE-401][cwe-401], [CWE-761][cwe-761] | [CERT C][cert-c], [ISO/IEC 24772][iso-24772]                       | [`CSTYLE-082-5-1-6-ownership-rules`](./c-code-standard.md#516-ownership-rules)                                                  |
 | Interior pointer escape                   | subobject pointer outlives object or hides object ownership        | [CWE-825][cwe-825], [CWE-664][cwe-664] | [CERT C][cert-c], [MISRA C][misra-c]                               | [`CSTYLE-096-6-8-cast-rules`](./c-code-standard.md#68-cast-rules)                                                               |
-| NULL pointer dereference                  | dereference of null pointer                                        | [CWE-476][cwe-476]                     | [CERT C][cert-c], [TS 17961][ts-17961], [MISRA C][misra-c]         | [`CSTYLE-058-4-1-3-argument-validation`](./c-code-standard.md#413-argument-validation)                                          |
+| NULL pointer dereference                  | dereference of null pointer                                        | [CWE-476][cwe-476]                     | [CERT C][cert-c], [TS 17961][ts-17961], [MISRA C][misra-c]         | [`CSTYLE-121-6-11-pointer-dereference-preconditions`](./c-code-standard.md#611-pointer-dereference-preconditions)               |
 | Uninitialized pointer                     | indeterminate pointer value is read or dereferenced                | [CWE-824][cwe-824], [CWE-457][cwe-457] | [CERT C][cert-c], [MISRA C][misra-c], [C23][c23]                   | [`CSTYLE-107-8-1-variable-initialization`](./c-code-standard.md#81-variable-initialization)                                     |
 | Out-of-bounds write                       | write past object or array bounds                                  | [CWE-787][cwe-787], [CWE-120][cwe-120] | [CERT C][cert-c], [TS 17961][ts-17961], [ISO/IEC 24772][iso-24772] | [`CSTYLE-063-4-1-6-output-buffer-contracts`](./c-code-standard.md#416-output-buffer-contracts)                                  |
 | Out-of-bounds read                        | read past object or array bounds                                   | [CWE-125][cwe-125]                     | [CERT C][cert-c], [TS 17961][ts-17961]                             | [`CSTYLE-099-7-1-undefined-behavior-avoidance`](./c-code-standard.md#71-undefined-behavior-avoidance)                           |
 | Buffer underflow                          | access before buffer start                                         | [CWE-124][cwe-124]                     | [CERT C][cert-c], [TS 17961][ts-17961]                             | [`CSTYLE-099-7-1-undefined-behavior-avoidance`](./c-code-standard.md#71-undefined-behavior-avoidance)                           |
 | Off-by-one                                | one element too many or too few                                    | [CWE-193][cwe-193]                     | [CERT C][cert-c], [ISO/IEC 24772][iso-24772]                       | [`CSTYLE-074-4-1-15-loop-control`](./c-code-standard.md#4115-loop-control)                                                      |
 | One-past-end dereference                  | valid one-past pointer is dereferenced                             | [CWE-125][cwe-125], [CWE-787][cwe-787] | [C23][c23], [CERT C][cert-c], [MISRA C][misra-c]                   | [`CSTYLE-099-7-1-undefined-behavior-avoidance`](./c-code-standard.md#71-undefined-behavior-avoidance)                           |
-| Invalid pointer arithmetic                | pointer moves outside its array object                             | [CWE-469][cwe-469], [CWE-129][cwe-129] | [C23][c23], [CERT C][cert-c], [MISRA C][misra-c]                   | [`CSTYLE-102-7-4-checked-integer-arithmetic`](./c-code-standard.md#74-checked-integer-arithmetic)                               |
+| Invalid pointer arithmetic                | pointer moves outside its array object                             | [CWE-469][cwe-469], [CWE-129][cwe-129] | [C23][c23], [CERT C][cert-c], [MISRA C][misra-c]                   | [`CSTYLE-125-6-15-array-bounds-and-pointer-arithmetic`](./c-code-standard.md#615-array-bounds-and-pointer-arithmetic)           |
 | Invalid pointer comparison                | relational comparison of unrelated objects                         | [CWE-758][cwe-758]                     | [C23][c23], [CERT C][cert-c]                                       | [`CSTYLE-100-7-2-c-behavior-categories`](./c-code-standard.md#72-c-behavior-categories)                                         |
 | Invalid pointer subtraction               | subtracting pointers not in same array object                      | [CWE-469][cwe-469], [CWE-758][cwe-758] | [C23][c23], [CERT C][cert-c]                                       | [`CSTYLE-100-7-2-c-behavior-categories`](./c-code-standard.md#72-c-behavior-categories)                                         |
 | Pointer provenance violation              | integer-derived or unrelated pointer used as if it named an object | [CWE-758][cwe-758]                     | [C23][c23], [CERT C][cert-c], [MISRA C][misra-c]                   | [`CSTYLE-098-6-10-pointer-aliasing-and-provenance-rules`](./c-code-standard.md#610-pointer-aliasing-and-provenance-rules)       |
@@ -255,12 +255,18 @@ not scatter pointer safety across unrelated sections.
 | Pointer truncation                        | pointer value narrowed through integer type                        | [CWE-681][cwe-681], [CWE-704][cwe-704] | [CERT C][cert-c], [MISRA C][misra-c]                               | [`CSTYLE-097-6-9-numeric-conversion-rules`](./c-code-standard.md#69-numeric-conversion-rules)                                   |
 | Function pointer type mismatch            | call through incompatible function pointer type                    | [CWE-758][cwe-758], [CWE-843][cwe-843] | [C23][c23], [CERT C][cert-c], [MISRA C][misra-c]                   | [`CSTYLE-071-4-1-12-callback-contracts`](./c-code-standard.md#4112-callback-contracts)                                          |
 | Object pointer/function pointer mixing    | object and function pointer representations are confused           | [CWE-704][cwe-704], [CWE-758][cwe-758] | [C23][c23], [CERT C][cert-c], [MISRA C][misra-c]                   | [`CSTYLE-096-6-8-cast-rules`](./c-code-standard.md#68-cast-rules)                                                               |
-| Union pointer confusion                   | inactive union member or untagged union interpreted incorrectly    | [CWE-843][cwe-843], [CWE-758][cwe-758] | [C23][c23], [MISRA C][misra-c]                                     | [`CSTYLE-038-2-3-3-struct-serialization`](./c-code-standard.md#233-struct-serialization)                                        |
-| Array-to-pointer decay                    | size information lost at API boundary                              | [CWE-467][cwe-467], [CWE-131][cwe-131] | [CERT C][cert-c], [MISRA C][misra-c]                               | [`CSTYLE-063-4-1-6-output-buffer-contracts`](./c-code-standard.md#416-output-buffer-contracts)                                  |
+| Union pointer confusion                   | inactive union member or untagged union interpreted incorrectly    | [CWE-843][cwe-843], [CWE-758][cwe-758] | [C23][c23], [MISRA C][misra-c]                                     | [`CSTYLE-129-2-3-9-union-active-member-discipline`](./c-code-standard.md#239-union-active-member-discipline)                    |
+| Array-to-pointer decay                    | size information lost at API boundary                              | [CWE-467][cwe-467], [CWE-131][cwe-131] | [CERT C][cert-c], [MISRA C][misra-c]                               | [`CSTYLE-131-4-1-19-array-parameter-notation`](./c-code-standard.md#4119-array-parameter-notation)                              |
+| Flexible-array capacity mismatch          | allocation, recorded capacity, and trailing storage disagree       | [CWE-131][cwe-131], [CWE-787][cwe-787] | [CERT C][cert-c], [MISRA C][misra-c]                               | [`CSTYLE-130-2-3-10-flexible-array-members`](./c-code-standard.md#2310-flexible-array-members)                                  |
+| Pointer size mistaken for object capacity | `sizeof(pointer)` supplies a short storage bound                   | [CWE-467][cwe-467], [CWE-131][cwe-131] | [CERT C][cert-c], [TS 17961][ts-17961]                             | [`CSTYLE-136-5-1-12-sizeof-and-object-size-rules`](./c-code-standard.md#5112-sizeof-and-object-size-rules)                      |
+| Representation zeroing as initialization  | all-bits-zero is treated as an arbitrary typed default             | [CWE-665][cwe-665], [CWE-457][cwe-457] | [C23][c23], [CERT C][cert-c], [MISRA C][misra-c]                   | [`CSTYLE-137-8-3-object-zeroing-and-memset`](./c-code-standard.md#83-object-zeroing-and-memset)                                 |
 | Hidden or encoded pointer                 | GC/static analysis cannot see a live pointer                       | [CWE-758][cwe-758], [CWE-664][cwe-664] | [CERT C][cert-c], [IEC 61508][iec-61508]                           | [`CSTYLE-069-analyzability`](./c-code-standard.md#analyzability)                                                                |
 | Pointer to moved object                   | moving allocator or GC invalidates raw pointer                     | [CWE-416][cwe-416], [CWE-825][cwe-825] | [ISO/IEC 24772][iso-24772], [IEC 61508][iec-61508]                 | [`CSTYLE-082-5-1-6-ownership-rules`](./c-code-standard.md#516-ownership-rules)                                                  |
 | Borrowed pointer stored beyond lifetime   | callee persists a non-owned pointer                                | [CWE-825][cwe-825], [CWE-664][cwe-664] | [CERT C][cert-c], [ISO/IEC 24772][iso-24772]                       | [`CSTYLE-071-4-1-12-callback-contracts`](./c-code-standard.md#4112-callback-contracts)                                          |
 | Heap object points to stack memory        | heap state retains pointer into expired stack frame                | [CWE-825][cwe-825], [CWE-562][cwe-562] | [CERT C][cert-c], [MISRA C][misra-c]                               | [`CSTYLE-084-5-1-8-local-memory-lifetime`](./c-code-standard.md#518-local-memory-lifetime)                                      |
+| Chained pointer dereference               | one expression hides multiple pointer validity obligations         | [CWE-476][cwe-476], [CWE-825][cwe-825] | [CERT C][cert-c], [MISRA C][misra-c]                               | [`CSTYLE-122-6-12-pointer-dereference-chain-rules`](./c-code-standard.md#612-pointer-dereference-chain-rules)                   |
+| Stale validity after a mutating call      | a call invalidates a pointer later used for access                 | [CWE-416][cwe-416], [CWE-825][cwe-825] | [CERT C][cert-c], [MISRA C][misra-c]                               | [`CSTYLE-123-6-13-pointer-validity-across-calls`](./c-code-standard.md#613-pointer-validity-across-calls)                       |
+| Interleaved mutation through aliases      | aliases produce order-dependent or duplicated object transitions   | [CWE-664][cwe-664], [CWE-758][cwe-758] | [CERT C][cert-c], [MISRA C][misra-c]                               | [`CSTYLE-124-6-14-alias-safe-mutation`](./c-code-standard.md#614-alias-safe-mutation)                                           |
 | MMIO/DMA pointer treated as ordinary heap | hardware memory is moved, cached, scanned, or freed incorrectly    | [CWE-119][cwe-119], [CWE-664][cwe-664] | [IEC 61508][iec-61508], [ISO 26262][iso-26262], [MISRA C][misra-c] | [`CSTYLE-105-7-7-hardware-register-read-modify-write-rules`](./c-code-standard.md#77-hardware-register-read-modify-write-rules) |
 
 ---
@@ -284,9 +290,13 @@ owner)` contract; the raw address alone is not enough.
 ```c
 int *EX_badDanglingPointer(void)
 {
+    int *ret = (int *)(NULL);
     int local_value = 7;
 
-    return &local_value;
+    ret = &local_value;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -305,10 +315,15 @@ Clearing the owner pointer after `free()` helps, but aliases must be controlled
 by ownership, reference counting, epochs, hazard pointers, or GC handles.
 
 ```c
-void EX_badUseAfterFree(uint8_t *buffer)
+int EX_badUseAfterFree(uint8_t buffer[])
 {
+    int ret = EXIT_SUCCESS;
+
     free(buffer);
     buffer[0] = 1u;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -327,10 +342,15 @@ release path unless the API explicitly uses reference counting or another
 shared-ownership protocol.
 
 ```c
-void EX_badDoubleFree(uint8_t *buffer)
+int EX_badDoubleFree(uint8_t buffer[])
 {
+    int ret = EXIT_SUCCESS;
+
     free(buffer);
     free(buffer);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -340,7 +360,7 @@ void EX_badDoubleFree(uint8_t *buffer)
 
 **Pitfall ID:** `CPIT-004-memory-leak`
 
-**Primary prevention rule:** [`CSTYLE-077-5-1-1-allocation-rules`](./c-code-standard.md#511-allocation-rules)
+**Primary prevention rule:** [`CSTYLE-120-5-1-11-resource-acquisition-and-cleanup`](./c-code-standard.md#5111-resource-acquisition-and-cleanup)
 
 **Memory leak.** A memory leak occurs when the program loses the path needed to
 release memory or another finite resource. In embedded systems this is often a
@@ -349,11 +369,16 @@ eventually exhaust a fixed RAM budget. Cleanup paths, arenas, pools, and
 long-run leak tests are required evidence.
 
 ```c
-void EX_badMemoryLeak(void)
+int EX_badMemoryLeak(void)
 {
+    int ret = EXIT_SUCCESS;
+
     uint8_t *buffer = malloc(128u);
 
     buffer[0] = 1u;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -371,10 +396,15 @@ double frees later. Public APIs must document whether a pointer is owned,
 borrowed, static, arena-owned, GC-owned, pinned, or caller-owned.
 
 ```c
-void EX_badAmbiguousOwnership(uint8_t *buffer)
+int EX_badAmbiguousOwnership(uint8_t buffer[])
 {
+    int ret = EXIT_SUCCESS;
+
     EX_releaseA(buffer);
     EX_releaseB(buffer);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -384,7 +414,7 @@ void EX_badAmbiguousOwnership(uint8_t *buffer)
 
 **Pitfall ID:** `CPIT-006-invalid-free`
 
-**Primary prevention rule:** [`CSTYLE-086-standard-library-policy`](./c-code-standard.md#521-standard-library-policy)
+**Primary prevention rule:** [`CSTYLE-118-5-1-9-allocator-family-rules`](./c-code-standard.md#519-allocator-family-rules)
 
 **Invalid free.** Invalid free passes something to `free()` that was not
 returned by the matching allocator family as a base pointer. Stack addresses,
@@ -393,11 +423,16 @@ must never be freed through the wrong API. The fix is to preserve allocator
 family and base-pointer identity in the type or API contract.
 
 ```c
-void EX_badInvalidFree(void)
+int EX_badInvalidFree(void)
 {
+    int ret = EXIT_SUCCESS;
+
     uint8_t stack_buffer[16] = { 0u };
 
     free(stack_buffer);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -407,7 +442,7 @@ void EX_badInvalidFree(void)
 
 **Pitfall ID:** `CPIT-007-mismatched-allocator`
 
-**Primary prevention rule:** [`CSTYLE-077-5-1-1-allocation-rules`](./c-code-standard.md#511-allocation-rules)
+**Primary prevention rule:** [`CSTYLE-118-5-1-9-allocator-family-rules`](./c-code-standard.md#519-allocator-family-rules)
 
 **Mismatched allocator.** A mismatched allocator bug allocates with one family
 and releases with another, such as `malloc()` with a pool destroy function or a
@@ -416,9 +451,14 @@ when the address looks valid. Pair allocation and release functions explicitly
 in API names and ownership docs.
 
 ```c
-void EX_badMismatchedAllocator(uint8_t *pool_buffer)
+int EX_badMismatchedAllocator(uint8_t pool_buffer[])
 {
+    int ret = EXIT_SUCCESS;
+
     free(pool_buffer);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -437,12 +477,17 @@ result in a temporary, update the owner only after success, and do not retain
 interior pointers across `realloc()`.
 
 ```c
-void EX_badStalePointerAfterRealloc(uint8_t *buffer)
+int EX_badStalePointerAfterRealloc(uint8_t buffer[])
 {
+    int ret = EXIT_SUCCESS;
+
     uint8_t *alias = buffer;
 
     buffer = realloc(buffer, 32u);
     alias[0] = 1u;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -460,10 +505,15 @@ pointers are useful for parsing, but they must not replace the owning base
 pointer. Keep base and cursor fields separate.
 
 ```c
-void EX_badLostBasePointer(uint8_t *buffer)
+int EX_badLostBasePointer(uint8_t buffer[])
 {
+    int ret = EXIT_SUCCESS;
+
     buffer++;
     free(buffer);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -482,9 +532,14 @@ difficult. Use handles, indexes, or an explicit parent-object reference when
 the subobject must escape.
 
 ```c
-uint8_t *EX_badInteriorPointerEscape(uint8_t *buffer)
+uint8_t *EX_badInteriorPointerEscape(uint8_t buffer[])
 {
-    return &buffer[4];
+    uint8_t *ret = (uint8_t *)(NULL);
+
+    ret = &buffer[4];
+
+function_output:
+    return ret;
 }
 ```
 
@@ -494,7 +549,7 @@ uint8_t *EX_badInteriorPointerEscape(uint8_t *buffer)
 
 **Pitfall ID:** `CPIT-011-null-pointer-dereference`
 
-**Primary prevention rule:** [`CSTYLE-058-4-1-3-argument-validation`](./c-code-standard.md#413-argument-validation)
+**Primary prevention rule:** [`CSTYLE-121-6-11-pointer-dereference-preconditions`](./c-code-standard.md#611-pointer-dereference-preconditions)
 
 **NULL pointer dereference.** Dereferencing `NULL` is undefined behavior in C.
 It commonly follows unchecked allocation, optional arguments, failed lookups, or
@@ -502,11 +557,16 @@ partial initialization. Validate nullable inputs at the boundary and reserve
 assertions for internal invariants that cannot be violated by external input.
 
 ```c
-void EX_badNullPointerDereference(void)
+int EX_badNullPointerDereference(void)
 {
+    int ret = EXIT_SUCCESS;
+
     uint32_t *value = NULL;
 
     *value = 1u;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -524,11 +584,16 @@ memory or trigger undefined behavior before any obvious branch. Initialize all
 pointers to `NULL` or a valid object and prefer full object initialization.
 
 ```c
-void EX_badUninitializedPointer(void)
+int EX_badUninitializedPointer(void)
 {
+    int ret = EXIT_SUCCESS;
+
     uint32_t *value;
 
     *value = 1u;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -546,11 +611,16 @@ blocks, adjacent objects, return addresses, or hardware descriptors. Every write
 must be guarded by a validated base pointer, capacity, offset, and write size.
 
 ```c
-void EX_badOutOfBoundsWrite(void)
+int EX_badOutOfBoundsWrite(void)
 {
+    int ret = EXIT_SUCCESS;
+
     uint8_t buffer[4] = { 0u };
 
     buffer[4] = 1u;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -570,9 +640,13 @@ read, not after.
 ```c
 uint8_t EX_badOutOfBoundsRead(void)
 {
+    uint8_t ret = 0u;
     uint8_t buffer[4] = { 0u };
 
-    return buffer[4];
+    ret = buffer[4];
+
+function_output:
+    return ret;
 }
 ```
 
@@ -591,12 +665,17 @@ missed in reviews because the code visually moves "backward." Check lower
 bounds explicitly.
 
 ```c
-void EX_badBufferUnderflow(void)
+int EX_badBufferUnderflow(void)
 {
+    int ret = EXIT_SUCCESS;
+
     uint8_t buffer[4] = { 0u };
     uint8_t *cursor = buffer;
 
     cursor[-1] = 1u;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -614,12 +693,17 @@ Write loop bounds in terms of `index < count`, keep terminator capacity
 separate, and test zero, one, max, and boundary sizes.
 
 ```c
-void EX_badOffByOne(void)
+int EX_badOffByOne(void)
 {
+    int ret = EXIT_SUCCESS;
+
     uint8_t buffer[4] = { 0u };
 
     for (size_t index = 0u; index <= 4u; index++)
         buffer[index] = 0u;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -637,12 +721,17 @@ comparison and range logic. Any access must move back into the valid object
 range first.
 
 ```c
-void EX_badOnePastEndDereference(void)
+int EX_badOnePastEndDereference(void)
 {
+    int ret = EXIT_SUCCESS;
+
     uint8_t buffer[4] = { 0u };
     uint8_t *end = &buffer[4];
 
     *end = 1u;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -652,7 +741,7 @@ void EX_badOnePastEndDereference(void)
 
 **Pitfall ID:** `CPIT-018-invalid-pointer-arithmetic`
 
-**Primary prevention rule:** [`CSTYLE-102-7-4-checked-integer-arithmetic`](./c-code-standard.md#74-checked-integer-arithmetic)
+**Primary prevention rule:** [`CSTYLE-125-6-15-array-bounds-and-pointer-arithmetic`](./c-code-standard.md#615-array-bounds-and-pointer-arithmetic)
 
 **Invalid pointer arithmetic.** Pointer arithmetic is only defined within the
 same array object and its one-past position. Arithmetic derived from external
@@ -661,12 +750,17 @@ forming or using the pointer. Prefer byte-offset validation on integer sizes
 before converting to a pointer expression.
 
 ```c
-void EX_badInvalidPointerArithmetic(void)
+int EX_badInvalidPointerArithmetic(void)
 {
+    int ret = EXIT_SUCCESS;
+
     uint8_t buffer[4] = { 0u };
     uint8_t *cursor = buffer + 8u;
 
     *cursor = 1u;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -686,7 +780,12 @@ belong to the same allocation or address-domain abstraction.
 ```c
 int EX_badInvalidPointerComparison(uint8_t *lhs, uint8_t *rhs)
 {
-    return (lhs < rhs);
+    int ret = 0;
+
+    ret = (lhs < rhs);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -706,7 +805,12 @@ instead of deriving them from unrelated pointers.
 ```c
 ptrdiff_t EX_badInvalidPointerSubtraction(uint8_t *lhs, uint8_t *rhs)
 {
-    return (lhs - rhs);
+    ptrdiff_t ret = 0;
+
+    ret = lhs - rhs;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -728,9 +832,13 @@ portable code.
 ```c
 uint32_t EX_badPointerProvenanceViolation(uintptr_t raw_address)
 {
+    uint32_t ret = 0u;
     uint32_t *value = (uint32_t *)raw_address;
 
-    return *value;
+    ret = *value;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -751,9 +859,13 @@ byte inspection.
 ```c
 uint32_t EX_badStrictAliasingViolation(float *value)
 {
+    uint32_t ret = 0u;
     uint32_t *bits = (uint32_t *)value;
 
-    return *bits;
+    ret = *bits;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -772,10 +884,15 @@ Use `restrict` only when callers can realistically satisfy and review the
 non-aliasing requirement.
 
 ```c
-void EX_badRestrictAliasing(uint32_t *restrict lhs, uint32_t *restrict rhs)
+int EX_badRestrictAliasing(uint32_t *restrict lhs, uint32_t *restrict rhs)
 {
+    int ret = EXIT_SUCCESS;
+
     *lhs = 1u;
     *rhs = 2u;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -793,11 +910,15 @@ under-aligned typed pointer can trap on some targets and is undefined behavior
 in C. Check alignment before casting raw storage to typed objects.
 
 ```c
-uint32_t EX_badInvalidAlignment(uint8_t *buffer)
+uint32_t EX_badInvalidAlignment(uint8_t buffer[])
 {
+    uint32_t ret = 0u;
     uint32_t *value = (uint32_t *)(buffer + 1u);
 
-    return *value;
+    ret = *value;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -818,7 +939,12 @@ valid.
 ```c
 uint32_t EX_badPointerTruncation(void *ptr)
 {
-    return (uint32_t)(uintptr_t)ptr;
+    uint32_t ret = 0u;
+
+    ret = (uint32_t)(uintptr_t)ptr;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -836,11 +962,16 @@ return values differently even when the sizes look similar. Callback typedefs
 must exactly match the called function signature.
 
 ```c
-void EX_badFunctionPointerTypeMismatch(void (*callback)(void))
+int EX_badFunctionPointerTypeMismatch(void (*callback)(void))
 {
+    int ret = EXIT_SUCCESS;
+
     void (*typed_callback)(int value) = (void (*)(int))callback;
 
     typed_callback(1);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -861,7 +992,12 @@ separate.
 ```c
 void *EX_badObjectFunctionPointerMixing(void (*callback)(void))
 {
-    return (void *)callback;
+    void *ret = (void *)(NULL);
+
+    ret = (void *)callback;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -871,7 +1007,7 @@ void *EX_badObjectFunctionPointerMixing(void (*callback)(void))
 
 **Pitfall ID:** `CPIT-028-union-pointer-confusion`
 
-**Primary prevention rule:** [`CSTYLE-038-2-3-3-struct-serialization`](./c-code-standard.md#233-struct-serialization)
+**Primary prevention rule:** [`CSTYLE-129-2-3-9-union-active-member-discipline`](./c-code-standard.md#239-union-active-member-discipline)
 
 **Union pointer confusion.** A union that can hold multiple pointer or scalar
 interpretations needs an explicit active-member tag. Reading an inactive member
@@ -887,7 +1023,12 @@ typedef union ExValue
 
 uint32_t EX_badUnionPointerConfusion(ex_value_t value)
 {
-    return *value.ptr_value;
+    uint32_t ret = 0u;
+
+    ret = *value.ptr_value;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -897,7 +1038,7 @@ uint32_t EX_badUnionPointerConfusion(ex_value_t value)
 
 **Pitfall ID:** `CPIT-029-array-to-pointer-decay`
 
-**Primary prevention rule:** [`CSTYLE-063-4-1-6-output-buffer-contracts`](./c-code-standard.md#416-output-buffer-contracts)
+**Primary prevention rule:** [`CSTYLE-131-4-1-19-array-parameter-notation`](./c-code-standard.md#4119-array-parameter-notation)
 
 **Array-to-pointer decay.** Array parameters decay to pointers, losing size
 information. `sizeof(param)` then returns pointer size, not array size. Every
@@ -907,7 +1048,12 @@ to an explicitly sized array type.
 ```c
 size_t EX_badArrayToPointerDecay(uint8_t buffer[])
 {
-    return sizeof(buffer);
+    size_t ret = 0u;
+
+    ret = sizeof(buffer);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -925,9 +1071,14 @@ ordinary static analysis and GC root scanning. If a runtime must hide pointers,
 the encoding must be centralized and documented for analysis and tracing.
 
 ```c
-uintptr_t EX_badHiddenPointer(uint8_t *buffer)
+uintptr_t EX_badHiddenPointer(uint8_t buffer[])
 {
-    return ((uintptr_t)buffer ^ UINTPTR_C(0x5a5a5a5a));
+    uintptr_t ret = 0u;
+
+    ret = (uintptr_t)buffer ^ UINTPTR_C(0x5a5a5a5a);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -947,7 +1098,12 @@ registered roots, or pinned references.
 ```c
 uint8_t *EX_badPointerToMovedObject(uint8_t *moving_object)
 {
-    return moving_object;
+    uint8_t *ret = (uint8_t *)(NULL);
+
+    ret = moving_object;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -967,9 +1123,14 @@ Copy the data, retain the owner, or change the API to transfer ownership.
 ```c
 static uint8_t *g_borrowed_buffer;
 
-void EX_badBorrowedPointerStored(uint8_t *borrowed_buffer)
+int EX_badBorrowedPointerStored(uint8_t borrowed_buffer[])
 {
+    int ret = EXIT_SUCCESS;
+
     g_borrowed_buffer = borrowed_buffer;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -989,9 +1150,13 @@ equal or longer lifetime, or store a copy.
 ```c
 uint8_t *EX_badHeapObjectPointsToStack(void)
 {
+    uint8_t *ret = (uint8_t *)(NULL);
     uint8_t stack_buffer[16] = { 0u };
 
-    return stack_buffer;
+    ret = stack_buffer;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1010,9 +1175,191 @@ memory, or updated with normal concurrency assumptions. Keep hardware memory in
 explicit adapter modules.
 
 ```c
-void EX_badMmioDmaAsHeap(volatile uint32_t *register_ptr)
+int EX_badMmioDmaAsHeap(volatile uint32_t *register_ptr)
 {
+    int ret = EXIT_SUCCESS;
+
     free((void *)register_ptr);
+
+function_output:
+    return ret;
+}
+```
+
+---
+
+#### CPIT-123: Chained pointer dereference
+
+**Pitfall ID:** `CPIT-123-chained-pointer-dereference`
+
+**Primary prevention rule:** [`CSTYLE-122-6-12-pointer-dereference-chain-rules`](./c-code-standard.md#612-pointer-dereference-chain-rules)
+
+**Chained pointer dereference.** A chain combines several validity checks in
+one expression. In `(aux->prev)->next`, both `aux` and `aux->prev` may be
+invalid, while the intermediate pointer's ownership and lifetime remain
+implicit. Named intermediates give debuggers, reviewers, and static analysis a
+place to verify each precondition.
+
+```c
+int EX_badChainedPointerDereference(node_t *aux)
+{
+    int ret = EXIT_SUCCESS;
+
+    if (aux != (node_t *)(NULL))
+    {
+        (aux->prev)->next = aux->next;
+    }
+
+function_output:
+    return ret;
+}
+```
+
+---
+
+#### CPIT-124: Stale validity after a mutating call
+
+**Pitfall ID:** `CPIT-124-stale-validity-after-a-mutating-call`
+
+**Primary prevention rule:** [`CSTYLE-123-6-13-pointer-validity-across-calls`](./c-code-standard.md#613-pointer-validity-across-calls)
+
+**Stale validity after a mutating call.** A container mutation, ownership
+transfer, allocator operation, or callback may release or relocate an object.
+A check made before that call no longer proves the pointer valid afterward.
+Reacquire the object or rely on a callee contract that explicitly preserves
+its address and lifetime.
+
+```c
+int EX_badStaleValidity(list_t *list, node_t *node)
+{
+    int ret = EXIT_SUCCESS;
+
+    if (node != (node_t *)(NULL))
+    {
+        LIST_remove(list, node);
+        node->flags = 0u;
+    }
+
+function_output:
+    return ret;
+}
+```
+
+---
+
+#### CPIT-125: Interleaved mutation through aliases
+
+**Pitfall ID:** `CPIT-125-interleaved-mutation-through-aliases`
+
+**Primary prevention rule:** [`CSTYLE-124-6-14-alias-safe-mutation`](./c-code-standard.md#614-alias-safe-mutation)
+
+**Interleaved mutation through aliases.** Two pointers that may name the same
+object can turn separate updates into one order-dependent state transition.
+This fault can duplicate increments, overwrite a value derived moments
+earlier, or violate invariants that assumed distinct objects. Prove the ranges
+do not overlap or mutate through one canonical pointer.
+
+```c
+int EX_badInterleavedAliasMutation(item_t *first, item_t *second)
+{
+    int ret = EXIT_SUCCESS;
+
+    if ((first != (item_t *)(NULL)) &&
+        (second != (item_t *)(NULL)))
+    {
+        first->value += 1u;
+        second->value = first->value;
+    }
+
+function_output:
+    return ret;
+}
+```
+
+---
+
+#### CPIT-128: Flexible-array capacity mismatch
+
+**Pitfall ID:** `CPIT-128-flexible-array-capacity-mismatch`
+
+**Primary prevention rule:** [`CSTYLE-130-2-3-10-flexible-array-members`](./c-code-standard.md#2310-flexible-array-members)
+
+**Flexible-array capacity mismatch.** A flexible array member has no payload
+storage in `sizeof(struct_type)`. If allocation size, recorded capacity, and
+copy length do not describe the same allocation, an apparently valid index can
+write beyond the object. Keep the total allocation size and payload capacity
+in one checked ownership contract.
+
+```c
+packet_t *EX_badFlexibleArrayAllocation(size_t payload_capacity)
+{
+    packet_t *ret = (packet_t *)MEM_alloc(sizeof(*ret));
+
+    if (ret != (packet_t *)(NULL))
+    {
+        ret->capacity = payload_capacity;
+    }
+
+function_output:
+    return ret;
+}
+```
+
+---
+
+#### CPIT-132: Pointer size mistaken for object capacity
+
+**Pitfall ID:** `CPIT-132-pointer-size-mistaken-for-object-capacity`
+
+**Primary prevention rule:** [`CSTYLE-136-5-1-12-sizeof-and-object-size-rules`](./c-code-standard.md#5112-sizeof-and-object-size-rules)
+
+**Pointer size mistaken for object capacity.** `sizeof(pointer)` reports the
+pointer representation size, not the size of its allocation. Using that value
+as a copy, clear, comparison, or I/O bound often processes only four or eight
+bytes and can leave stale data or weaken validation.
+
+```c
+int EX_badPointerSizeCapacity(uint8_t buffer[], size_t buffer_size)
+{
+    int ret = EXIT_SUCCESS;
+
+    if ((buffer != (uint8_t *)(NULL)) &&
+        (buffer_size > 0u))
+    {
+        memset(buffer, 0, sizeof(buffer));
+    }
+
+function_output:
+    return ret;
+}
+```
+
+---
+
+#### CPIT-133: Representation zeroing mistaken for semantic initialization
+
+**Pitfall ID:** `CPIT-133-representation-zeroing-mistaken-for-semantic-initialization`
+
+**Primary prevention rule:** [`CSTYLE-137-8-3-object-zeroing-and-memset`](./c-code-standard.md#83-object-zeroing-and-memset)
+
+**Representation zeroing mistaken for semantic initialization.** `memset()`
+writes bytes; it does not assign the C zero value to each member. An arbitrary
+typed object may contain pointers, floating-point values, enums, padding, or a
+domain default whose representation is not all-bits-zero. Use C initialization
+syntax or a type-specific reset function.
+
+```c
+int EX_badRepresentationInitialization(config_t *config)
+{
+    int ret = EXIT_SUCCESS;
+
+    if (config != (config_t *)(NULL))
+    {
+        memset(config, 0, sizeof(*config));
+    }
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1023,20 +1370,22 @@ void EX_badMmioDmaAsHeap(volatile uint32_t *register_ptr)
 These are C execution-semantics hazards. They often pass tests until compiler,
 optimization level, CPU, ABI, or input data changes.
 
-| Pitfall                                    | Failure mode                                              | [CWE][cwe] mapping                     | Standards / rules                                                | Primary project control                                                                                         |
-| ------------------------------------------ | --------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Unsequenced modification                   | expression modifies and reads same scalar without order   | [CWE-758][cwe-758]                     | [C23][c23], [CERT C][cert-c], [MISRA C][misra-c]                 | [`CSTYLE-061-4-1-4-no-side-effects-in-conditions`](./c-code-standard.md#414-no-side-effects-in-conditions)      |
-| Indeterminate value read                   | automatic object, padding, or invalid representation read | [CWE-457][cwe-457], [CWE-758][cwe-758] | [C23][c23], [CERT C][cert-c], [MISRA C][misra-c]                 | [`CSTYLE-107-8-1-variable-initialization`](./c-code-standard.md#81-variable-initialization)                     |
-| Trap representation                        | invalid object representation read as typed value         | [CWE-758][cwe-758]                     | [C23][c23], [CERT C][cert-c]                                     | [`CSTYLE-100-7-2-c-behavior-categories`](./c-code-standard.md#72-c-behavior-categories)                         |
-| Signed integer overflow                    | signed arithmetic exceeds representable range             | [CWE-190][cwe-190], [CWE-758][cwe-758] | [C23][c23], [CERT C][cert-c], [TS 17961][ts-17961]               | [`CSTYLE-101-7-3-integer-overflow-and-shift-safety`](./c-code-standard.md#73-integer-overflow-and-shift-safety) |
-| Invalid shift                              | shift count negative or at least type width               | [CWE-682][cwe-682], [CWE-758][cwe-758] | [C23][c23], [CERT C][cert-c], [MISRA C][misra-c]                 | [`CSTYLE-101-7-3-integer-overflow-and-shift-safety`](./c-code-standard.md#73-integer-overflow-and-shift-safety) |
-| Divide overflow                            | `TYPE_MIN / -1` for signed integer                        | [CWE-190][cwe-190], [CWE-369][cwe-369] | [C23][c23], [CERT C][cert-c]                                     | [`CSTYLE-103-7-5-division-and-remainder-safety`](./c-code-standard.md#75-division-and-remainder-safety)         |
-| Invalid effective type access              | incompatible typed lvalue used for object access          | [CWE-843][cwe-843], [CWE-758][cwe-758] | [C23][c23], [CERT C][cert-c], [MISRA C][misra-c]                 | [`CSTYLE-100-7-2-c-behavior-categories`](./c-code-standard.md#72-c-behavior-categories)                         |
-| VLA with invalid bound                     | zero, negative, excessive, or untrusted VLA size          | [CWE-129][cwe-129], [CWE-789][cwe-789] | [CERT C][cert-c], [MISRA C][misra-c]                             | [`CSTYLE-108-8-2-array-initialization`](./c-code-standard.md#82-array-initialization)                           |
-| `longjmp` into dead frame                  | non-local jump targets expired stack context              | [CWE-758][cwe-758], [CWE-562][cwe-562] | [C23][c23], [CERT C][cert-c], [MISRA C][misra-c]                 | [`CSTYLE-053-4-1-function-design-and-control-flow`](./c-code-standard.md#4-function-contracts-and-control-flow) |
-| Modified non-volatile local after `setjmp` | local value becomes indeterminate after `longjmp`         | [CWE-758][cwe-758]                     | [C23][c23], [CERT C][cert-c]                                     | [`CSTYLE-100-7-2-c-behavior-categories`](./c-code-standard.md#72-c-behavior-categories)                         |
-| Recursive unbounded call chain             | stack exhaustion or non-terminating control flow          | [CWE-674][cwe-674], [CWE-835][cwe-835] | [MISRA C][misra-c], [IEC 61508][iec-61508], [DO-178C][do-178c]   | [`CSTYLE-054-4-1-1-function-size-and-complexity`](./c-code-standard.md#411-function-size-and-complexity)        |
-| Infinite loop without progress             | control loop cannot terminate or service watchdog         | [CWE-835][cwe-835]                     | [CERT C][cert-c], [IEC 61508][iec-61508], [ISO 26262][iso-26262] | [`CSTYLE-074-4-1-15-loop-control`](./c-code-standard.md#4115-loop-control)                                      |
+| Pitfall                                    | Failure mode                                                             | [CWE][cwe] mapping                     | Standards / rules                                                | Primary project control                                                                                         |
+| ------------------------------------------ | ------------------------------------------------------------------------ | -------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Unsequenced modification                   | expression modifies and reads same scalar without order                  | [CWE-758][cwe-758]                     | [C23][c23], [CERT C][cert-c], [MISRA C][misra-c]                 | [`CSTYLE-061-4-1-4-no-side-effects-in-conditions`](./c-code-standard.md#414-no-side-effects-in-conditions)      |
+| Indeterminate value read                   | automatic object, padding, or invalid representation read                | [CWE-457][cwe-457], [CWE-758][cwe-758] | [C23][c23], [CERT C][cert-c], [MISRA C][misra-c]                 | [`CSTYLE-107-8-1-variable-initialization`](./c-code-standard.md#81-variable-initialization)                     |
+| Trap representation                        | invalid object representation read as typed value                        | [CWE-758][cwe-758]                     | [C23][c23], [CERT C][cert-c]                                     | [`CSTYLE-100-7-2-c-behavior-categories`](./c-code-standard.md#72-c-behavior-categories)                         |
+| Signed integer overflow                    | signed arithmetic exceeds representable range                            | [CWE-190][cwe-190], [CWE-758][cwe-758] | [C23][c23], [CERT C][cert-c], [TS 17961][ts-17961]               | [`CSTYLE-101-7-3-integer-overflow-and-shift-safety`](./c-code-standard.md#73-integer-overflow-and-shift-safety) |
+| Invalid shift                              | shift count negative or at least type width                              | [CWE-682][cwe-682], [CWE-758][cwe-758] | [C23][c23], [CERT C][cert-c], [MISRA C][misra-c]                 | [`CSTYLE-101-7-3-integer-overflow-and-shift-safety`](./c-code-standard.md#73-integer-overflow-and-shift-safety) |
+| Divide overflow                            | `TYPE_MIN / -1` for signed integer                                       | [CWE-190][cwe-190], [CWE-369][cwe-369] | [C23][c23], [CERT C][cert-c]                                     | [`CSTYLE-103-7-5-division-and-remainder-safety`](./c-code-standard.md#75-division-and-remainder-safety)         |
+| Invalid effective type access              | incompatible typed lvalue used for object access                         | [CWE-843][cwe-843], [CWE-758][cwe-758] | [C23][c23], [CERT C][cert-c], [MISRA C][misra-c]                 | [`CSTYLE-100-7-2-c-behavior-categories`](./c-code-standard.md#72-c-behavior-categories)                         |
+| VLA with invalid bound                     | zero, negative, excessive, or untrusted VLA size                         | [CWE-129][cwe-129], [CWE-789][cwe-789] | [CERT C][cert-c], [MISRA C][misra-c]                             | [`CSTYLE-108-8-2-array-initialization`](./c-code-standard.md#82-array-initialization)                           |
+| `longjmp` into dead frame                  | non-local jump targets expired stack context                             | [CWE-758][cwe-758], [CWE-562][cwe-562] | [C23][c23], [CERT C][cert-c], [MISRA C][misra-c]                 | [`CSTYLE-053-4-1-function-design-and-control-flow`](./c-code-standard.md#4-function-contracts-and-control-flow) |
+| Modified non-volatile local after `setjmp` | local value becomes indeterminate after `longjmp`                        | [CWE-758][cwe-758]                     | [C23][c23], [CERT C][cert-c]                                     | [`CSTYLE-100-7-2-c-behavior-categories`](./c-code-standard.md#72-c-behavior-categories)                         |
+| Recursive unbounded call chain             | stack exhaustion or non-terminating control flow                         | [CWE-674][cwe-674], [CWE-835][cwe-835] | [MISRA C][misra-c], [IEC 61508][iec-61508], [DO-178C][do-178c]   | [`CSTYLE-054-4-1-1-function-size-and-complexity`](./c-code-standard.md#411-function-size-and-complexity)        |
+| Infinite loop without progress             | control loop cannot terminate or service watchdog                        | [CWE-835][cwe-835]                     | [CERT C][cert-c], [IEC 61508][iec-61508], [ISO 26262][iso-26262] | [`CSTYLE-074-4-1-15-loop-control`](./c-code-standard.md#4115-loop-control)                                      |
+| Variadic argument contract mismatch        | callee reads a missing argument or interprets the wrong type             | [CWE-685][cwe-685], [CWE-686][cwe-686] | [C23][c23], [CERT C][cert-c], [MISRA C][misra-c]                 | [`CSTYLE-132-4-1-20-variadic-function-policy`](./c-code-standard.md#4120-variadic-function-policy)              |
+| Control flow hidden in an expression       | nested selection, comma sequencing, or direct return hides state changes | [CWE-691][cwe-691], [CWE-758][cwe-758] | [C23][c23], [CERT C][cert-c], [MISRA C][misra-c]                 | [`CSTYLE-064-4-1-7-return-convention`](./c-code-standard.md#417-return-convention)                              |
 
 ---
 
@@ -1058,7 +1407,12 @@ Split side effects into separate statements.
 ```c
 int EX_badUnsequencedModification(int value)
 {
-    return value++ + value;
+    int ret = EXIT_SUCCESS;
+
+    ret = value++ + value;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1078,9 +1432,10 @@ first read and avoid using padding bytes as meaningful data.
 ```c
 uint32_t EX_badIndeterminateValueRead(void)
 {
-    uint32_t value;
+    uint32_t ret;
 
-    return value;
+function_output:
+    return ret;
 }
 ```
 
@@ -1098,11 +1453,15 @@ be undefined. Do not deserialize raw bytes directly into typed objects without
 validation and representation handling.
 
 ```c
-uint32_t EX_badTrapRepresentation(uint8_t *bytes)
+uint32_t EX_badTrapRepresentation(uint8_t bytes[])
 {
+    uint32_t ret = 0u;
     uint32_t *value = (uint32_t *)bytes;
 
-    return *value;
+    ret = *value;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1122,7 +1481,12 @@ sizes, indexes, offsets, counters, or protocol fields.
 ```c
 int32_t EX_badSignedIntegerOverflow(int32_t value)
 {
-    return (value + INT32_MAX);
+    int32_t ret = 0;
+
+    ret = value + INT32_MAX;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1142,7 +1506,12 @@ unsigned operands with explicit masks.
 ```c
 uint32_t EX_badInvalidShift(uint32_t value, uint32_t shift)
 {
-    return (value << shift);
+    uint32_t ret = 0u;
+
+    ret = value << shift;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1162,7 +1531,12 @@ represented in the same signed type. Check both zero divisors and the
 ```c
 int32_t EX_badDivideOverflow(void)
 {
-    return (INT32_MIN / -1);
+    int32_t ret = 0;
+
+    ret = INT32_MIN / -1;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1182,7 +1556,12 @@ serialized representations as bytes until decoded.
 ```c
 uint32_t EX_badInvalidEffectiveTypeAccess(float *value)
 {
-    return *((uint32_t *)value);
+    uint32_t ret = 0u;
+
+    ret = *((uint32_t *)value);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1201,11 +1580,16 @@ exhaustion. Project code prohibits VLAs under
 policy, or caller-provided storage.
 
 ```c
-void EX_badVlaWithInvalidBound(int32_t count)
+int EX_badVlaWithInvalidBound(int32_t count)
 {
+    int ret = EXIT_SUCCESS;
+
     uint8_t buffer[count];
 
     buffer[0] = 0u;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1223,9 +1607,14 @@ flow and stack lifetime. Avoid non-local jumps in project code unless a narrow
 adapter owns the full lifetime protocol.
 
 ```c
-void EX_badLongjmpIntoDeadFrame(jmp_buf jump_buffer)
+int EX_badLongjmpIntoDeadFrame(jmp_buf jump_buffer)
 {
+    int ret = EXIT_SUCCESS;
+
     longjmp(jump_buffer, 1);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1245,13 +1634,20 @@ This surprises error-recovery code. Avoid relying on local state across
 ```c
 int EX_badModifiedLocalAfterSetjmp(jmp_buf jump_buffer)
 {
+    int ret = EXIT_SUCCESS;
     int value = 0;
 
     if (setjmp(jump_buffer) != 0)
-        return value;
+    {
+        ret = value;
+        goto function_output;
+    }
 
     value = 10;
     longjmp(jump_buffer, 1);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1271,7 +1667,12 @@ strict recursion bound.
 ```c
 uint32_t EX_badRecursiveUnbounded(uint32_t value)
 {
-    return EX_badRecursiveUnbounded(value + 1u);
+    uint32_t ret = 0u;
+
+    ret = EX_badRecursiveUnbounded(value + 1u);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1289,29 +1690,83 @@ can starve safety tasks or prevent fault handling. Document loop exit and
 watchdog-service conditions.
 
 ```c
-void EX_badInfiniteLoopWithoutProgress(void)
+int EX_badInfiniteLoopWithoutProgress(void)
 {
+    int ret = EXIT_SUCCESS;
+
     while (1)
     {
     }
+
+function_output:
+    return ret;
 }
+```
+
+---
+
+#### CPIT-129: Variadic argument contract mismatch
+
+**Pitfall ID:** `CPIT-129-variadic-argument-contract-mismatch`
+
+**Primary prevention rule:** [`CSTYLE-132-4-1-20-variadic-function-policy`](./c-code-standard.md#4120-variadic-function-policy)
+
+**Variadic argument contract mismatch.** The `...` syntax carries no count or
+runtime type metadata. If the caller and callee disagree about promotions,
+count, order, or ownership, `va_arg()` reads the wrong representation or moves
+past the supplied arguments. Keep variadic access inside a format-checked or
+otherwise controlled adapter.
+
+```c
+int EX_badVariadicCall(void)
+{
+    int ret = EXIT_SUCCESS;
+
+    uint8_t *buffer = (uint8_t *)(NULL);
+
+    EX_log("value=%u", buffer);
+
+function_output:
+    return ret;
+}
+```
+
+---
+
+#### CPIT-130: Control flow hidden in an expression
+
+**Pitfall ID:** `CPIT-130-control-flow-hidden-in-an-expression`
+
+**Primary prevention rule:** [`CSTYLE-133-4-1-21-conditional-operator`](./c-code-standard.md#4121-conditional-operator)
+
+**Related prevention rule:** [`CSTYLE-064-4-1-7-return-convention`](./c-code-standard.md#417-return-convention)
+
+**Control flow hidden in an expression.** Nested conditional operators, the
+comma operator, and direct return expressions can bury calls, mutation, and
+cleanup inside value computation. An early return can also bypass the common
+status and cleanup path. Use branches and separate statements for state
+changes, then return `ret` once at `function_output`.
+
+```c
+result = is_ready ? EX_process() : (EX_cleanup(), -EINVAL);
 ```
 
 ---
 
 ## Integer and Arithmetic Pitfalls
 
-| Pitfall                            | Failure mode                                             | [CWE][cwe] mapping                     | Standards / rules                                                  | Primary project control                                                                                 |
-| ---------------------------------- | -------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
-| Allocation multiplication overflow | `count * sizeof(*ptr)` wraps to a smaller allocation     | [CWE-190][cwe-190], [CWE-131][cwe-131] | [CERT C][cert-c], [TS 17961][ts-17961], [CWE][cwe]                 | [`CSTYLE-102-7-4-checked-integer-arithmetic`](./c-code-standard.md#74-checked-integer-arithmetic)       |
-| Header plus payload overflow       | protocol or allocator size calculation wraps             | [CWE-190][cwe-190], [CWE-680][cwe-680] | [CERT C][cert-c], [TS 17961][ts-17961]                             | [`CSTYLE-102-7-4-checked-integer-arithmetic`](./c-code-standard.md#74-checked-integer-arithmetic)       |
-| Offset plus size overflow          | range validation accepts invalid slice                   | [CWE-190][cwe-190], [CWE-787][cwe-787] | [CERT C][cert-c], [TS 17961][ts-17961]                             | [`CSTYLE-102-7-4-checked-integer-arithmetic`](./c-code-standard.md#74-checked-integer-arithmetic)       |
-| Alignment rounding overflow        | `align_up(size, align)` wraps or accepts bad alignment   | [CWE-190][cwe-190], [CWE-682][cwe-682] | [CERT C][cert-c], [MISRA C][misra-c]                               | [`CSTYLE-102-7-4-checked-integer-arithmetic`](./c-code-standard.md#74-checked-integer-arithmetic)       |
-| Division by zero                   | `/` or `%` divisor is zero                               | [CWE-369][cwe-369]                     | [CERT C][cert-c], [TS 17961][ts-17961]                             | [`CSTYLE-103-7-5-division-and-remainder-safety`](./c-code-standard.md#75-division-and-remainder-safety) |
-| Narrowing conversion               | value truncated or sign changes silently                 | [CWE-681][cwe-681], [CWE-197][cwe-197] | [CERT C][cert-c], [MISRA C][misra-c]                               | [`CSTYLE-097-6-9-numeric-conversion-rules`](./c-code-standard.md#69-numeric-conversion-rules)           |
-| Signed/unsigned mixing             | comparison or arithmetic changes meaning                 | [CWE-195][cwe-195], [CWE-681][cwe-681] | [CERT C][cert-c], [MISRA C][misra-c]                               | [`CSTYLE-097-6-9-numeric-conversion-rules`](./c-code-standard.md#69-numeric-conversion-rules)           |
-| Enum conversion out of range       | raw integer becomes invalid state or table index         | [CWE-704][cwe-704], [CWE-129][cwe-129] | [CERT C][cert-c], [MISRA C][misra-c]                               | [`CSTYLE-060-enum-range-validation`](./c-code-standard.md#enum-range-validation)                        |
-| Floating-point in core allocator   | non-deterministic or target-dependent layout calculation | [CWE-681][cwe-681]                     | [IEC 61508][iec-61508], [ISO 26262][iso-26262], [MISRA C][misra-c] | [`CSTYLE-106-7-8-floating-point`](./c-code-standard.md#78-floating-point)                               |
+| Pitfall                                     | Failure mode                                             | [CWE][cwe] mapping                     | Standards / rules                                                  | Primary project control                                                                                 |
+| ------------------------------------------- | -------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| Allocation multiplication overflow          | `count * sizeof(*ptr)` wraps to a smaller allocation     | [CWE-190][cwe-190], [CWE-131][cwe-131] | [CERT C][cert-c], [TS 17961][ts-17961], [CWE][cwe]                 | [`CSTYLE-102-7-4-checked-integer-arithmetic`](./c-code-standard.md#74-checked-integer-arithmetic)       |
+| Header plus payload overflow                | protocol or allocator size calculation wraps             | [CWE-190][cwe-190], [CWE-680][cwe-680] | [CERT C][cert-c], [TS 17961][ts-17961]                             | [`CSTYLE-102-7-4-checked-integer-arithmetic`](./c-code-standard.md#74-checked-integer-arithmetic)       |
+| Offset plus size overflow                   | range validation accepts invalid slice                   | [CWE-190][cwe-190], [CWE-787][cwe-787] | [CERT C][cert-c], [TS 17961][ts-17961]                             | [`CSTYLE-102-7-4-checked-integer-arithmetic`](./c-code-standard.md#74-checked-integer-arithmetic)       |
+| Alignment rounding overflow                 | `align_up(size, align)` wraps or accepts bad alignment   | [CWE-190][cwe-190], [CWE-682][cwe-682] | [CERT C][cert-c], [MISRA C][misra-c]                               | [`CSTYLE-102-7-4-checked-integer-arithmetic`](./c-code-standard.md#74-checked-integer-arithmetic)       |
+| Division by zero                            | `/` or `%` divisor is zero                               | [CWE-369][cwe-369]                     | [CERT C][cert-c], [TS 17961][ts-17961]                             | [`CSTYLE-103-7-5-division-and-remainder-safety`](./c-code-standard.md#75-division-and-remainder-safety) |
+| Narrowing conversion                        | value truncated or sign changes silently                 | [CWE-681][cwe-681], [CWE-197][cwe-197] | [CERT C][cert-c], [MISRA C][misra-c]                               | [`CSTYLE-097-6-9-numeric-conversion-rules`](./c-code-standard.md#69-numeric-conversion-rules)           |
+| Signed/unsigned mixing                      | comparison or arithmetic changes meaning                 | [CWE-195][cwe-195], [CWE-681][cwe-681] | [CERT C][cert-c], [MISRA C][misra-c]                               | [`CSTYLE-097-6-9-numeric-conversion-rules`](./c-code-standard.md#69-numeric-conversion-rules)           |
+| Enum conversion out of range                | raw integer becomes invalid state or table index         | [CWE-704][cwe-704], [CWE-129][cwe-129] | [CERT C][cert-c], [MISRA C][misra-c]                               | [`CSTYLE-060-enum-range-validation`](./c-code-standard.md#enum-range-validation)                        |
+| Floating-point in core allocator            | non-deterministic or target-dependent layout calculation | [CWE-681][cwe-681]                     | [IEC 61508][iec-61508], [ISO 26262][iso-26262], [MISRA C][misra-c] | [`CSTYLE-106-7-8-floating-point`](./c-code-standard.md#78-floating-point)                               |
+| Plain `char` used as binary numeric storage | target choice of signed `char` changes numeric meaning   | [CWE-195][cwe-195], [CWE-681][cwe-681] | [C23][c23], [CERT C][cert-c], [MISRA C][misra-c]                   | [`CSTYLE-128-2-3-8-plain-char-semantics`](./c-code-standard.md#238-plain-char-semantics)                |
 
 ---
 
@@ -1333,7 +1788,12 @@ multiplication before allocation.
 ```c
 void *EX_badAllocationMultiplicationOverflow(size_t count)
 {
-    return malloc(count * sizeof(uint32_t));
+    void *ret = (void *)(NULL);
+
+    ret = malloc(count * sizeof(uint32_t));
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1353,7 +1813,12 @@ sum, not only the final allocation.
 ```c
 size_t EX_badHeaderPlusPayloadOverflow(size_t header_size, size_t payload_size)
 {
-    return (header_size + payload_size);
+    size_t ret = 0u;
+
+    ret = header_size + payload_size;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1373,7 +1838,12 @@ the object. Use checked addition or compare as `offset <= capacity` and
 ```c
 int EX_badOffsetPlusSizeOverflow(size_t offset, size_t size, size_t capacity)
 {
-    return ((offset + size) <= capacity);
+    int ret = EXIT_SUCCESS;
+
+    ret = ((offset + size) <= capacity);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1393,7 +1863,12 @@ addition before rounding.
 ```c
 size_t EX_badAlignmentRoundingOverflow(size_t size, size_t align)
 {
-    return ((size + (align - 1u)) & ~(align - 1u));
+    size_t ret = 0u;
+
+    ret = (size + (align - 1u)) & ~(align - 1u);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1412,7 +1887,12 @@ be treated as untrusted. Validate before both `/` and `%`.
 ```c
 int32_t EX_badDivisionByZero(int32_t dividend, int32_t divisor)
 {
-    return (dividend / divisor);
+    int32_t ret = 0;
+
+    ret = dividend / divisor;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1431,7 +1911,12 @@ hardware register fields. Check lower and upper bounds before the cast.
 ```c
 uint16_t EX_badNarrowingConversion(uint32_t value)
 {
-    return (uint16_t)value;
+    uint16_t ret = 0u;
+
+    ret = (uint16_t)value;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1451,7 +1936,12 @@ before comparing or doing arithmetic.
 ```c
 int EX_badSignedUnsignedMixing(int32_t value, uint32_t limit)
 {
-    return (value < limit);
+    int ret = EXIT_SUCCESS;
+
+    ret = (value < limit);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1471,7 +1961,12 @@ range before casting.
 ```c
 ex_state_t EX_badEnumConversionOutOfRange(int32_t raw_value)
 {
-    return (ex_state_t)raw_value;
+    ex_state_t ret = EX_STATE_DEFAULT;
+
+    ret = (ex_state_t)raw_value;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1491,7 +1986,38 @@ floating point out of core runtime code.
 ```c
 size_t EX_badFloatingPointInAllocator(double count)
 {
-    return (size_t)(count * 16.0);
+    size_t ret = 0u;
+
+    ret = (size_t)(count * 16.0);
+
+function_output:
+    return ret;
+}
+```
+
+---
+
+#### CPIT-127: Plain `char` used as binary numeric storage
+
+**Pitfall ID:** `CPIT-127-plain-char-used-as-binary-numeric-storage`
+
+**Primary prevention rule:** [`CSTYLE-128-2-3-8-plain-char-semantics`](./c-code-standard.md#238-plain-char-semantics)
+
+**Plain `char` used as binary numeric storage.** An implementation decides
+whether plain `char` is signed. A byte above the positive signed range can
+therefore become negative and change promotion, comparison, indexing, or shift
+behavior across targets. Use a type with an explicit signed or unsigned
+interpretation and domain.
+
+```c
+bool EX_badChecksumMatch(char checksum, uint8_t expected)
+{
+    bool ret = false;
+
+    ret = (checksum == expected);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1502,21 +2028,22 @@ size_t EX_badFloatingPointInAllocator(double count)
 Every libc call has preconditions. Violating those preconditions is often UB,
 even when the function looks harmless.
 
-| Pitfall                           | Failure mode                                          | [CWE][cwe] mapping                     | Standards / rules                        | Primary project control                                                                       |
-| --------------------------------- | ----------------------------------------------------- | -------------------------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `memcpy` with overlap             | overlapping source and destination passed to `memcpy` | [CWE-475][cwe-475], [CWE-758][cwe-758] | [CERT C][cert-c], [C23][c23]             | [`CSTYLE-086-standard-library-policy`](./c-code-standard.md#521-standard-library-policy)      |
-| `memcpy`/`memset` invalid pointer | null or invalid pointer used with non-zero size       | [CWE-476][cwe-476], [CWE-787][cwe-787] | [CERT C][cert-c], [TS 17961][ts-17961]   | [`CSTYLE-058-4-1-3-argument-validation`](./c-code-standard.md#413-argument-validation)        |
-| `strlen` on unterminated data     | scans beyond object                                   | [CWE-126][cwe-126], [CWE-125][cwe-125] | [CERT C][cert-c], [MISRA C][misra-c]     | [`CSTYLE-087-5-3-string-handling`](./c-code-standard.md#53-string-handling)                   |
-| `strcpy`/`strcat` unbounded copy  | destination overflow                                  | [CWE-120][cwe-120], [CWE-787][cwe-787] | [CERT C][cert-c], [TS 17961][ts-17961]   | [`CSTYLE-086-standard-library-policy`](./c-code-standard.md#521-standard-library-policy)      |
-| `strncpy` missing NUL             | destination may not be terminated                     | [CWE-170][cwe-170]                     | [CERT C][cert-c], [MISRA C][misra-c]     | [`CSTYLE-087-5-3-string-handling`](./c-code-standard.md#53-string-handling)                   |
-| `printf` external format string   | attacker controls format directives                   | [CWE-134][cwe-134]                     | [CERT C][cert-c], [CWE][cwe]             | [`CSTYLE-068-format-string-safety`](./c-code-standard.md#format-string-safety)                |
-| `printf("%s", NULL)`              | invalid `%s` argument                                 | [CWE-476][cwe-476], [CWE-758][cwe-758] | [C23][c23], [CERT C][cert-c]             | [`CSTYLE-068-format-string-safety`](./c-code-standard.md#format-string-safety)                |
-| `ctype.h` negative `char`         | `is*()` called with negative non-EOF value            | [CWE-758][cwe-758]                     | [C23][c23], [CERT C][cert-c]             | [`CSTYLE-097-6-9-numeric-conversion-rules`](./c-code-standard.md#69-numeric-conversion-rules) |
-| `atoi` silent parse failure       | no error or overflow reporting                        | [CWE-190][cwe-190], [CWE-20][cwe-20]   | [CERT C][cert-c], [MISRA C][misra-c]     | [`CSTYLE-086-standard-library-policy`](./c-code-standard.md#521-standard-library-policy)      |
-| `rand` for security               | predictable random values                             | [CWE-338][cwe-338]                     | [CERT C][cert-c], [IEC 62443][iec-62443] | [`CSTYLE-086-standard-library-policy`](./c-code-standard.md#521-standard-library-policy)      |
-| `tmpnam`/`mktemp`                 | insecure temporary file race                          | [CWE-377][cwe-377]                     | [CERT C][cert-c], [CWE][cwe]             | [`CSTYLE-086-standard-library-policy`](./c-code-standard.md#521-standard-library-policy)      |
-| `system` with external input      | command injection                                     | [CWE-78][cwe-78]                       | [CERT C][cert-c], [IEC 62443][iec-62443] | [`CSTYLE-059-untrusted-input-validation`](./c-code-standard.md#untrusted-input-validation)    |
-| Ignored return value              | failed I/O, allocation, lock, or conversion is missed | [CWE-252][cwe-252], [CWE-391][cwe-391] | [CERT C][cert-c], [IEC 61508][iec-61508] | [`CSTYLE-066-4-1-9-error-propagation`](./c-code-standard.md#419-error-propagation)            |
+| Pitfall                           | Failure mode                                            | [CWE][cwe] mapping                     | Standards / rules                        | Primary project control                                                                       |
+| --------------------------------- | ------------------------------------------------------- | -------------------------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `memcpy` with overlap             | overlapping source and destination passed to `memcpy`   | [CWE-475][cwe-475], [CWE-758][cwe-758] | [CERT C][cert-c], [C23][c23]             | [`CSTYLE-086-standard-library-policy`](./c-code-standard.md#521-standard-library-policy)      |
+| `memcpy`/`memset` invalid pointer | null or invalid pointer used with non-zero size         | [CWE-476][cwe-476], [CWE-787][cwe-787] | [CERT C][cert-c], [TS 17961][ts-17961]   | [`CSTYLE-058-4-1-3-argument-validation`](./c-code-standard.md#413-argument-validation)        |
+| `strlen` on unterminated data     | scans beyond object                                     | [CWE-126][cwe-126], [CWE-125][cwe-125] | [CERT C][cert-c], [MISRA C][misra-c]     | [`CSTYLE-087-5-3-string-handling`](./c-code-standard.md#53-string-handling)                   |
+| `strcpy`/`strcat` unbounded copy  | destination overflow                                    | [CWE-120][cwe-120], [CWE-787][cwe-787] | [CERT C][cert-c], [TS 17961][ts-17961]   | [`CSTYLE-086-standard-library-policy`](./c-code-standard.md#521-standard-library-policy)      |
+| `strncpy` missing NUL             | destination may not be terminated                       | [CWE-170][cwe-170]                     | [CERT C][cert-c], [MISRA C][misra-c]     | [`CSTYLE-087-5-3-string-handling`](./c-code-standard.md#53-string-handling)                   |
+| `printf` external format string   | attacker controls format directives                     | [CWE-134][cwe-134]                     | [CERT C][cert-c], [CWE][cwe]             | [`CSTYLE-068-format-string-safety`](./c-code-standard.md#format-string-safety)                |
+| `printf("%s", NULL)`              | invalid `%s` argument                                   | [CWE-476][cwe-476], [CWE-758][cwe-758] | [C23][c23], [CERT C][cert-c]             | [`CSTYLE-068-format-string-safety`](./c-code-standard.md#format-string-safety)                |
+| `ctype.h` negative `char`         | `is*()` called with negative non-EOF value              | [CWE-758][cwe-758]                     | [C23][c23], [CERT C][cert-c]             | [`CSTYLE-097-6-9-numeric-conversion-rules`](./c-code-standard.md#69-numeric-conversion-rules) |
+| `atoi` silent parse failure       | no error or overflow reporting                          | [CWE-190][cwe-190], [CWE-20][cwe-20]   | [CERT C][cert-c], [MISRA C][misra-c]     | [`CSTYLE-086-standard-library-policy`](./c-code-standard.md#521-standard-library-policy)      |
+| `rand` for security               | predictable random values                               | [CWE-338][cwe-338]                     | [CERT C][cert-c], [IEC 62443][iec-62443] | [`CSTYLE-086-standard-library-policy`](./c-code-standard.md#521-standard-library-policy)      |
+| `tmpnam`/`mktemp`                 | insecure temporary file race                            | [CWE-377][cwe-377]                     | [CERT C][cert-c], [CWE][cwe]             | [`CSTYLE-086-standard-library-policy`](./c-code-standard.md#521-standard-library-policy)      |
+| `system` with external input      | command injection                                       | [CWE-78][cwe-78]                       | [CERT C][cert-c], [IEC 62443][iec-62443] | [`CSTYLE-059-untrusted-input-validation`](./c-code-standard.md#untrusted-input-validation)    |
+| Ignored return value              | failed I/O, allocation, lock, or conversion is missed   | [CWE-252][cwe-252], [CWE-391][cwe-391] | [CERT C][cert-c], [IEC 61508][iec-61508] | [`CSTYLE-066-4-1-9-error-propagation`](./c-code-standard.md#419-error-propagation)            |
+| Stale or overwritten `errno`      | unrelated call state is reported as the current failure | [CWE-252][cwe-252], [CWE-391][cwe-391] | [C23][c23], [CERT C][cert-c]             | [`CSTYLE-135-4-1-23-errno-handling`](./c-code-standard.md#4123-errno-handling)                |
 
 ---
 
@@ -1535,9 +2062,14 @@ source and destination overlap, behavior is undefined and may depend on copy
 direction or optimization. Use `memmove()` when overlap is possible.
 
 ```c
-void EX_badMemcpyWithOverlap(uint8_t *buffer)
+int EX_badMemcpyWithOverlap(uint8_t buffer[])
 {
+    int ret = EXIT_SUCCESS;
+
     memcpy(buffer + 1u, buffer, 8u);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1555,9 +2087,14 @@ zero size can be a special case, but non-zero sizes require valid ranges. Check
 pointer and length together.
 
 ```c
-void EX_badMemcpyInvalidPointer(void)
+int EX_badMemcpyInvalidPointer(void)
 {
+    int ret = EXIT_SUCCESS;
+
     memcpy(NULL, "abc", 3u);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1578,8 +2115,12 @@ or use bounded scanning wrappers.
 size_t EX_badStrlenUnterminated(void)
 {
     char buffer[3] = { 'a', 'b', 'c' };
+    size_t ret = 0u;
 
-    return strlen(buffer);
+    ret = strlen(buffer);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1597,9 +2138,14 @@ embedded code. Use checked formatting or bounded copy wrappers that report
 truncation.
 
 ```c
-void EX_badStrcpyUnbounded(char *dst, const char *src)
+int EX_badStrcpyUnbounded(char dst[], const char src[])
 {
+    int ret = EXIT_SUCCESS;
+
     strcpy(dst, src);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1617,9 +2163,14 @@ that can be inefficient or misleading. Prefer explicit bounded string helpers
 with termination guarantees.
 
 ```c
-void EX_badStrncpyMissingNul(char *dst, const char *src)
+int EX_badStrncpyMissingNul(char dst[], const char src[])
 {
+    int ret = EXIT_SUCCESS;
+
     strncpy(dst, src, 4u);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1637,9 +2188,14 @@ type mismatches can corrupt memory or leak data. Always pass external strings
 through `"%s"` or a literal format.
 
 ```c
-void EX_badPrintfExternalFormat(const char *user_input)
+int EX_badPrintfExternalFormat(const char user_input[])
 {
+    int ret = EXIT_SUCCESS;
+
     printf(user_input);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1656,9 +2212,14 @@ NUL-terminated string. Passing `NULL` is not portable and may crash even if one
 libc prints `(null)`. Normalize nullable strings before formatting.
 
 ```c
-void EX_badPrintfNullString(void)
+int EX_badPrintfNullString(void)
 {
+    int ret = EXIT_SUCCESS;
+
     printf("%s", NULL);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1678,7 +2239,12 @@ non-ASCII bytes can become negative. Cast to `unsigned char` before calling
 ```c
 int EX_badCtypeNegativeChar(char value)
 {
-    return isalpha(value);
+    int ret = EXIT_SUCCESS;
+
+    ret = isalpha(value);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1695,9 +2261,14 @@ for invalid input or overflow. This is unacceptable for sizes, counts, IDs, and
 configuration. Use `strtol()`-style APIs with end-pointer and range checks.
 
 ```c
-int EX_badAtoiSilentParseFailure(const char *text)
+int EX_badAtoiSilentParseFailure(const char text[])
 {
-    return atoi(text);
+    int ret = EXIT_SUCCESS;
+
+    ret = atoi(text);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1716,7 +2287,12 @@ cryptographic random sources behind a wrapper.
 ```c
 int EX_badRandForSecurity(void)
 {
-    return rand();
+    int ret = EXIT_SUCCESS;
+
+    ret = rand();
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1733,9 +2309,14 @@ attacker or another process creates the file first. Use APIs that atomically
 create the file with safe permissions.
 
 ```c
-char *EX_badTmpnam(char *path)
+char *EX_badTmpnam(char path[])
 {
-    return tmpnam(path);
+    char *ret = (char *)(NULL);
+
+    ret = tmpnam(path);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1753,9 +2334,14 @@ names, network values, and environment variables. Avoid `system()` in runtime
 code; use explicit process APIs only behind reviewed wrappers.
 
 ```c
-void EX_badSystemExternalInput(const char *command)
+int EX_badSystemExternalInput(const char command[])
 {
+    int ret = EXIT_SUCCESS;
+
     system(command);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1773,9 +2359,47 @@ loss, partial writes, lock failures, or invalid state. Check every meaningful
 return value and document intentional ignores.
 
 ```c
-void EX_badIgnoredReturnValue(FILE *file, const void *buffer)
+int EX_badIgnoredReturnValue(FILE *file, const void *buffer)
 {
+    int ret = EXIT_SUCCESS;
+
     fwrite(buffer, 1u, 16u, file);
+
+function_output:
+    return ret;
+}
+```
+
+---
+
+#### CPIT-131: Stale or overwritten `errno`
+
+**Pitfall ID:** `CPIT-131-stale-or-overwritten-errno`
+
+**Primary prevention rule:** [`CSTYLE-135-4-1-23-errno-handling`](./c-code-standard.md#4123-errno-handling)
+
+**Stale or overwritten `errno`.** A successful library call need not clear
+`errno`, and a later call may replace the value from an earlier failure.
+Reading it without checking the documented failure result can report an old or
+unrelated error. Capture it immediately after confirmed failure, then convert
+the saved value at the boundary.
+
+```c
+int EX_badErrnoHandling(const char path[])
+{
+    int ret = EXIT_SUCCESS;
+    int remove_result = 0;
+
+    remove_result = remove(path);
+    if (remove_result != 0)
+    {
+        LOG_error("remove failed");
+        ret = -errno;
+        goto function_output;
+    }
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1822,9 +2446,14 @@ single-owner message passing.
 ```c
 static uint32_t g_shared_counter;
 
-void EX_badDataRace(void)
+int EX_badDataRace(void)
 {
+    int ret = EXIT_SUCCESS;
+
     g_shared_counter++;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1842,10 +2471,15 @@ creates code that appears synchronized while still racing. Document the
 protected object set for every lock.
 
 ```c
-void EX_badImproperLocking(void)
+int EX_badImproperLocking(void)
 {
+    int ret = EXIT_SUCCESS;
+
     g_shared_counter++;
     pthread_mutex_unlock(&g_mutex);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1863,10 +2497,15 @@ common causes. Define lock order, avoid external calls while locked, and test
 shutdown/error paths.
 
 ```c
-void EX_badDeadlock(void)
+int EX_badDeadlock(void)
 {
+    int ret = EXIT_SUCCESS;
+
     pthread_mutex_lock(&g_mutex);
     pthread_mutex_lock(&g_other_mutex);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1884,10 +2523,15 @@ continue in an invalid state. Always re-check the predicate in a loop while the
 mutex is held.
 
 ```c
-void EX_badSpuriousWakeupBug(void)
+int EX_badSpuriousWakeupBug(void)
 {
+    int ret = EXIT_SUCCESS;
+
     if (g_is_ready == 0)
         pthread_cond_wait(&g_cond, &g_mutex);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1905,10 +2549,15 @@ lifecycle contract. Shutdown must first stop users, join threads, drain
 callbacks, and then destroy synchronization objects.
 
 ```c
-void EX_badDestroyLockedMutex(void)
+int EX_badDestroyLockedMutex(void)
 {
+    int ret = EXIT_SUCCESS;
+
     pthread_mutex_lock(&g_mutex);
     pthread_mutex_destroy(&g_mutex);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1926,9 +2575,14 @@ publish a fully initialized object by itself. Use acquire/release for
 publication unless a narrower order is proven and documented.
 
 ```c
-void EX_badIncorrectAtomicMemoryOrder(void)
+int EX_badIncorrectAtomicMemoryOrder(void)
 {
+    int ret = EXIT_SUCCESS;
+
     atomic_store_explicit(&g_is_published, true, memory_order_relaxed);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1948,9 +2602,14 @@ threading primitive. Use atomics or locks for concurrency.
 ```c
 static volatile uint32_t g_volatile_counter;
 
-void EX_badVolatileSynchronization(void)
+int EX_badVolatileSynchronization(void)
 {
+    int ret = EXIT_SUCCESS;
+
     g_volatile_counter++;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1968,9 +2627,14 @@ sequences safe. Use atomic operations, interrupt masking, lock-free protocols,
 or hardware-specific critical sections.
 
 ```c
-void EX_badIsrSharedStateRace(void)
+int EX_badIsrSharedStateRace(void)
 {
+    int ret = EXIT_SUCCESS;
+
     g_shared_counter++;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1988,10 +2652,15 @@ most library functions can deadlock or corrupt state. Limit handlers to
 async-signal-safe operations and atomic flags.
 
 ```c
-void EX_badSignalHandlerUnsafeCall(int signal_number)
+int EX_badSignalHandlerUnsafeCall(int signal_number)
 {
+    int ret = EXIT_SUCCESS;
+
     (void)signal_number;
     malloc(16u);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -2011,9 +2680,12 @@ hazard pointers, epochs, or simpler locked designs.
 ```c
 uint32_t *EX_badAbaProblem(uint32_t *head)
 {
-    uint32_t *observed_head = head;
+    uint32_t *ret = (uint32_t *)(NULL);
 
-    return observed_head;
+    ret = head;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -2037,14 +2709,21 @@ static bool g_is_allocating;
 
 void *EX_badReentrancyViolation(size_t size)
 {
+    void *ret = (void *)(NULL);
+
     if (g_is_allocating == true)
-        return NULL;
+    {
+        goto function_output;
+    }
 
     g_is_allocating = true;
     EX_userAllocationHook();
     g_is_allocating = false;
 
-    return malloc(size);
+    ret = malloc(size);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -2065,9 +2744,14 @@ before exit.
 ```c
 static _Thread_local uint8_t *g_tls_cache;
 
-void EX_badThreadLocalStorageLeak(void)
+int EX_badThreadLocalStorageLeak(void)
 {
+    int ret = EXIT_SUCCESS;
+
     g_tls_cache = malloc(1024u);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -2085,9 +2769,14 @@ an object can be freed while live references still exist. Check increments
 before use and reject, saturate, or fail cleanly before the counter wraps.
 
 ```c
-void EX_badRefcountOverflow(mem_object_t *object)
+int EX_badRefcountOverflow(mem_object_t *object)
 {
+    int ret = EXIT_SUCCESS;
+
     object->ref_count++;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -2105,13 +2794,18 @@ the object as live, then both release it. Free paths must perform an atomic
 state transition or hold the object-owner lock before releasing memory.
 
 ```c
-void EX_badConcurrentDoubleFree(mem_object_t *object)
+int EX_badConcurrentDoubleFree(mem_object_t *object)
 {
+    int ret = EXIT_SUCCESS;
+
     if (object->is_freed == false)
     {
         object->is_freed = true;
         free(object);
     }
+
+function_output:
+    return ret;
 }
 
 ```
@@ -2130,11 +2824,16 @@ violate real-time assumptions. Critical paths need documented worst-case wait
 behavior and fail-safe timeout handling.
 
 ```c
-void EX_badUnboundedBlocking(void)
+int EX_badUnboundedBlocking(void)
 {
+    int ret = EXIT_SUCCESS;
+
     while (g_is_ready == 0)
     {
     }
+
+function_output:
+    return ret;
 }
 ```
 
@@ -2142,18 +2841,19 @@ void EX_badUnboundedBlocking(void)
 
 ## Embedded and Hardware Pitfalls
 
-| Pitfall                             | Failure mode                                            | [CWE][cwe] mapping                       | Standards / rules                                                                              | Primary project control                                                                                                         |
-| ----------------------------------- | ------------------------------------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Reserved register bits clobbered    | write corrupts undocumented or reserved hardware state  | [CWE-664][cwe-664], [CWE-758][cwe-758]   | [IEC 61508][iec-61508], [ISO 26262][iso-26262], [MISRA C][misra-c]                             | [`CSTYLE-105-7-7-hardware-register-read-modify-write-rules`](./c-code-standard.md#77-hardware-register-read-modify-write-rules) |
-| Read-clear register mishandled      | status bit lost by careless read-modify-write           | [CWE-664][cwe-664]                       | [IEC 61508][iec-61508], [ISO 26262][iso-26262]                                                 | [`CSTYLE-105-7-7-hardware-register-read-modify-write-rules`](./c-code-standard.md#77-hardware-register-read-modify-write-rules) |
-| DMA cache coherency failure         | CPU and peripheral observe different memory             | [CWE-667][cwe-667], [CWE-664][cwe-664]   | [IEC 61508][iec-61508], [ISO 26262][iso-26262]                                                 | [`CSTYLE-089-6-2-volatile-rules`](./c-code-standard.md#62-volatile-rules)                                                       |
-| Watchdog kicked too early           | watchdog serviced before health checks pass             | [CWE-665][cwe-665]                       | [IEC 61508][iec-61508], [ISO 26262][iso-26262], [ISO 13849][iso-13849]                         | [`CSTYLE-066-4-1-9-error-propagation`](./c-code-standard.md#419-error-propagation)                                              |
-| Unsafe default state                | startup or fault path energizes actuator unexpectedly   | [CWE-665][cwe-665], [CWE-1188][cwe-1188] | [IEC 61508][iec-61508], [ISO 26262][iso-26262], [IEC 62061][iec-62061], [ISO 13849][iso-13849] | [`CSTYLE-107-8-1-variable-initialization`](./c-code-standard.md#81-variable-initialization)                                     |
-| Persistent config corruption        | corrupted NVM, EEPROM, flash, or file config is trusted | [CWE-20][cwe-20], [CWE-354][cwe-354]     | [IEC 61508][iec-61508], [ISO 26262][iso-26262], [IEC 62443][iec-62443]                         | [`CSTYLE-059-untrusted-input-validation`](./c-code-standard.md#untrusted-input-validation)                                      |
-| Calibration out of range            | validly encoded parameter violates physical limits      | [CWE-20][cwe-20], [CWE-682][cwe-682]     | [ISO 26262][iso-26262], [IEC 61508][iec-61508], [IEC 62304][iec-62304]                         | [`CSTYLE-058-4-1-3-argument-validation`](./c-code-standard.md#413-argument-validation)                                          |
-| Missing stale-data detection        | expired sensor or network value used as current         | [CWE-345][cwe-345], [CWE-20][cwe-20]     | [IEC 61508][iec-61508], [ISO 26262][iso-26262], [IEC 62443][iec-62443]                         | [`CSTYLE-059-untrusted-input-validation`](./c-code-standard.md#untrusted-input-validation)                                      |
-| Missing sequence or freshness check | replayed or reordered control data accepted             | [CWE-345][cwe-345], [CWE-294][cwe-294]   | [IEC 62443][iec-62443], [IEC 62351][iec-62351], [ISO 26262][iso-26262]                         | [`CSTYLE-059-untrusted-input-validation`](./c-code-standard.md#untrusted-input-validation)                                      |
-| Dynamic allocation in critical path | allocation latency, fragmentation, or OOM breaks timing | [CWE-400][cwe-400], [CWE-789][cwe-789]   | [MISRA C][misra-c], [IEC 61508][iec-61508], [DO-178C][do-178c]                                 | [`CSTYLE-081-5-1-5-no-hidden-allocations`](./c-code-standard.md#515-no-hidden-allocations)                                      |
+| Pitfall                                     | Failure mode                                                   | [CWE][cwe] mapping                       | Standards / rules                                                                              | Primary project control                                                                                                         |
+| ------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Reserved register bits clobbered            | write corrupts undocumented or reserved hardware state         | [CWE-664][cwe-664], [CWE-758][cwe-758]   | [IEC 61508][iec-61508], [ISO 26262][iso-26262], [MISRA C][misra-c]                             | [`CSTYLE-105-7-7-hardware-register-read-modify-write-rules`](./c-code-standard.md#77-hardware-register-read-modify-write-rules) |
+| Read-clear register mishandled              | status bit lost by careless read-modify-write                  | [CWE-664][cwe-664]                       | [IEC 61508][iec-61508], [ISO 26262][iso-26262]                                                 | [`CSTYLE-105-7-7-hardware-register-read-modify-write-rules`](./c-code-standard.md#77-hardware-register-read-modify-write-rules) |
+| DMA cache coherency failure                 | CPU and peripheral observe different memory                    | [CWE-667][cwe-667], [CWE-664][cwe-664]   | [IEC 61508][iec-61508], [ISO 26262][iso-26262]                                                 | [`CSTYLE-089-6-2-volatile-rules`](./c-code-standard.md#62-volatile-rules)                                                       |
+| Watchdog kicked too early                   | watchdog serviced before health checks pass                    | [CWE-665][cwe-665]                       | [IEC 61508][iec-61508], [ISO 26262][iso-26262], [ISO 13849][iso-13849]                         | [`CSTYLE-066-4-1-9-error-propagation`](./c-code-standard.md#419-error-propagation)                                              |
+| Unsafe default state                        | startup or fault path energizes actuator unexpectedly          | [CWE-665][cwe-665], [CWE-1188][cwe-1188] | [IEC 61508][iec-61508], [ISO 26262][iso-26262], [IEC 62061][iec-62061], [ISO 13849][iso-13849] | [`CSTYLE-107-8-1-variable-initialization`](./c-code-standard.md#81-variable-initialization)                                     |
+| Persistent config corruption                | corrupted NVM, EEPROM, flash, or file config is trusted        | [CWE-20][cwe-20], [CWE-354][cwe-354]     | [IEC 61508][iec-61508], [ISO 26262][iso-26262], [IEC 62443][iec-62443]                         | [`CSTYLE-059-untrusted-input-validation`](./c-code-standard.md#untrusted-input-validation)                                      |
+| Calibration out of range                    | validly encoded parameter violates physical limits             | [CWE-20][cwe-20], [CWE-682][cwe-682]     | [ISO 26262][iso-26262], [IEC 61508][iec-61508], [IEC 62304][iec-62304]                         | [`CSTYLE-058-4-1-3-argument-validation`](./c-code-standard.md#413-argument-validation)                                          |
+| Missing stale-data detection                | expired sensor or network value used as current                | [CWE-345][cwe-345], [CWE-20][cwe-20]     | [IEC 61508][iec-61508], [ISO 26262][iso-26262], [IEC 62443][iec-62443]                         | [`CSTYLE-059-untrusted-input-validation`](./c-code-standard.md#untrusted-input-validation)                                      |
+| Missing sequence or freshness check         | replayed or reordered control data accepted                    | [CWE-345][cwe-345], [CWE-294][cwe-294]   | [IEC 62443][iec-62443], [IEC 62351][iec-62351], [ISO 26262][iso-26262]                         | [`CSTYLE-059-untrusted-input-validation`](./c-code-standard.md#untrusted-input-validation)                                      |
+| Dynamic allocation in critical path         | allocation latency, fragmentation, or OOM breaks timing        | [CWE-400][cwe-400], [CWE-789][cwe-789]   | [MISRA C][misra-c], [IEC 61508][iec-61508], [DO-178C][do-178c]                                 | [`CSTYLE-081-5-1-5-no-hidden-allocations`](./c-code-standard.md#515-no-hidden-allocations)                                      |
+| Bit-field layout as external representation | implementation-defined layout changes hardware or wire meaning | [CWE-704][cwe-704], [CWE-758][cwe-758]   | [C23][c23], [MISRA C][misra-c], [IEC 61508][iec-61508], [ISO 26262][iso-26262]                 | [`CSTYLE-127-2-3-7-bit-field-usage`](./c-code-standard.md#237-bit-field-usage)                                                  |
 
 ---
 
@@ -2173,9 +2873,14 @@ or whole register value can change state the software does not own. Use named
 masks and preserve bits according to the hardware manual.
 
 ```c
-void EX_badReservedRegisterBitsClobbered(volatile uint32_t *reg)
+int EX_badReservedRegisterBitsClobbered(volatile uint32_t *reg)
 {
+    int ret = EXIT_SUCCESS;
+
     *reg = 0xffffffffu;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -2195,7 +2900,12 @@ accessors for such registers.
 ```c
 uint32_t EX_badReadClearRegisterMishandled(volatile uint32_t *reg)
 {
-    return (*reg | *reg);
+    uint32_t ret = 0u;
+
+    ret = *reg | *reg;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -2213,9 +2923,14 @@ Treat DMA buffers as a separate memory class with explicit clean/invalidate and
 lifetime rules.
 
 ```c
-void EX_badDmaCacheCoherency(uint8_t *dma_buffer)
+int EX_badDmaCacheCoherency(uint8_t dma_buffer[])
 {
+    int ret = EXIT_SUCCESS;
+
     dma_buffer[0] = 1u;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -2233,9 +2948,14 @@ checking dependencies can mask a hung subsystem. Service the watchdog only
 after required health checks complete.
 
 ```c
-void EX_badWatchdogKickedTooEarly(volatile uint32_t *watchdog_reg)
+int EX_badWatchdogKickedTooEarly(volatile uint32_t *watchdog_reg)
 {
+    int ret = EXIT_SUCCESS;
+
     *watchdog_reg = 1u;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -2253,9 +2973,14 @@ commands must default to a safe state before initialization can fail. Define
 safe values in hardware and software.
 
 ```c
-void EX_badUnsafeDefaultState(volatile uint32_t *motor_enable_reg)
+int EX_badUnsafeDefaultState(volatile uint32_t *motor_enable_reg)
 {
+    int ret = EXIT_SUCCESS;
+
     *motor_enable_reg = 1u;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -2273,9 +2998,14 @@ untrusted input. Validate version, length, range, checksum/MAC, and fallback
 defaults before use.
 
 ```c
-uint32_t EX_badPersistentConfigCorruption(const uint8_t *nvm_data)
+uint32_t EX_badPersistentConfigCorruption(const uint8_t nvm_data[])
 {
-    return *((const uint32_t *)nvm_data);
+    uint32_t ret = 0u;
+
+    ret = *((const uint32_t *)nvm_data);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -2294,7 +3024,12 @@ constraints, and plausibility rules, not just serialization validity.
 ```c
 uint32_t EX_badCalibrationOutOfRange(uint32_t calibration_value)
 {
-    return (calibration_value * 1000u);
+    uint32_t ret = 0u;
+
+    ret = calibration_value * 1000u;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -2314,7 +3049,12 @@ rules.
 ```c
 uint32_t EX_badMissingStaleDataDetection(uint32_t sensor_value)
 {
-    return sensor_value;
+    uint32_t ret = 0u;
+
+    ret = sensor_value;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -2334,7 +3074,12 @@ replay rejection.
 ```c
 uint32_t EX_badMissingSequenceFreshnessCheck(uint32_t command_value)
 {
-    return command_value;
+    uint32_t ret = 0u;
+
+    ret = command_value;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -2354,8 +3099,36 @@ behavior.
 ```c
 void *EX_badDynamicAllocationInCriticalPath(size_t size)
 {
-    return malloc(size);
+    void *ret = (void *)(NULL);
+
+    ret = malloc(size);
+
+function_output:
+    return ret;
 }
+```
+
+---
+
+#### CPIT-126: Bit-field layout used as an external representation
+
+**Pitfall ID:** `CPIT-126-bit-field-layout-used-as-an-external-representation`
+
+**Primary prevention rule:** [`CSTYLE-127-2-3-7-bit-field-usage`](./c-code-standard.md#237-bit-field-usage)
+
+**Bit-field layout used as an external representation.** C does not provide a
+portable bit allocation order or storage-unit layout for bit-fields. Mapping
+them onto MMIO, packets, files, persistent state, or ABI can assign a named
+field to different physical bits after a compiler, target, or option change.
+Use fixed-width values with named masks and explicit encoding.
+
+```c
+typedef struct ExBadRegister
+{
+    uint32_t enable : 1u;
+    uint32_t mode   : 3u;
+    uint32_t status : 4u;
+} ex_bad_register_t;
 ```
 
 ---
@@ -2397,7 +3170,12 @@ state transitions.
 ```c
 void *EX_badTaintedSizeTrusted(size_t external_size)
 {
-    return malloc(external_size);
+    void *ret = (void *)(NULL);
+
+    ret = malloc(external_size);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -2415,9 +3193,14 @@ are interpreted. External input used as a format can read memory, write through
 require literal formats where possible.
 
 ```c
-void EX_badFormatStringInjection(const char *user_text)
+int EX_badFormatStringInjection(const char user_text[])
 {
+    int ret = EXIT_SUCCESS;
+
     printf(user_text);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -2437,7 +3220,12 @@ mechanism, not from constants in code.
 ```c
 const char *EX_badHardcodedSecret(void)
 {
-    return "factory-secret";
+    const char *ret = (const char *)(NULL);
+
+    ret = "factory-secret";
+
+function_output:
+    return ret;
 }
 ```
 
@@ -2455,9 +3243,14 @@ keys, session tokens, personal data, or raw sensitive payloads. Redact at the
 logging boundary.
 
 ```c
-void EX_badSecretLogged(const char *password)
+int EX_badSecretLogged(const char password[])
 {
+    int ret = EXIT_SUCCESS;
+
     printf("password=%s\n", password);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -2475,9 +3268,14 @@ style primitive that the compiler will not optimize away, and clear secrets
 before release when required.
 
 ```c
-void EX_badMissingSecureErase(char *secret)
+int EX_badMissingSecureErase(char secret[])
 {
+    int ret = EXIT_SUCCESS;
+
     free(secret);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -2497,7 +3295,12 @@ small adapter.
 ```c
 uint32_t EX_badHomegrownCryptography(uint32_t value, uint32_t key)
 {
-    return (value ^ key);
+    uint32_t ret = 0u;
+
+    ret = value ^ key;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -2516,7 +3319,12 @@ sources. Use a cryptographic RNG and handle entropy-source failure explicitly.
 ```c
 uint32_t EX_badWeakRandomNumber(void)
 {
-    return (uint32_t)rand();
+    uint32_t ret = 0u;
+
+    ret = (uint32_t)rand();
+
+function_output:
+    return ret;
 }
 ```
 
@@ -2534,11 +3342,14 @@ install arbitrary code. Verify signatures, version metadata, target identity,
 and image integrity before activation.
 
 ```c
-int EX_badMissingFirmwareSignatureCheck(const uint8_t *image)
+int EX_badMissingFirmwareSignatureCheck(const uint8_t image[])
 {
+    int ret = EXIT_SUCCESS;
+
     (void)image;
 
-    return 0;
+function_output:
+    return ret;
 }
 ```
 
@@ -2558,9 +3369,12 @@ location.
 ```c
 int EX_badMissingAntiRollback(uint32_t image_version)
 {
+    int ret = EXIT_SUCCESS;
+
     (void)image_version;
 
-    return 0;
+function_output:
+    return ret;
 }
 ```
 
@@ -2578,9 +3392,14 @@ C code should avoid shell execution and use explicit APIs with fixed argument
 vectors when process launch is unavoidable.
 
 ```c
-void EX_badCommandInjection(const char *user_command)
+int EX_badCommandInjection(const char user_command[])
 {
+    int ret = EXIT_SUCCESS;
+
     system(user_command);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -2597,9 +3416,14 @@ void EX_badCommandInjection(const char *user_command)
 against an allowed root and canonicalize carefully before opening files.
 
 ```c
-FILE *EX_badPathTraversal(const char *user_path)
+FILE *EX_badPathTraversal(const char user_path[])
 {
-    return fopen(user_path, "rb");
+    FILE *ret = (FILE *)(NULL);
+
+    ret = fopen(user_path, "rb");
+
+function_output:
+    return ret;
 }
 ```
 
@@ -2617,10 +3441,15 @@ This applies inside firmware too: debug, update, calibration, diagnostic, and
 factory commands need explicit authorization gates.
 
 ```c
-void EX_badImproperAccessControl(int is_debug_command)
+int EX_badImproperAccessControl(int is_debug_command)
 {
+    int ret = EXIT_SUCCESS;
+
     if (is_debug_command != 0)
         EX_unlockFactoryMode();
+
+function_output:
+    return ret;
 }
 ```
 
@@ -2780,9 +3609,14 @@ identity when the system security model requires identity. Network reachability,
 message format, or possession of a public identifier is not authentication.
 
 ```c
-int ADMIN_setKey(const uint8_t *key, size_t key_size)
+int ADMIN_setKey(const uint8_t key[], size_t key_size)
 {
-    return KEYSTORE_write(key, key_size);
+    int ret = EXIT_SUCCESS;
+
+    ret = KEYSTORE_write(key, key_size);
+
+function_output:
+    return ret;
 }
 ```
 
@@ -2800,7 +3634,8 @@ access. Never infer authority merely because the caller supplied a valid object,
 record, device, tenant, channel, or resource identifier.
 
 ```c
-return STORAGE_read(request->object_id, reply);
+ret = STORAGE_read(request->object_id, reply);
+goto function_output;
 ```
 
 ---
@@ -2817,7 +3652,8 @@ loopback, link-local, management, metadata, or internal services. Validate the
 resolved destination against an explicit outbound policy.
 
 ```c
-return HTTP_get(request->url, reply);
+ret = HTTP_get(request->url, reply);
+goto function_output;
 ```
 
 ---
@@ -2927,7 +3763,10 @@ paths, keys, stack data, or internal security state.
 
 ```c
 if (AUTH_verify(token) != 0)
-    return ADMIN_execute(request);
+{
+    ret = ADMIN_execute(request);
+    goto function_output;
+}
 ```
 
 ---
@@ -2973,9 +3812,33 @@ Use this checklist during code review:
 
 - Does every pointer have an explicit owner, lifetime, allocator family, and
   nullability contract?
+- Do array parameters use `array[]` notation and carry the matching count or
+  byte size?
+- Does the current control-flow path establish pointer validity before each
+  dereference, with pointer-valued members split into checked locals?
+- Does code re-establish pointer validity after mutating calls and stop using
+  objects after ownership transfer?
 - Does every buffer write have a pointer, a size, and a checked result?
+- Is each array bound tied to the array being accessed, with pointer arithmetic
+  kept inside that array object?
 - Are all arithmetic operations that derive size, offset, capacity, alignment,
   or index values checked before use?
+- Are function arguments independent of evaluation order, and do out-parameter
+  contracts define their failure state?
+- Does every project-owned function return a value through exactly one
+  `return ret;` at `function_output`, without an early or expression return?
+- Does each acquired resource reach one structured cleanup path in reverse
+  acquisition order?
+- Are bit-fields absent from MMIO, wire, persistent, serialized, and public ABI
+  layouts?
+- Do plain `char`, tagged unions, and flexible array members have explicit
+  representation, active-member, and capacity contracts?
+- Is `sizeof(pointer)` excluded from pointed-storage bounds, with typed defaults
+  established by initializers instead of representation zeroing?
+- Are variadic APIs confined to controlled adapters, and are conditional and
+  comma operators free of hidden control flow?
+- Is `errno` captured immediately after a confirmed failure and converted at
+  the dependency boundary?
 - Are all external values treated as untrusted before allocation, indexing,
   casting, enum conversion, state transition, or pointer arithmetic?
 - Are libc preconditions explicitly satisfied before each call?
@@ -3058,6 +3921,9 @@ Use this checklist during code review:
 [cwe-680]: https://cwe.mitre.org/data/definitions/680.html
 [cwe-681]: https://cwe.mitre.org/data/definitions/681.html
 [cwe-682]: https://cwe.mitre.org/data/definitions/682.html
+[cwe-685]: https://cwe.mitre.org/data/definitions/685.html
+[cwe-686]: https://cwe.mitre.org/data/definitions/686.html
+[cwe-691]: https://cwe.mitre.org/data/definitions/691.html
 [cwe-693]: https://cwe.mitre.org/data/definitions/693.html
 [cwe-704]: https://cwe.mitre.org/data/definitions/704.html
 [cwe-758]: https://cwe.mitre.org/data/definitions/758.html

@@ -137,19 +137,19 @@ integer conversions, macros, control flow, object lifetime, storage duration,
 standard-library APIs, and target assumptions to reduce those risks.
 
 The style follows the structured C tradition associated with
-[Kernighan and Ritchie][kernighan-ritchie-c]. The second edition of *The C
-Programming Language* describes ANSI C and shaped practical style and
+[Kernighan and Ritchie][kernighan-ritchie-c]. The second edition of _The C
+Programming Language_ describes ANSI C and shaped practical style and
 vocabulary for generations of C programmers. [MISRA C][misra-c],
 [SEI CERT C][sei-cert-c], [ISO/IEC TS 17961][iso-iec-ts-17961], and
 [ISO/IEC 9899:2024 / C23][iso-iec-9899-c23] supply the project's safety and
 security constraints.
 
 At function level, the project uses Single Entry, Single Exit (SESE) for its
-control-flow discipline. The standard prefers one entry point, one normal exit
+control-flow discipline. The standard requires one entry point, one normal exit
 label, one return path, a visible `ret` variable, and cleanup through
 `function_output`. This discipline gives the project a concrete coding-rule
 form of structured programming. Sequence, selection, and iteration stay
-visible. The project avoids hidden exits, early returns, uncontrolled jumps,
+visible. The project prohibits hidden exits, early returns, uncontrolled jumps,
 and ad hoc cleanup paths.
 
 A single normal exit makes resource ownership, cleanup, error propagation,
@@ -175,6 +175,7 @@ evidence, hazard analysis, threat modeling, certification artifacts, safety
 cases, and approval from the applicable authority remain separate requirements.
 
 ---
+
 Normative reference sections contain intentional requirement keywords,
 identifiers, API names, standards names, and compact table cells. Spelling,
 acronym, and prose checks scan this content with the rest of the document.
@@ -524,8 +525,10 @@ Use Allman style.
 Correct:
 
 ```c id=brace-style-correct
-void EX_example(void)
+int EX_example(void)
 {
+    int ret = EXIT_SUCCESS;
+
     if (condition)
     {
         EX_doSomething();
@@ -536,13 +539,18 @@ void EX_example(void)
         EX_doSomethingElse();
         EX_doSomethingElse();
     }
+
+function_output:
+    return ret;
 }
 ```
 
 Not acceptable:
 
 ```c id=brace-style-not-acceptable
-void EX_example(void) {
+int EX_example(void) {
+    int ret = EXIT_SUCCESS;
+
     if (condition) {
         EX_doSomething();
         EX_doSomething();
@@ -550,6 +558,9 @@ void EX_example(void) {
         EX_doSomethingElse();
         EX_doSomethingElse();
     }
+
+function_output:
+    return ret;
 }
 ```
 
@@ -912,14 +923,19 @@ function_output:
     return ret;
 }
 
-static inline void SSL_WRAP_ctxFree(SSL_CTX **ctx)
+static inline int SSL_WRAP_ctxFree(SSL_CTX **ctx)
 {
+    int ret = EXIT_SUCCESS;
+
     if ((ctx != (SSL_CTX **)(NULL)) &&
         (*ctx != (SSL_CTX *)(NULL)))
     {
         SSL_CTX_free(*ctx);
         *ctx = (SSL_CTX *)(NULL);
     }
+
+function_output:
+    return ret;
 }
 
 #endif
@@ -935,6 +951,7 @@ Usage:
 int APP_main(void)
 {
     int ret = EXIT_SUCCESS;
+    int cleanup_ret = EXIT_SUCCESS;
 
     SSL_CTX *ctx = (SSL_CTX *)(NULL);
 
@@ -943,7 +960,12 @@ int APP_main(void)
         goto function_output;
 
 function_output:
-    SSL_WRAP_ctxFree(&ctx);
+    cleanup_ret = SSL_WRAP_ctxFree(&ctx);
+    if ((ret == EXIT_SUCCESS) &&
+        (cleanup_ret != EXIT_SUCCESS))
+    {
+        ret = cleanup_ret;
+    }
 
     return ret;
 }
@@ -1071,7 +1093,10 @@ Validation example:
 
 int main(void)
 {
-    return 0;
+    int ret = 0;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -1202,7 +1227,7 @@ Prefer:
 #define PACKET_SERIALIZED_SIZE_BYTES  ((size_t)(6U))
 
 int PACKET_serialize(const packet_t *packet,
-                     uint8_t *buffer,
+                     uint8_t buffer[],
                      size_t buffer_size)
 {
     int ret = EXIT_SUCCESS;
@@ -1244,7 +1269,7 @@ function_output:
 Or:
 
 ```c id=struct-serialization-alternative
-int PACKET_serialize(const packet_t *packet, uint8_t *buffer);
+int PACKET_serialize(const packet_t *packet, uint8_t buffer[]);
 ```
 
 #### 2.3.4 Struct Layout Awareness
@@ -1318,8 +1343,8 @@ Prefer opaque structs for public modules that may evolve:
 ```c id=public-struct-abi-example
 typedef struct Config config_t;
 
-config_t *CONFIG_create(void);
-void CONFIG_destroy(config_t *cfg);
+int CONFIG_create(config_t **cfg_out);
+int CONFIG_destroy(config_t *cfg);
 ```
 
 Implementation:
@@ -1332,6 +1357,214 @@ struct Config
     int flags;
 };
 ```
+
+#### 2.3.7 Bit-Field Usage
+
+**Rule ID:** `CSTYLE-127-2-3-7-bit-field-usage`
+
+**Related pitfalls:**
+
+- [CPIT-126: Bit-field layout used as an external representation](./c-common-pitfalls.md#cpit-126-bit-field-layout-used-as-an-external-representation)
+- [CPIT-084: Reserved register bits clobbered](./c-common-pitfalls.md#cpit-084-reserved-register-bits-clobbered)
+
+Bit-fields must not represent MMIO registers, serialized data, network
+protocols, persistent formats, or public ABI. Allocation order, alignment,
+packing, and the treatment of storage units depend on the implementation.
+
+Every numeric bit-field width must use the lowercase unsigned suffix `u`, as
+required for enum values. Write `: 1u`, `: 2u`, or `: 3u`; never write an
+integer width without a suffix or use uppercase `U`.
+
+Avoid mapping a register directly:
+
+```c id=bit-field-usage-avoid
+typedef struct Register
+{
+    uint32_t enable : 1u;
+    uint32_t mode   : 3u;
+    uint32_t status : 4u;
+} register_t;
+```
+
+Use a fixed-width register value and named masks:
+
+```c id=bit-field-usage-prefer
+#define REG_ENABLE_MASK  ((uint32_t)(1U << 0U))
+#define REG_MODE_MAX     ((uint32_t)(7U))
+#define REG_MODE_MASK    ((uint32_t)(7U << 1U))
+#define REG_STATUS_MASK  ((uint32_t)(15U << 4U))
+
+uint32_t reg_value = 0u;
+
+if ((reg_ctrl != (volatile uint32_t *)(NULL)) &&
+    (requested_mode <= REG_MODE_MAX))
+{
+    reg_value = *reg_ctrl;
+    reg_value &= ~REG_MODE_MASK;
+    reg_value |= (requested_mode << 1u) & REG_MODE_MASK;
+    *reg_ctrl = reg_value;
+}
+```
+
+A purely internal structure may use bit-fields only with a documented
+justification. Such code must not depend on byte layout, bit allocation order,
+or raw copying, and the object must remain inside one compiler and ABI domain.
+
+#### 2.3.8 Plain `char` Semantics
+
+**Rule ID:** `CSTYLE-128-2-3-8-plain-char-semantics`
+
+**Related pitfalls:**
+
+- [CPIT-127: Plain `char` used as binary numeric storage](./c-common-pitfalls.md#cpit-127-plain-char-used-as-binary-numeric-storage)
+- [CPIT-063: `ctype.h` negative `char`](./c-common-pitfalls.md#cpit-063-ctypeh-negative-char)
+
+Use character types according to the data contract:
+
+- `char` represents text, a character, or a NUL-terminated string element
+- `signed char` represents an explicitly signed small integer only when the
+  domain requires that type
+- `unsigned char` represents an object representation or raw byte storage
+- `uint8_t` represents an exact-width 8-bit integer or protocol octet when the
+  implementation provides it
+
+Whether plain `char` is signed must not affect numeric logic, range checks,
+shifts, indexing, checksums, measurements, or protocol values.
+
+Avoid ambiguous binary declarations:
+
+```c id=plain-char-semantics-avoid
+char raw_data[256];
+char checksum;
+char temperature;
+```
+
+Prefer types that state the domain:
+
+```c id=plain-char-semantics-prefer
+char text[256];
+uint8_t raw_data[256];
+uint8_t checksum = 0u;
+int16_t temperature_celsius = 0;
+```
+
+#### 2.3.9 Union Active-Member Discipline
+
+**Rule ID:** `CSTYLE-129-2-3-9-union-active-member-discipline`
+
+**Related pitfalls:**
+
+- [CPIT-028: Union pointer confusion](./c-common-pitfalls.md#cpit-028-union-pointer-confusion)
+- [CPIT-022: Strict aliasing violation](./c-common-pitfalls.md#cpit-022-strict-aliasing-violation)
+
+A union that represents alternative semantic values must have an explicit
+discriminator. Code may read only the member selected by that discriminator,
+and every state transition must update the member and discriminator together.
+
+Prefer a tagged union:
+
+```c id=union-active-member-discipline-prefer
+typedef enum ValueType
+{
+    VALUE_TYPE_INT = 0u,
+    VALUE_TYPE_PTR = 1u,
+
+    /* element count */
+    VALUE_TYPE_MAX = 2u
+} value_type_t;
+
+typedef struct Value
+{
+    value_type_t type;
+
+    union
+    {
+        int32_t int_value;
+        void *ptr_value;
+    } data;
+} value_t;
+```
+
+Do not use a union to reinterpret an object representation:
+
+```c id=union-active-member-discipline-avoid
+union
+{
+    float float_value;
+    uint32_t bits;
+} value;
+
+value.float_value = input;
+bits = value.bits;
+```
+
+Use `memcpy()` when code needs the bytes of a representation:
+
+```c id=union-active-member-discipline-representation-prefer
+uint32_t bits = 0u;
+
+static_assert(sizeof(input) == sizeof(bits));
+memcpy(&bits, &input, sizeof(bits));
+```
+
+#### 2.3.10 Flexible Array Members
+
+**Rule ID:** `CSTYLE-130-2-3-10-flexible-array-members`
+
+**Related pitfalls:**
+
+- [CPIT-128: Flexible-array capacity mismatch](./c-common-pitfalls.md#cpit-128-flexible-array-capacity-mismatch)
+- [CPIT-047: Allocation multiplication overflow](./c-common-pitfalls.md#cpit-047-allocation-multiplication-overflow)
+- [CPIT-049: Offset plus size overflow](./c-common-pitfalls.md#cpit-049-offset-plus-size-overflow)
+
+Flexible array members are prohibited in public ABI, MMIO mappings,
+serialized layouts, and persistent formats. Safety-critical core code requires
+a documented deviation before using one.
+
+An approved internal flexible-array object must:
+
+- keep recorded length and capacity in the owning object
+- calculate `sizeof(header) + payload_capacity` with checked arithmetic
+- document ownership and the matching allocator family
+- validate every index against the recorded capacity of the same allocation
+- use an explicit total byte count when copying; `sizeof(struct_type)` copies
+  only the fixed header
+
+Prefer an explicit capacity contract:
+
+```c id=flexible-array-members-prefer
+typedef struct Packet
+{
+    size_t length;
+    size_t capacity;
+    uint8_t data[];
+} packet_t;
+
+packet_t *packet = (packet_t *)(NULL);
+size_t alloc_size = 0u;
+bool has_overflow = false;
+
+has_overflow = ARITH_addSize(sizeof(*packet),
+                             payload_capacity,
+                             &alloc_size);
+if (has_overflow)
+{
+    ret = -ENOMEM;
+    goto function_output;
+}
+
+packet = (packet_t *)MEM_alloc(alloc_size);
+if (packet == (packet_t *)(NULL))
+{
+    ret = -ENOMEM;
+    goto function_output;
+}
+
+packet->length = 0u;
+packet->capacity = payload_capacity;
+```
+
+Do not allocate or copy only the fixed header when payload storage is needed.
 
 ---
 
@@ -1756,7 +1989,7 @@ Maximum recommended threshold: `15`
 #define EX_ARRAY_MIN  ((int)(0U))
 #define EX_ARRAY_MAX  ((int)(100U))
 
-int EX_complexFunction(int *array, size_t size, int flag)
+int EX_complexFunction(int array[], size_t size, int flag)
 {
     int ret = EXIT_SUCCESS;
 
@@ -1938,6 +2171,7 @@ state = (mem_state_t)raw_value;
 **Related pitfalls:**
 
 - [CPIT-035: Unsequenced modification](./c-common-pitfalls.md#cpit-035-unsequenced-modification)
+- [CPIT-130: Control flow hidden in an expression](./c-common-pitfalls.md#cpit-130-control-flow-hidden-in-an-expression)
 
 Conditions in `if`, `while`, and `for` must not contain side effects.
 
@@ -1952,10 +2186,14 @@ Avoid:
 
 ```c id=no-side-effects-in-conditions-avoid
 if ((ret = FILE_read(buffer, size)) != EXIT_SUCCESS)
+{
     goto function_output;
+}
 
 while (index++ < size)
+{
     EX_doSomething();
+}
 ```
 
 Prefer:
@@ -1989,8 +2227,8 @@ Rules:
 Prefer:
 
 ```c id=const-parameters-prefer
-int FILE_writeBuffer(const uint8_t *buffer, size_t size);
-int JSON_parse(const char *input, json_object_t *out);
+int FILE_writeBuffer(const uint8_t buffer[], size_t size);
+int JSON_parse(const char input[], json_object_t *out);
 ```
 
 Why this rule exists:
@@ -2021,33 +2259,58 @@ Rules:
 Prefer:
 
 ```c id=output-buffer-contracts-prefer
-int PATH_build(char *path, size_t path_size);
-int FRAME_encode(uint8_t *buffer, size_t buffer_size);
+int PATH_build(char path[], size_t path_size);
+int FRAME_encode(uint8_t buffer[], size_t buffer_size);
 ```
 
 Avoid:
 
 ```c id=output-buffer-contracts-avoid
-int PATH_build(char *path);
-int FRAME_encode(uint8_t *buffer);
+int PATH_build(char path[]);
+int FRAME_encode(uint8_t buffer[]);
 ```
 
 #### 4.1.7 Return Convention
 
 **Rule ID:** `CSTYLE-064-4-1-7-return-convention`
 
-Default rule for fallible project operations:
+**Related pitfalls:**
 
-- functions should return `int`
-- use negative POSIX-style error codes
-- avoid multiple returns
-- use `ret`
-- exit through `function_output`
+- [CPIT-004: Memory leak](./c-common-pitfalls.md#cpit-004-memory-leak)
+- [CPIT-130: Control flow hidden in an expression](./c-common-pitfalls.md#cpit-130-control-flow-hidden-in-an-expression)
+- [CPIT-068: Ignored return value](./c-common-pitfalls.md#cpit-068-ignored-return-value)
 
-Callbacks, interrupt handlers, and infallible accessors or predicates may use a
-return type required by their domain contract. This exception does not permit
-hidden failure channels or multiple ad hoc exits. If an operation can fail,
-prefer the normal `ret` plus `function_output` convention.
+Project-owned functions must return a value. Ordinary operations must return
+`int` and use negative POSIX-style error codes such as `-EINVAL`, `-ENOMEM`, or
+`-EIO` when those codes describe the failure.
+
+Every function that returns a value must:
+
+- declare exactly one return variable named `ret`
+- assign every success, failure, pointer, scalar, enum, or predicate result to
+  `ret` before the return statement
+- reach one `function_output` label on every returning control-flow path
+- contain exactly one return statement, written as `return ret;`
+
+A return statement must not contain a constant, expression, conditional
+operator, cast, function call, dereference, address expression, or variable
+whose name is not `ret`. Early returns are prohibited, including guard-clause
+returns and returns inside loops, `if`, `switch`, or error-handling branches.
+
+Avoid:
+
+```c id=return-convention-avoid
+return -EINVAL;
+return EX_processItem(item);
+return is_valid ? EXIT_SUCCESS : -EINVAL;
+return result;
+```
+
+Callbacks, interrupt handlers, and other functions whose signatures are fixed
+by an external ABI may use its required return type only inside the owning
+adapter and with a documented deviation. Infallible read functions and predicates
+may keep their domain return type, but their only return statement must still
+be `return ret;` at `function_output`.
 
 ```c id=return-convention-example
 #include <errno.h>
@@ -2109,6 +2372,7 @@ typedef enum NetRet
 **Related pitfalls:**
 
 - [CPIT-068: Ignored return value](./c-common-pitfalls.md#cpit-068-ignored-return-value)
+- [CPIT-131: Stale or overwritten `errno`](./c-common-pitfalls.md#cpit-131-stale-or-overwritten-errno)
 - [CPIT-087: Watchdog kicked too early](./c-common-pitfalls.md#cpit-087-watchdog-kicked-too-early)
 
 Do not hide errors.
@@ -2230,7 +2494,7 @@ Example logging wrapper:
 
 ```c id=format-string-safety-wrapper-example
 MEM_ATTR_PRINTF__(2, 3)
-int MEM_log(mem_log_level_t level, const char *fmt, ...);
+int MEM_log(mem_log_level_t level, const char format[], ...);
 ```
 
 #### Analyzability
@@ -2277,7 +2541,7 @@ typedef enum FileOpRet
     FILE_OP_RET_IO_ERROR     = (int)(-EIO)
 } file_op_ret_t;
 
-file_op_ret_t FILE_openFile(const char *path)
+file_op_ret_t FILE_openFile(const char path[])
 {
     file_op_ret_t ret = FILE_OP_RET_SUCCESS;
 
@@ -2489,6 +2753,284 @@ case STATE_RUNNING:
 }
 ```
 
+#### 4.1.17 Function Argument Evaluation Order
+
+**Rule ID:** `CSTYLE-116-4-1-17-function-argument-evaluation-order`
+
+**Related pitfalls:**
+
+- [CPIT-035: Unsequenced modification](./c-common-pitfalls.md#cpit-035-unsequenced-modification)
+
+Function arguments must not depend on their evaluation order. A function call
+must not modify an object in one argument and read or modify the same object in
+another argument.
+
+Avoid:
+
+```c id=function-argument-evaluation-order-avoid
+EX_useValues(index++, index);
+EX_processItems(items[index++], items[index]);
+```
+
+Prefer separate statements whose order is visible:
+
+```c id=function-argument-evaluation-order-prefer
+size_t current_index = 0u;
+
+current_index = index;
+index++;
+
+EX_useValues(current_index, index);
+```
+
+#### 4.1.18 Output Parameter Initialization Contracts
+
+**Rule ID:** `CSTYLE-117-4-1-18-output-parameter-initialization-contracts`
+
+**Related pitfalls:**
+
+- [CPIT-036: Indeterminate value read](./c-common-pitfalls.md#cpit-036-indeterminate-value-read)
+- [CPIT-012: Uninitialized pointer](./c-common-pitfalls.md#cpit-012-uninitialized-pointer)
+
+Every out-parameter contract must state whether the function defines the
+output on every return or only on success. Unless an API requires another
+sentinel, initialize pointer outputs to typed `NULL` immediately after
+validating the out-parameter itself.
+
+Prefer:
+
+```c id=output-parameter-initialization-contracts-prefer
+int ITEM_create(item_t **item_out)
+{
+    int ret = EXIT_SUCCESS;
+
+    item_t *item = (item_t *)(NULL);
+
+    if (item_out == (item_t **)(NULL))
+    {
+        ret = -EINVAL;
+        goto function_output;
+    }
+
+    *item_out = (item_t *)(NULL);
+
+    item = (item_t *)malloc(sizeof(*item));
+    if (item == (item_t *)(NULL))
+    {
+        ret = -ENOMEM;
+        goto function_output;
+    }
+
+    *item = (item_t){ 0 };
+    *item_out = item;
+    item = (item_t *)(NULL);
+
+function_output:
+    free(item);
+    return ret;
+}
+```
+
+Avoid an output whose value after failure is unspecified:
+
+```c id=output-parameter-initialization-contracts-avoid
+int ITEM_find(item_t **item_out, item_t *item, bool is_found)
+{
+    int ret = EXIT_SUCCESS;
+
+    if (item_out == (item_t **)(NULL))
+    {
+        ret = -EINVAL;
+        goto function_output;
+    }
+
+    if (is_found)
+    {
+        *item_out = item;
+    }
+    else
+    {
+        ret = -EINVAL;
+    }
+
+function_output:
+    return ret;
+}
+```
+
+#### 4.1.19 Array Parameter Notation
+
+**Rule ID:** `CSTYLE-131-4-1-19-array-parameter-notation`
+
+**Related pitfalls:**
+
+- [CPIT-029: Array-to-pointer decay](./c-common-pitfalls.md#cpit-029-array-to-pointer-decay)
+- [CPIT-013: Out-of-bounds write](./c-common-pitfalls.md#cpit-013-out-of-bounds-write)
+- [CPIT-014: Out-of-bounds read](./c-common-pitfalls.md#cpit-014-out-of-bounds-read)
+
+A parameter that represents the first element of an array must use array
+notation. Use pointer notation for a pointer to one object, an optional object,
+an opaque handle, or another contract that is not an array.
+
+Prefer:
+
+```c id=array-parameter-notation-prefer
+int EX_sumValues(const int values[], size_t value_count);
+int EX_updateValue(int *value);
+```
+
+Avoid hiding an array contract behind pointer notation:
+
+```c id=array-parameter-notation-avoid
+int EX_sumValues(const int *values, size_t value_count);
+```
+
+In a function parameter, `type array[]` still adjusts to a pointer type. Array
+notation communicates intent but does not carry capacity; the function must
+also receive the element count, byte size, or an explicitly sized array type.
+
+#### 4.1.20 Variadic Function Policy
+
+**Rule ID:** `CSTYLE-132-4-1-20-variadic-function-policy`
+
+**Related pitfalls:**
+
+- [CPIT-129: Variadic argument contract mismatch](./c-common-pitfalls.md#cpit-129-variadic-argument-contract-mismatch)
+- [CPIT-095: Format string injection](./c-common-pitfalls.md#cpit-095-format-string-injection)
+- [CPIT-061: `printf` external format string](./c-common-pitfalls.md#cpit-061-printf-external-format-string)
+
+Variadic functions are prohibited in ordinary module APIs. A controlled
+formatting, logging, tracing, or foreign-interface adapter may use `...` when a
+fixed typed API cannot express the required contract.
+
+An approved variadic function must:
+
+- call `va_start()` before reading arguments and `va_end()` on every path
+- use `va_copy()` before duplicating or independently traversing a `va_list`
+- define how the callee determines every argument's promoted type
+- apply a compiler format attribute when the arguments follow a format string
+- reject external input as a format string
+- transfer no ownership implicitly and retain no variadic pointer argument
+
+Prefer a small wrapper around a typed `va_list` adapter:
+
+```c id=variadic-function-policy-prefer
+MEM_ATTR_PRINTF__(2, 3)
+int MEM_log(mem_log_level_t level, const char format[], ...)
+{
+    int ret = EXIT_SUCCESS;
+
+    va_list args;
+
+    if (format == (const char *)(NULL))
+    {
+        ret = -EINVAL;
+        goto function_output;
+    }
+
+    va_start(args, format);
+    ret = MEM_logV(level, format, args);
+    va_end(args);
+
+function_output:
+    return ret;
+}
+```
+
+Do not use `...` as a general optional-argument or type-dispatch mechanism.
+
+#### 4.1.21 Conditional Operator
+
+**Rule ID:** `CSTYLE-133-4-1-21-conditional-operator`
+
+**Related pitfalls:**
+
+- [CPIT-130: Control flow hidden in an expression](./c-common-pitfalls.md#cpit-130-control-flow-hidden-in-an-expression)
+- [CPIT-035: Unsequenced modification](./c-common-pitfalls.md#cpit-035-unsequenced-modification)
+
+The conditional operator may select a value. Its condition and result
+operands must have no side effects, and neither result operand may contain
+another conditional operator.
+
+Prefer a compact value selection:
+
+```c id=conditional-operator-prefer
+maximum = (value_a > value_b) ? value_a : value_b;
+```
+
+Use an `if` statement when either path performs work:
+
+```c id=conditional-operator-avoid
+result = is_ready
+    ? EX_processItem(item)
+    : use_backup ? EX_processBackup(item) : -EINVAL;
+```
+
+#### 4.1.22 Comma Operator
+
+**Rule ID:** `CSTYLE-134-4-1-22-comma-operator`
+
+**Related pitfalls:**
+
+- [CPIT-130: Control flow hidden in an expression](./c-common-pitfalls.md#cpit-130-control-flow-hidden-in-an-expression)
+- [CPIT-035: Unsequenced modification](./c-common-pitfalls.md#cpit-035-unsequenced-modification)
+
+The comma operator is prohibited, including in a `for` iteration expression.
+This rule does not prohibit commas that separate function arguments,
+declarations, initialization elements, or enum constants.
+
+Avoid:
+
+```c id=comma-operator-avoid
+value = (EX_prepare(), EX_readValue());
+
+for (index = 0u; index < count; index++, output_index++)
+{
+    output[output_index] = input[index];
+}
+```
+
+Use separate statements and one explicit loop-control variable.
+
+#### 4.1.23 `errno` Handling
+
+**Rule ID:** `CSTYLE-135-4-1-23-errno-handling`
+
+**Related pitfalls:**
+
+- [CPIT-131: Stale or overwritten `errno`](./c-common-pitfalls.md#cpit-131-stale-or-overwritten-errno)
+- [CPIT-068: Ignored return value](./c-common-pitfalls.md#cpit-068-ignored-return-value)
+
+Read `errno` only after an API reports failure through its documented return
+value. Capture it immediately, before logging, cleanup, allocation, or another
+library call can change it.
+
+Rules:
+
+- do not assume `errno == 0` after success
+- do not treat `errno` as a failure indicator without first checking the API
+  result
+- reset `errno` before a call only when that API's contract requires it to
+  distinguish a valid result from failure
+- convert the captured value to the module's error domain at the external
+  dependency boundary
+- preserve the captured value when cleanup or logging must run first
+
+Prefer:
+
+```c id=errno-handling-prefer
+FILE *file = (FILE *)(NULL);
+int saved_errno = 0;
+
+file = fopen(path, "rb");
+if (file == (FILE *)(NULL))
+{
+    saved_errno = errno;
+    ret = ERRNO_toFileRet(saved_errno);
+    goto function_output;
+}
+```
+
 ---
 
 ## 5. Memory, Strings, and Ownership
@@ -2574,6 +3116,11 @@ Why this rule is preferred:
 #### 5.1.3 Allocation Size Safety
 
 **Rule ID:** `CSTYLE-079-5-1-3-allocation-size-safety`
+
+**Related pitfalls:**
+
+- [CPIT-047: Allocation multiplication overflow](./c-common-pitfalls.md#cpit-047-allocation-multiplication-overflow)
+- [CPIT-132: Pointer size mistaken for object capacity](./c-common-pitfalls.md#cpit-132-pointer-size-mistaken-for-object-capacity)
 
 Never write the pointed type manually in allocation expressions.
 
@@ -2705,13 +3252,13 @@ Prefer APIs where the caller provides the output storage.
 Prefer:
 
 ```c id=no-hidden-allocations-prefer
-int JSON_parse(const char *input, json_object_t *out);
+int JSON_parse(const char input[], json_object_t *out);
 ```
 
 Avoid:
 
 ```c id=no-hidden-allocations-avoid
-json_object_t *JSON_parse(const char *input);
+json_object_t *JSON_parse(const char input[]);
 ```
 
 Why this rule is preferred:
@@ -2737,18 +3284,19 @@ Memory ownership must always be documented explicitly.
 
 Rules:
 
-- document who owns the returned pointer
+- document who owns a pointer produced through an out-parameter or infallible
+  read function
 - document who is responsible for `free`
-- document when a returned pointer is module-owned and must not be freed
+- document when an exposed pointer is module-owned and must not be freed
 - do not force the reader to infer ownership from naming alone
 
 Examples:
 
 ```c id=ownership-rules-example
 /*
- * The caller owns the returned pointer and must free it.
+ * On success, the caller owns *buffer_out and must free it.
  */
-char *UTIL_createBuffer(size_t size);
+int UTIL_createBuffer(size_t size, char **buffer_out);
 
 /*
  * The buffer is owned by the module and must not be freed.
@@ -2775,29 +3323,276 @@ that has the full operation context.
 - [CPIT-001: Dangling pointer](./c-common-pitfalls.md#cpit-001-dangling-pointer)
 - [CPIT-033: Heap object points to stack memory](./c-common-pitfalls.md#cpit-033-heap-object-points-to-stack-memory)
 
-Never return a pointer to local stack memory.
+Pointers to objects with automatic storage duration must not escape the
+objects' lifetime. Do not return such a pointer or store it in an object,
+callback registration, global, or asynchronous operation that may outlive the
+current block.
 
 Avoid:
 
 ```c id=local-memory-lifetime-avoid
 char *UTIL_getBuffer(void)
 {
+    char *ret = (char *)(NULL);
     char buffer[128] = { 0 };
 
-    return buffer;
+    ret = buffer;
+
+function_output:
+    return ret;
 }
 ```
 
 Prefer caller-provided storage:
 
 ```c id=local-memory-lifetime-example
-int UTIL_getBuffer(char *buffer, size_t size);
+int UTIL_getBuffer(char buffer[], size_t size);
 ```
 
-Or return dynamically allocated memory only when ownership is documented:
+Or return dynamically allocated memory through an out-parameter when ownership
+is documented:
 
 ```c id=local-memory-lifetime-example-2
-char *UTIL_getBuffer(void);
+int UTIL_getBuffer(char **buffer_out);
+```
+
+Avoid storing an automatic object's address in longer-lived state:
+
+```c id=local-memory-lifetime-store-avoid
+int EX_badStoreLocal(context_t *context)
+{
+    int ret = EXIT_SUCCESS;
+
+    callback_data_t callback_data = { 0 };
+
+    if (context != (context_t *)(NULL))
+    {
+        context->callback_data = &callback_data;
+    }
+
+function_output:
+    return ret;
+}
+```
+
+The destination lifetime must end no later than the automatic object's
+lifetime. Otherwise, use caller-owned storage, an owned allocation, or a copy.
+
+#### 5.1.9 Allocator Family Rules
+
+**Rule ID:** `CSTYLE-118-5-1-9-allocator-family-rules`
+
+**Related pitfalls:**
+
+- [CPIT-007: Mismatched allocator](./c-common-pitfalls.md#cpit-007-mismatched-allocator)
+- [CPIT-006: Invalid free](./c-common-pitfalls.md#cpit-006-invalid-free)
+
+Each object must be released by the allocator family that created it. The
+ownership contract must identify the matching release function when an API
+does not use the standard `malloc()` and `free()` pair.
+
+Avoid:
+
+```c id=allocator-family-rules-avoid
+buffer = (uint8_t *)malloc(buffer_size);
+if (buffer == (uint8_t *)(NULL))
+{
+    ret = -ENOMEM;
+    goto function_output;
+}
+
+MEM_free(buffer);
+```
+
+Prefer matching pairs:
+
+```c id=allocator-family-rules-prefer
+buffer = (uint8_t *)MEM_alloc(buffer_size);
+if (buffer == (uint8_t *)(NULL))
+{
+    ret = -ENOMEM;
+    goto function_output;
+}
+
+MEM_free(buffer);
+buffer = (uint8_t *)(NULL);
+```
+
+Do not pass stack objects, static objects, interior pointers, or foreign
+allocator blocks to a release function.
+
+#### 5.1.10 Ownership Transfer Rules
+
+**Rule ID:** `CSTYLE-119-5-1-10-ownership-transfer-rules`
+
+**Related pitfalls:**
+
+- [CPIT-002: Use-after-free](./c-common-pitfalls.md#cpit-002-use-after-free)
+- [CPIT-005: Ambiguous ownership](./c-common-pitfalls.md#cpit-005-ambiguous-ownership)
+
+An API that takes ownership must state the exact transfer point, including
+what happens on failure. After a successful transfer, the caller must not
+read, write, release, or derive another pointer from the transferred object.
+
+Avoid:
+
+```c id=ownership-transfer-rules-avoid
+if ((queue == (queue_t *)(NULL)) ||
+    (item == (item_t *)(NULL)))
+{
+    ret = -EINVAL;
+    goto function_output;
+}
+
+ret = QUEUE_push(queue, item);
+if (ret != EXIT_SUCCESS)
+{
+    goto function_output;
+}
+
+item->state = ITEM_STATE_READY;
+```
+
+Finish caller-owned work before the transfer and clear the caller's pointer
+after success:
+
+```c id=ownership-transfer-rules-prefer
+if ((queue == (queue_t *)(NULL)) ||
+    (item == (item_t *)(NULL)))
+{
+    ret = -EINVAL;
+    goto function_output;
+}
+
+item->state = ITEM_STATE_READY;
+
+ret = QUEUE_push(queue, item);
+if (ret != EXIT_SUCCESS)
+{
+    goto function_output;
+}
+
+item = (item_t *)(NULL);
+```
+
+#### 5.1.11 Resource Acquisition and Cleanup
+
+**Rule ID:** `CSTYLE-120-5-1-11-resource-acquisition-and-cleanup`
+
+**Related pitfalls:**
+
+- [CPIT-004: Memory leak](./c-common-pitfalls.md#cpit-004-memory-leak)
+
+Every acquired resource must have one visible, deterministic release path.
+Functions that acquire more than one resource must use the project's normal
+`function_output` path or another structured cleanup region. Release resources
+in reverse acquisition order and make cleanup safe after partial acquisition.
+
+Prefer:
+
+```c id=resource-acquisition-and-cleanup-prefer
+int EX_processFile(const char path[])
+{
+    int ret = EXIT_SUCCESS;
+
+    file_t *file = (file_t *)(NULL);
+    uint8_t *buffer = (uint8_t *)(NULL);
+
+    if (path == (const char *)(NULL))
+    {
+        ret = -EINVAL;
+        goto function_output;
+    }
+
+    file = FILE_open(path);
+    if (file == (file_t *)(NULL))
+    {
+        ret = -EIO;
+        goto function_output;
+    }
+
+    buffer = (uint8_t *)MEM_alloc(EX_BUFFER_SIZE);
+    if (buffer == (uint8_t *)(NULL))
+    {
+        ret = -ENOMEM;
+        goto function_output;
+    }
+
+    ret = EX_processBuffer(file, buffer, EX_BUFFER_SIZE);
+
+function_output:
+    MEM_free(buffer);
+    FILE_close(file);
+    return ret;
+}
+```
+
+Release functions used this way must accept typed `NULL` as a no-op. When a
+release API does not, guard that call with an explicit validity check.
+
+#### 5.1.12 `sizeof` and Object-Size Rules
+
+**Rule ID:** `CSTYLE-136-5-1-12-sizeof-and-object-size-rules`
+
+**Related pitfalls:**
+
+- [CPIT-132: Pointer size mistaken for object capacity](./c-common-pitfalls.md#cpit-132-pointer-size-mistaken-for-object-capacity)
+- [CPIT-029: Array-to-pointer decay](./c-common-pitfalls.md#cpit-029-array-to-pointer-decay)
+- [CPIT-013: Out-of-bounds write](./c-common-pitfalls.md#cpit-013-out-of-bounds-write)
+
+Use `sizeof` according to the actual type of the operand:
+
+- `sizeof(array)` gives the complete array size only where `array` still has
+  array type
+- `sizeof(*ptr)` gives the size of the pointed type and is the required form
+  for allocation tied to a destination pointer
+- `sizeof(ptr)` gives the size of the pointer itself and may be used only when
+  that pointer-representation size is the intended value
+
+`sizeof(pointer)` must never supply the capacity of pointed storage. Array
+parameter notation does not preserve array size because C adjusts the
+parameter to a pointer.
+
+Avoid:
+
+```c id=sizeof-and-object-size-rules-avoid
+int EX_clearBuffer(uint8_t buffer[], size_t buffer_size)
+{
+    int ret = EXIT_SUCCESS;
+
+    if ((buffer == (uint8_t *)(NULL)) ||
+        (buffer_size == 0u))
+    {
+        ret = -EINVAL;
+        goto function_output;
+    }
+
+    memset(buffer, 0, sizeof(buffer));
+
+function_output:
+    return ret;
+}
+```
+
+Pass the storage size with the pointer:
+
+```c id=sizeof-and-object-size-rules-prefer
+int EX_clearBuffer(uint8_t buffer[], size_t buffer_size)
+{
+    int ret = EXIT_SUCCESS;
+
+    if ((buffer == (uint8_t *)(NULL)) ||
+        (buffer_size == 0u))
+    {
+        ret = -EINVAL;
+        goto function_output;
+    }
+
+    memset(buffer, 0, buffer_size);
+
+function_output:
+    return ret;
+}
 ```
 
 ### 5.2 Unsafe Language and Standard Library APIs
@@ -3122,6 +3917,19 @@ Why this rule exists:
 
 ## 6. State, Concurrency, and Type Safety
 
+Pointer review follows one validity chain. A dereference is allowed only after
+the current control-flow path establishes each preceding property.
+
+```mermaid
+flowchart LR
+    exists["pointer exists"] --> provenance["provenance known"]
+    provenance --> valid["non-NULL and valid"]
+    valid --> lifetime["lifetime active"]
+    lifetime --> ownership["ownership permits access"]
+    ownership --> bounds["bounds valid"]
+    bounds --> access["dereference allowed"]
+```
+
 ### 6.1 State Visibility
 
 **Rule ID:** `CSTYLE-088-6-1-state-visibility`
@@ -3186,10 +3994,16 @@ Avoid:
 int global_counter = 0;
 bool is_initialized = false;
 
-void EX_increment(void)
+int EX_increment(void)
 {
+    int ret = EXIT_SUCCESS;
+
     static int counter = 0;
+
     counter++;
+
+function_output:
+    return ret;
 }
 ```
 
@@ -3446,6 +4260,7 @@ Prefer:
 ```c id=atomic-and-interrupt-shared-state-prefer
 static volatile uint32_t g_event_flags = 0u;
 
+/* The platform ISR ABI requires void; this adapter has a documented deviation. */
 void ISR_onEvent(void)
 {
     ISR_ATOMIC_fetchOrU32(&g_event_flags, EVENT_FLAG_RX);
@@ -3557,6 +4372,7 @@ reg_ptr = (volatile uint32_t *)register_base;
 - [CPIT-025: Pointer truncation](./c-common-pitfalls.md#cpit-025-pointer-truncation)
 - [CPIT-052: Narrowing conversion](./c-common-pitfalls.md#cpit-052-narrowing-conversion)
 - [CPIT-053: Signed/unsigned mixing](./c-common-pitfalls.md#cpit-053-signedunsigned-mixing)
+- [CPIT-127: Plain `char` used as binary numeric storage](./c-common-pitfalls.md#cpit-127-plain-char-used-as-binary-numeric-storage)
 - [CPIT-063: `ctype.h` negative `char`](./c-common-pitfalls.md#cpit-063-ctypeh-negative-char)
 
 Numeric conversions must preserve value and meaning.
@@ -3653,6 +4469,242 @@ Avoid:
 ```c id=pointer-aliasing-provenance-rules-avoid
 value_u32 = *((uint32_t *)bytes);
 ```
+
+### 6.11 Pointer Dereference Preconditions
+
+**Rule ID:** `CSTYLE-121-6-11-pointer-dereference-preconditions`
+
+**Related pitfalls:**
+
+- [CPIT-001: Dangling pointer](./c-common-pitfalls.md#cpit-001-dangling-pointer)
+- [CPIT-002: Use-after-free](./c-common-pitfalls.md#cpit-002-use-after-free)
+- [CPIT-011: NULL pointer dereference](./c-common-pitfalls.md#cpit-011-null-pointer-dereference)
+
+Before any dereference, the current control-flow path must establish that the
+pointer has valid provenance, suitable alignment, an active lifetime, and
+permission for the requested access. A nullable pointer must also be proven
+non-`NULL`.
+
+Avoid:
+
+```c id=pointer-dereference-preconditions-avoid
+value = ptr->value;
+```
+
+Prefer an explicit precondition:
+
+```c id=pointer-dereference-preconditions-prefer
+if (ptr != (const item_t *)(NULL))
+{
+    value = ptr->value;
+}
+```
+
+An API boundary check, a successful lookup, a documented required-pointer
+contract, or a dominating branch may establish validity. A stale check from a
+different path does not.
+
+### 6.12 Pointer Dereference Chain Rules
+
+**Rule ID:** `CSTYLE-122-6-12-pointer-dereference-chain-rules`
+
+**Related pitfalls:**
+
+- [CPIT-123: Chained pointer dereference](./c-common-pitfalls.md#cpit-123-chained-pointer-dereference)
+- [CPIT-011: NULL pointer dereference](./c-common-pitfalls.md#cpit-011-null-pointer-dereference)
+
+No more than one pointer dereference may occur in one member-access
+expression. Store each pointer-valued member in a named local, establish its
+validity, and only then dereference it.
+
+The rule counts pointer dereference operations, not member-access tokens.
+Access through an embedded object does not introduce another pointer
+dereference.
+
+| Form                        | Status     | Reason                                      |
+| --------------------------- | ---------- | ------------------------------------------- |
+| `object->field`             | permitted  | one pointer dereference                     |
+| `object->embedded.field`    | permitted  | one pointer dereference, then object access |
+| `object->embedded.subfield` | permitted  | one pointer dereference, then object access |
+| `object->ptr->field`        | prohibited | two pointer dereference operations          |
+| `(object->ptr)->field`      | prohibited | two explicit pointer dereference operations |
+| `object->ptr->ptr->field`   | prohibited | three pointer dereference operations        |
+
+Avoid:
+
+```c id=pointer-dereference-chain-rules-avoid
+(aux->prev)->next = aux->next;
+(context->owner)->callback(context);
+```
+
+Prefer:
+
+```c id=pointer-dereference-chain-rules-prefer
+node_t *prev = (node_t *)(NULL);
+node_t *next = (node_t *)(NULL);
+
+if (aux != (node_t *)(NULL))
+{
+    prev = aux->prev;
+    next = aux->next;
+}
+
+if (prev != (node_t *)(NULL))
+{
+    prev->next = next;
+}
+```
+
+If an approved deviation must retain a chain, parentheses must expose every
+additional dereference boundary. Write `(aux->prev)->next`, not
+`aux->prev->next`; for a longer chain, name or parenthesize each intermediate
+pointer in the same manner. The deviation must document how each pointer's
+validity and lifetime were established.
+
+### 6.13 Pointer Validity Across Calls
+
+**Rule ID:** `CSTYLE-123-6-13-pointer-validity-across-calls`
+
+**Related pitfalls:**
+
+- [CPIT-124: Stale validity after a mutating call](./c-common-pitfalls.md#cpit-124-stale-validity-after-a-mutating-call)
+- [CPIT-002: Use-after-free](./c-common-pitfalls.md#cpit-002-use-after-free)
+
+A call that may change ownership, lifetime, allocation, container structure,
+or object identity invalidates earlier pointer-validity evidence. Re-establish
+validity after the call before dereferencing the pointer. Only an explicit
+callee contract may preserve the earlier guarantee.
+
+Avoid:
+
+```c id=pointer-validity-across-calls-avoid
+if (node != (node_t *)(NULL))
+{
+    LIST_remove(list, node);
+    node->flags = 0u;
+}
+```
+
+Prefer reacquiring the object through a stable key:
+
+```c id=pointer-validity-across-calls-prefer
+if (node != (node_t *)(NULL))
+{
+    node_id = node->id;
+    LIST_remove(list, node);
+    node = LIST_find(list, node_id);
+}
+
+if (node != (node_t *)(NULL))
+{
+    node->flags = 0u;
+}
+```
+
+### 6.14 Alias-Safe Mutation
+
+**Rule ID:** `CSTYLE-124-6-14-alias-safe-mutation`
+
+**Related pitfalls:**
+
+- [CPIT-125: Interleaved mutation through aliases](./c-common-pitfalls.md#cpit-125-interleaved-mutation-through-aliases)
+- [CPIT-023: Invalid `restrict` aliasing](./c-common-pitfalls.md#cpit-023-invalid-restrict-aliasing)
+
+Do not perform interleaved read-modify-write operations through pointers that
+may name the same object. Prove that the objects do not overlap, or select one
+canonical pointer and perform the state transition through it.
+
+Avoid:
+
+```c id=alias-safe-mutation-avoid
+first->value += delta;
+second->value = first->value;
+```
+
+Prefer an explicit non-aliasing precondition:
+
+```c id=alias-safe-mutation-prefer
+if ((first == (item_t *)(NULL)) ||
+    (second == (item_t *)(NULL)) ||
+    (first == second))
+{
+    ret = -EINVAL;
+    goto function_output;
+}
+
+first->value += delta;
+second->value = first->value;
+```
+
+### 6.15 Array Bounds and Pointer Arithmetic
+
+**Rule ID:** `CSTYLE-125-6-15-array-bounds-and-pointer-arithmetic`
+
+**Related pitfalls:**
+
+- [CPIT-013: Out-of-bounds write](./c-common-pitfalls.md#cpit-013-out-of-bounds-write)
+- [CPIT-014: Out-of-bounds read](./c-common-pitfalls.md#cpit-014-out-of-bounds-read)
+- [CPIT-017: One-past-end dereference](./c-common-pitfalls.md#cpit-017-one-past-end-dereference)
+- [CPIT-018: Invalid pointer arithmetic](./c-common-pitfalls.md#cpit-018-invalid-pointer-arithmetic)
+
+Before indexing an array, prove that the index is within the bounds of that
+same array object. A global maximum, unrelated capacity, or different buffer's
+length does not establish the bound.
+
+Pointer arithmetic is permitted only within one array object. Code may form a
+one-past pointer for comparison or iteration, but it must not dereference that
+pointer.
+
+Prefer pointer-and-count contracts that travel together:
+
+```c id=array-bounds-and-pointer-arithmetic-prefer
+if ((items != (item_t *)(NULL)) &&
+    (index < item_count))
+{
+    item = &items[index];
+}
+```
+
+Avoid checking an unrelated limit:
+
+```c id=array-bounds-and-pointer-arithmetic-avoid
+if (index < ITEM_MAX)
+{
+    item = &items[index];
+}
+```
+
+### 6.16 Pointer Member Ownership Semantics
+
+**Rule ID:** `CSTYLE-126-6-16-pointer-member-ownership-semantics`
+
+**Related pitfalls:**
+
+- [CPIT-005: Ambiguous ownership](./c-common-pitfalls.md#cpit-005-ambiguous-ownership)
+- [CPIT-032: Borrowed pointer stored beyond lifetime](./c-common-pitfalls.md#cpit-032-borrowed-pointer-stored-beyond-lifetime)
+- [CPIT-033: Heap object points to stack memory](./c-common-pitfalls.md#cpit-033-heap-object-points-to-stack-memory)
+
+For every pointer member, the type or API contract must state whether the
+member is owned, borrowed, optional, required, or a weak reference. It must
+also state the lifetime and allocator family when either affects use or
+release.
+
+Embedded objects and pointer members have different access and ownership
+semantics:
+
+```c id=pointer-member-ownership-semantics-example
+typedef struct Context
+{
+    config_t config;  /* Embedded; owned by this context. */
+
+    /* Borrowed and optional; the device owner retains lifetime control. */
+    device_t *device;
+} context_t;
+```
+
+After `context` validity is established, `context->config.timeout_ms` performs
+one pointer dereference. Accessing the device requires a separate local pointer
+and validity proof under `CSTYLE-122-6-12-pointer-dereference-chain-rules`.
 
 ---
 
@@ -3950,6 +5002,11 @@ remainder = dividend % divisor;
 
 **Rule ID:** `CSTYLE-104-7-6-bitwise-and-mask-rules`
 
+**Related pitfalls:**
+
+- [CPIT-126: Bit-field layout used as an external representation](./c-common-pitfalls.md#cpit-126-bit-field-layout-used-as-an-external-representation)
+- [CPIT-084: Reserved register bits clobbered](./c-common-pitfalls.md#cpit-084-reserved-register-bits-clobbered)
+
 Bitwise operations must use named masks and explicit intent.
 
 Rules:
@@ -3989,6 +5046,7 @@ if ((permissions & 0x05u) != 0u)
 **Related pitfalls:**
 
 - [CPIT-034: MMIO/DMA pointer treated as ordinary heap](./c-common-pitfalls.md#cpit-034-mmiodma-pointer-treated-as-ordinary-heap)
+- [CPIT-126: Bit-field layout used as an external representation](./c-common-pitfalls.md#cpit-126-bit-field-layout-used-as-an-external-representation)
 - [CPIT-084: Reserved register bits clobbered](./c-common-pitfalls.md#cpit-084-reserved-register-bits-clobbered)
 - [CPIT-085: Read-clear register mishandled](./c-common-pitfalls.md#cpit-085-read-clear-register-mishandled)
 
@@ -4178,6 +5236,40 @@ status_t status_array[STATUS_MAX] =
     [STATUS_ON]  = STATUS_OFF,
 };
 ```
+
+### 8.3 Object Zeroing and `memset`
+
+**Rule ID:** `CSTYLE-137-8-3-object-zeroing-and-memset`
+
+**Related pitfalls:**
+
+- [CPIT-133: Representation zeroing mistaken for semantic initialization](./c-common-pitfalls.md#cpit-133-representation-zeroing-mistaken-for-semantic-initialization)
+- [CPIT-057: `memcpy`/`memset` invalid pointer](./c-common-pitfalls.md#cpit-057-memcpymemset-invalid-pointer)
+- [CPIT-098: Missing secure erase](./c-common-pitfalls.md#cpit-098-missing-secure-erase)
+
+Use C initialization syntax to establish the semantic default value of a typed
+object. Writing zero bytes with `memset()` may establish that value only when
+the type's documented representation contract defines all-bits-zero as its
+semantic default.
+
+Prefer:
+
+```c id=object-zeroing-and-memset-prefer
+config_t config = { 0 };
+```
+
+Avoid treating an arbitrary representation as a semantic value:
+
+```c id=object-zeroing-and-memset-avoid
+config_t config;
+
+memset(&config, 0, sizeof(config));
+```
+
+`memset()` remains appropriate for raw byte buffers and types with an explicit
+all-bits-zero contract. It is not a secure-erasure primitive; secret clearing
+must use the project secure-zero wrapper required by the standard-library
+policy.
 
 ---
 
@@ -4455,4 +5547,5 @@ artifact, and runtime-plugin boundary ownership.
 [sei-cert-c]: https://www.sei.cmu.edu/library/sei-cert-c-coding-standard-rules-for-developing-safe-reliable-and-secure-systems-2016-edition/
 [sei-cert-c-badge]: https://img.shields.io/badge/SEI%20CERT%20C-2016-2F81F7?style=flat-square&logo=cmake&logoColor=white&labelColor=1F2328
 [sil-4-badge]: https://img.shields.io/badge/SIL%204-IEC%2061508-DA3633?style=flat-square&logo=target&logoColor=white&labelColor=1F2328
+
 <!-- EOF -->

@@ -18,16 +18,6 @@ defaults:
   run:
     shell: bash
 
-env:
-  CODESPELL_VERSION: "2.4.1"
-  CODESPELL_SHA256: "3dadafa67df7e4a3dbf51e0d7315061b80d265f9552ebd699b3dd6834b47e425"
-  LYCHEE_VERSION: "0.24.1"
-  LYCHEE_SHA256: "3ecad9a6e5ec42efaa9cdbdbad2406fdeef11ee38f7774aaf038f981d3248684"
-  TYPOS_VERSION: "1.46.0"
-  TYPOS_SHA256: "c62a626df385c96574743fd4974aeb271a41a67d080a0398e36e1a42782f614a"
-  VALE_VERSION: "3.18.0"
-  VALE_SHA256: "a6f71a75a12fe689345b754f2412b90367fe33648abb7d200fa19eaadc2dbf6d"
-
 jobs:
   cspell:
     if: inputs.repository
@@ -47,6 +37,10 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Resolve toolchain lock
+        id: toolchain
+        uses: ./.github/actions/toolchain
 
       - name: Check spelling
         uses: streetsidesoftware/cspell-action@e0668cf020899e887ee8ad4d173c31738a79eae8 # v9.0.1
@@ -78,14 +72,18 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Resolve toolchain lock
+        id: toolchain
+        uses: ./.github/actions/toolchain
+
       - name: Restore codespell wheel
         id: codespell_download
         uses: ./.github/actions/verified-download
         with:
           name: codespell
-          version: ${{ env.CODESPELL_VERSION }}
-          filename: codespell-${{ env.CODESPELL_VERSION }}-py3-none-any.whl
-          sha256: ${{ env.CODESPELL_SHA256 }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).codespell.version }}
+          filename: codespell-${{ fromJSON(steps.toolchain.outputs.tools).codespell.version }}-py3-none-any.whl
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).codespell.sha256 }}
           origin: https://files.pythonhosted.org
           directory: packages/20/01/b394922252051e97aab231d416c86da3d8a6d781eeadcdca1082867de64e
 
@@ -130,16 +128,20 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Resolve toolchain lock
+        id: toolchain
+        uses: ./.github/actions/toolchain
+
       - name: Restore typos archive
         id: typos_download
         uses: ./.github/actions/verified-download
         with:
           name: typos
-          version: ${{ env.TYPOS_VERSION }}
-          filename: typos-v${{ env.TYPOS_VERSION }}-x86_64-unknown-linux-musl.tar.gz
-          sha256: ${{ env.TYPOS_SHA256 }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).typos.version }}
+          filename: typos-v${{ fromJSON(steps.toolchain.outputs.tools).typos.version }}-x86_64-unknown-linux-musl.tar.gz
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).typos.sha256 }}
           origin: https://github.com
-          directory: crate-ci/typos/releases/download/v${{ env.TYPOS_VERSION }}
+          directory: crate-ci/typos/releases/download/v${{ fromJSON(steps.toolchain.outputs.tools).typos.version }}
 
       - name: Install typos
         env:
@@ -186,16 +188,24 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Resolve toolchain lock
+        id: toolchain
+        uses: ./.github/actions/toolchain
+
       - name: Restore Lychee archive
         id: lychee_download
         uses: ./.github/actions/verified-download
         with:
           name: lychee
-          version: ${{ env.LYCHEE_VERSION }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).lychee.version }}
           filename: lychee-x86_64-unknown-linux-gnu.tar.gz
-          sha256: ${{ env.LYCHEE_SHA256 }}
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).lychee.sha256 }}
           origin: https://github.com
-          directory: lycheeverse/lychee/releases/download/lychee-v${{ env.LYCHEE_VERSION }}
+          directory: >-
+            ${{ format(
+              'lycheeverse/lychee/releases/download/lychee-v{0}',
+              fromJSON(steps.toolchain.outputs.tools).lychee.version
+            ) }}
 
       - name: Install Lychee
         env:
@@ -272,16 +282,20 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Resolve toolchain lock
+        id: toolchain
+        uses: ./.github/actions/toolchain
+
       - name: Restore Vale archive
         id: vale_download
         uses: ./.github/actions/verified-download
         with:
           name: vale
-          version: ${{ env.VALE_VERSION }}
-          filename: vale_${{ env.VALE_VERSION }}_Linux_64-bit.tar.gz
-          sha256: ${{ env.VALE_SHA256 }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).vale.version }}
+          filename: vale_${{ fromJSON(steps.toolchain.outputs.tools).vale.version }}_Linux_64-bit.tar.gz
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).vale.sha256 }}
           origin: https://github.com
-          directory: vale-cli/vale/releases/download/v${{ env.VALE_VERSION }}
+          directory: vale-cli/vale/releases/download/v${{ fromJSON(steps.toolchain.outputs.tools).vale.version }}
 
       - name: Install Vale
         env:
@@ -323,6 +337,10 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Resolve toolchain lock
+        id: toolchain
+        uses: ./.github/actions/toolchain
 
       - name: Export commit messages
         env:
@@ -393,9 +411,9 @@ jobs:
         uses: ./.github/actions/verified-download
         with:
           name: codespell
-          version: ${{ env.CODESPELL_VERSION }}
-          filename: codespell-${{ env.CODESPELL_VERSION }}-py3-none-any.whl
-          sha256: ${{ env.CODESPELL_SHA256 }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).codespell.version }}
+          filename: codespell-${{ fromJSON(steps.toolchain.outputs.tools).codespell.version }}-py3-none-any.whl
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).codespell.sha256 }}
           origin: https://files.pythonhosted.org
           directory: packages/20/01/b394922252051e97aab231d416c86da3d8a6d781eeadcdca1082867de64e
 
@@ -421,11 +439,11 @@ jobs:
         uses: ./.github/actions/verified-download
         with:
           name: typos
-          version: ${{ env.TYPOS_VERSION }}
-          filename: typos-v${{ env.TYPOS_VERSION }}-x86_64-unknown-linux-musl.tar.gz
-          sha256: ${{ env.TYPOS_SHA256 }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).typos.version }}
+          filename: typos-v${{ fromJSON(steps.toolchain.outputs.tools).typos.version }}-x86_64-unknown-linux-musl.tar.gz
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).typos.sha256 }}
           origin: https://github.com
-          directory: crate-ci/typos/releases/download/v${{ env.TYPOS_VERSION }}
+          directory: crate-ci/typos/releases/download/v${{ fromJSON(steps.toolchain.outputs.tools).typos.version }}
 
       - name: Install typos
         env:
@@ -451,11 +469,11 @@ jobs:
         uses: ./.github/actions/verified-download
         with:
           name: vale
-          version: ${{ env.VALE_VERSION }}
-          filename: vale_${{ env.VALE_VERSION }}_Linux_64-bit.tar.gz
-          sha256: ${{ env.VALE_SHA256 }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).vale.version }}
+          filename: vale_${{ fromJSON(steps.toolchain.outputs.tools).vale.version }}_Linux_64-bit.tar.gz
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).vale.sha256 }}
           origin: https://github.com
-          directory: vale-cli/vale/releases/download/v${{ env.VALE_VERSION }}
+          directory: vale-cli/vale/releases/download/v${{ fromJSON(steps.toolchain.outputs.tools).vale.version }}
 
       - name: Install Vale
         env:
@@ -478,11 +496,15 @@ jobs:
         uses: ./.github/actions/verified-download
         with:
           name: lychee
-          version: ${{ env.LYCHEE_VERSION }}
+          version: ${{ fromJSON(steps.toolchain.outputs.tools).lychee.version }}
           filename: lychee-x86_64-unknown-linux-gnu.tar.gz
-          sha256: ${{ env.LYCHEE_SHA256 }}
+          sha256: ${{ fromJSON(steps.toolchain.outputs.tools).lychee.sha256 }}
           origin: https://github.com
-          directory: lycheeverse/lychee/releases/download/lychee-v${{ env.LYCHEE_VERSION }}
+          directory: >-
+            ${{ format(
+              'lycheeverse/lychee/releases/download/lychee-v{0}',
+              fromJSON(steps.toolchain.outputs.tools).lychee.version
+            ) }}
 
       - name: Install Lychee
         env:

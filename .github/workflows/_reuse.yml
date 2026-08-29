@@ -34,6 +34,10 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Resolve toolchain lock
+        id: toolchain
+        uses: ./.github/actions/toolchain
+
       - name: Create isolated Python environment
         run: |
           set -euo pipefail
@@ -41,6 +45,8 @@ jobs:
           python3 -m venv "${RUNNER_TEMP}/reuse"
 
       - name: Install REUSE
+        env:
+          REUSE_VERSION: ${{ fromJSON(steps.toolchain.outputs.tools).reuse.version }}
         run: |
           set -euo pipefail
 
@@ -49,7 +55,7 @@ jobs:
             install \
             --disable-pip-version-check \
             --no-input \
-            "reuse==6.2.0"
+            "reuse==${REUSE_VERSION}"
 
       - name: Check REUSE compliance
         run: |
